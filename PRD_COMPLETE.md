@@ -710,11 +710,21 @@ campus-resource-hub/
 │   │   ├── auth_service.py         # Authentication logic
 │   │   ├── resource_service.py     # Resource management logic
 │   │   ├── booking_service.py      # Booking logic with conflict detection
+│   │   ├── calendar_service.py     # Calendar processing utilities
 │   │   ├── search_service.py       # Search and filtering logic
 │   │   ├── messaging_service.py    # Messaging logic
 │   │   ├── review_service.py       # Review and rating logic
 │   │   ├── admin_service.py        # Admin utilities
 │   │   └── ai_concierge.py        # AI Concierge logic
+│   ├── utils/                      # Utility modules
+│   │   ├── __init__.py
+│   │   ├── config.py              # Centralized configuration management
+│   │   ├── exceptions.py          # Custom exception classes
+│   │   ├── logging_config.py     # Logging configuration
+│   │   ├── datetime_utils.py     # Datetime parsing and formatting utilities
+│   │   ├── json_utils.py         # JSON parsing utilities
+│   │   ├── html_utils.py         # HTML sanitization utilities
+│   │   └── decorators.py         # Common decorators (admin_required, etc.)
 │   ├── data_access/                # Database access layer
 │   │   ├── __init__.py
 │   │   └── database.py             # Database connection utilities
@@ -722,13 +732,21 @@ campus-resource-hub/
 │       ├── css/
 │       ├── js/
 │       └── images/
-├── tests/                          # Test suite
-│   ├── test_functionality_summary.py
+├── tests/                          # Test suite (52 tests, all passing)
+│   ├── run_tests.py                # Test runner script
 │   ├── test_app_integration.py
+│   ├── test_auth_integration.py
+│   ├── test_booking_e2e.py
+│   ├── test_booking_service.py
+│   ├── test_data_access.py
+│   ├── test_security.py
 │   └── ai_eval/                    # AI feature validation tests
 │       └── test_ai_concierge.py
 ├── uploads/                        # User-uploaded files
-└── campus_resource_hub.db          # SQLite database (not in git)
+├── logs/                           # Application logs (auto-generated)
+├── .env.example                    # Environment variable template
+├── .env                            # Environment variables (not in git)
+└── campus_resource_hub.db          # SQLite database (included with project)
 
 ```
 
@@ -764,6 +782,21 @@ Encapsulates all database operations:
 - Transaction management
 - Parameterized queries (SQL injection prevention)
 - Returns standardized data structures
+- Error handling with custom exceptions (`DatabaseError`)
+- Logging for database operations
+
+### 6.6 Utility Layer
+
+Centralized utility modules (`src/utils/`):
+- **Configuration**: `config.py` - Environment variable-based configuration with validation
+- **Exceptions**: `exceptions.py` - Custom exception classes for error categorization
+- **Logging**: `logging_config.py` - Structured logging with file rotation
+- **Datetime**: `datetime_utils.py` - Datetime parsing, timezone conversion, formatting
+- **JSON**: `json_utils.py` - Safe JSON parsing and serialization
+- **HTML**: `html_utils.py` - HTML sanitization and unescaping
+- **Decorators**: `decorators.py` - Common decorators (`admin_required`, etc.)
+
+All utilities are exported through `src/utils/__init__.py` for easy importing.
 
 ---
 

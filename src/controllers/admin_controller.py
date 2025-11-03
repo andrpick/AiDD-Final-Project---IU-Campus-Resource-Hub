@@ -9,20 +9,9 @@ from src.services.admin_service import (
 )
 from src.services.resource_service import list_resources, update_resource, get_resource
 from src.services.booking_service import list_bookings, get_booking, update_booking
+from src.utils.decorators import admin_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-
-def admin_required(f):
-    """Decorator to require admin role."""
-    from functools import wraps
-    
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin():
-            flash('Admin access required.', 'error')
-            return redirect(url_for('home'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 @admin_bp.route('/')
 @login_required

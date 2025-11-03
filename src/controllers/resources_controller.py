@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from src.services.resource_service import create_resource, get_resource, update_resource, delete_resource, list_resources
 from src.services.review_service import get_resource_reviews
 from src.services.booking_service import list_bookings
+from src.services.calendar_service import prepare_calendar_data
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
@@ -54,249 +55,39 @@ def detail(resource_id):
         review_stats = None
         total_reviews = 0
     
-    # Fetch approved bookings for the resource schedule
-    from datetime import timedelta, date
-    from calendar import monthrange, monthcalendar
-    now = datetime.now()
-    today = now.date()
-    
     # Get month and day from query parameters (default to current month)
+    from datetime import date
+    today = date.today()
     selected_year = request.args.get('year', today.year, type=int)
     selected_month = request.args.get('month', today.month, type=int)
     selected_day = request.args.get('day', type=int)  # Optional - if provided, show day view
     
-    # Validate month/year (cannot go before current month)
-    if selected_year < today.year or (selected_year == today.year and selected_month < today.month):
-        selected_year = today.year
-        selected_month = today.month
-    
-    # Calculate month boundaries
-    month_start = date(selected_year, selected_month, 1)
-    days_in_month = monthrange(selected_year, selected_month)[1]
-    month_end = date(selected_year, selected_month, days_in_month)
-    
-    # Generate calendar grid for the month (6 weeks x 7 days)
-    month_calendar = monthcalendar(selected_year, selected_month)
-    
-    # Calculate previous and next month
-    if selected_month == 1:
-        prev_year = selected_year - 1
-        prev_month = 12
-        next_year = selected_year
-        next_month = 2
-    elif selected_month == 12:
-        prev_year = selected_year
-        prev_month = 11
-        next_year = selected_year + 1
-        next_month = 1
-    else:
-        prev_year = selected_year
-        prev_month = selected_month - 1
-        next_year = selected_year
-        next_month = selected_month + 1
-    
-    # Check if we can navigate to previous month (cannot go before current month)
-    can_go_prev = not (prev_year < today.year or (prev_year == today.year and prev_month < today.month))
-    
-    # Calculate current time position for today's indicator (only in month view)
-    current_time_info = None
-    if selected_year == today.year and selected_month == today.month:
-        current_hour = now.hour
-        current_minute = now.minute
-        current_time_minutes = current_hour * 60 + current_minute
-        
-        # Only show if within operating hours (8 AM - 10 PM)
-        if 8 * 60 <= current_time_minutes < 22 * 60:
-            current_time_info = {
-                'hour': current_hour,
-                'minute': current_minute,
-                'minutes_from_midnight': current_time_minutes,
-                'minutes_from_8am': current_time_minutes - (8 * 60)
-            }
-    
-    # Fetch approved bookings for the resource schedule (bookings are auto-approved on creation)
+    # Fetch approved bookings for the resource schedule
     approved_bookings_result = list_bookings(resource_id=resource_id, status='approved', limit=500, offset=0)
     
     all_bookings_raw = []
     if approved_bookings_result['success']:
         all_bookings_raw.extend(approved_bookings_result['data']['bookings'])
     
-    # Process bookings for calendar display
-    approved_bookings = []
-    booked_slots = {}  # Key: date_iso, Value: list of {start_minutes, end_minutes}
+    # Prepare calendar data using service
+    calendar_info = prepare_calendar_data(
+        resource_id=resource_id,
+        approved_bookings_raw=all_bookings_raw,
+        selected_year=selected_year,
+        selected_month=selected_month,
+        selected_day=selected_day
+    )
     
-    # Calculate time range for bookings (entire month if month view, single day if day view)
-    if selected_day:
-        # Day view - only show bookings for selected day
-        target_date = date(selected_year, selected_month, selected_day)
-        range_start = datetime.combine(target_date, datetime.min.time().replace(hour=0, minute=0))
-        range_end = datetime.combine(target_date, datetime.min.time().replace(hour=23, minute=59))
-    else:
-        # Month view - show bookings for entire month
-        range_start = datetime.combine(month_start, datetime.min.time().replace(hour=0, minute=0))
-        range_end = datetime.combine(month_end, datetime.min.time().replace(hour=23, minute=59))
-    
-    for booking in all_bookings_raw:
-        if booking.get('start_datetime') and booking.get('end_datetime'):
-            try:
-                # Parse datetime strings
-                start_str = booking['start_datetime'].replace('Z', '+00:00') if 'Z' in booking['start_datetime'] else booking['start_datetime']
-                end_str = booking['end_datetime'].replace('Z', '+00:00') if 'Z' in booking['end_datetime'] else booking['end_datetime']
-                
-                start_dt = datetime.fromisoformat(start_str)
-                end_dt = datetime.fromisoformat(end_str)
-                
-                # Ensure datetimes are timezone-aware (assume UTC if naive)
-                from dateutil.tz import gettz, tzutc
-                if start_dt.tzinfo is None:
-                    start_dt = start_dt.replace(tzinfo=tzutc())
-                if end_dt.tzinfo is None:
-                    end_dt = end_dt.replace(tzinfo=tzutc())
-                
-                # Convert to EST/EDT for display
-                est_tz = gettz('America/New_York')
-                start_dt_est = start_dt.astimezone(est_tz)
-                end_dt_est = end_dt.astimezone(est_tz)
-                
-                # Make range_start and range_end timezone-aware for comparison
-                # range_start and range_end are naive datetimes in local time, convert to UTC for comparison
-                range_start_utc = range_start.replace(tzinfo=est_tz).astimezone(tzutc()) if range_start.tzinfo is None else range_start.astimezone(tzutc())
-                range_end_utc = range_end.replace(tzinfo=est_tz).astimezone(tzutc()) if range_end.tzinfo is None else range_end.astimezone(tzutc())
-                
-                # Only include bookings that overlap with the selected range
-                # A booking overlaps if: booking_start < range_end AND booking_end > range_start
-                if start_dt < range_end_utc and end_dt > range_start_utc:
-                    # Store formatted booking
-                    approved_bookings.append({
-                        'booking_id': booking.get('booking_id'),
-                        'start_datetime': booking['start_datetime'],
-                        'end_datetime': booking['end_datetime'],
-                        'start_dt': start_dt_est,
-                        'end_dt': end_dt_est,
-                        'date': start_dt_est.date().isoformat(),
-                        'start_time': start_dt_est.strftime('%H:%M'),
-                        'end_time': end_dt_est.strftime('%H:%M'),
-                        'start_hour': start_dt_est.hour,
-                        'end_hour': end_dt_est.hour,
-                        'start_minute': start_dt_est.minute,
-                        'end_minute': end_dt_est.minute,
-                        'weekday': start_dt_est.weekday(),
-                        'status': booking.get('status', 'approved')
-                    })
-                    
-                    # Add to booked slots (convert to minutes from midnight in EST/EDT)
-                    date_key = start_dt_est.date().isoformat()
-                    if date_key not in booked_slots:
-                        booked_slots[date_key] = []
-                    
-                    start_minutes = start_dt_est.hour * 60 + start_dt_est.minute
-                    end_minutes = end_dt_est.hour * 60 + end_dt_est.minute
-                    booked_slots[date_key].append({
-                        'start_minutes': start_minutes,
-                        'end_minutes': end_minutes,
-                        'start_time': start_dt_est.strftime('%H:%M'),
-                        'end_time': end_dt_est.strftime('%H:%M')
-                    })
-            except Exception as e:
-                # Skip invalid dates
-                continue
-    
-    # Sort bookings by start time
-    approved_bookings.sort(key=lambda x: x['start_dt'] if 'start_dt' in x else datetime.now())
-    
-    # Generate calendar data based on view type
-    if selected_day:
-        # Day view - generate hourly slots for the selected day
-        day_date = date(selected_year, selected_month, selected_day)
-        date_key = day_date.isoformat()
-        day_bookings = [b for b in approved_bookings if b['date'] == date_key]
-        booked_times = booked_slots.get(date_key, [])
-        
-        # Generate time slots from 8 AM to 10 PM in 30-minute increments
-        day_time_slots = []
-        operating_hours_start = 8
-        operating_hours_end = 22
-        
-        for hour in range(operating_hours_start, operating_hours_end):
-            for minute in [0, 30]:
-                slot_start_minutes = hour * 60 + minute
-                slot_end_minutes = slot_start_minutes + 30
-                
-                # Check if slot is available
-                # A slot overlaps with a booking if:
-                # - slot starts before booking ends AND slot ends after booking starts
-                is_available = True
-                for booked in booked_times:
-                    # Check for overlap: slot_start < booked_end AND slot_end > booked_start
-                    if slot_start_minutes < booked['end_minutes'] and slot_end_minutes > booked['start_minutes']:
-                        is_available = False
-                        break
-                
-                # Only show slots at least 1 hour in the future from now
-                from datetime import time as dt_time
-                slot_datetime = datetime.combine(day_date, dt_time(hour=hour, minute=minute))
-                if slot_datetime < now + timedelta(hours=1):
-                    is_available = False
-                
-                day_time_slots.append({
-                    'hour': hour,
-                    'minute': minute,
-                    'time_minutes': slot_start_minutes,
-                    'start_time': f"{hour:02d}:{minute:02d}",
-                    'end_time': f"{(slot_end_minutes // 60):02d}:{(slot_end_minutes % 60):02d}",
-                    'is_available': is_available,
-                    'is_booked': not is_available
-                })
-        
-        day_data = {
-            'date': day_date,
-            'date_iso': date_key,
-            'day_name': day_date.strftime('%A'),
-            'day_num': day_date.day,
-            'month': day_date.strftime('%B'),
-            'year': day_date.year,
-            'is_today': day_date == today,
-            'bookings': day_bookings,
-            'time_slots': day_time_slots,
-            'booked_slots': booked_times
-        }
-        
-        calendar_data = None
-        month_calendar = None
-    else:
-        # Month view - generate calendar grid
-        calendar_grid = []
-        for week in month_calendar:
-            week_row = []
-            for day_num in week:
-                if day_num == 0:
-                    # Day is outside the month
-                    week_row.append(None)
-                else:
-                    day_date = date(selected_year, selected_month, day_num)
-                    date_key = day_date.isoformat()
-                    day_bookings = [b for b in approved_bookings if b['date'] == date_key]
-                    booked_count = len(day_bookings)
-                    
-                    # Check if day is in the past or today (but not future)
-                    is_past = day_date < today
-                    is_today = day_date == today
-                    is_selectable = day_date >= today
-                    
-                    week_row.append({
-                        'day': day_num,
-                        'date': day_date,
-                        'date_iso': date_key,
-                        'is_today': is_today,
-                        'is_past': is_past,
-                        'is_selectable': is_selectable,
-                        'bookings_count': booked_count,
-                        'has_bookings': booked_count > 0
-                    })
-            calendar_grid.append(week_row)
-        
-        day_data = None
-        calendar_data = calendar_grid
+    calendar_data = calendar_info['calendar_data']
+    day_data = calendar_info['day_data']
+    booked_slots = calendar_info['booked_slots']
+    approved_bookings = calendar_info['approved_bookings']
+    prev_year = calendar_info['prev_year']
+    prev_month = calendar_info['prev_month']
+    next_year = calendar_info['next_year']
+    next_month = calendar_info['next_month']
+    can_go_prev = calendar_info['can_go_prev']
+    current_time_info = calendar_info['current_time_info']
     
     schedule_data = booked_slots  # Keep for backward compatibility
     

@@ -4,6 +4,12 @@ Booking service with conflict detection.
 from datetime import datetime, timedelta
 from src.data_access.database import get_db_connection
 from dateutil.tz import tzutc
+from dateutil import parser
+from src.utils.logging_config import get_logger
+from src.utils.exceptions import BookingError, ValidationError, ConflictError, NotFoundError
+from src.utils.config import Config
+
+logger = get_logger(__name__)
 
 def check_conflicts(resource_id, start_datetime, end_datetime, exclude_booking_id=None, cursor=None):
     """
@@ -61,7 +67,6 @@ def check_conflicts(resource_id, start_datetime, end_datetime, exclude_booking_i
 
 def validate_booking_datetime(start_datetime, end_datetime):
     """Validate booking datetime constraints."""
-    from dateutil.tz import tzutc
     try:
         if isinstance(start_datetime, str):
             start_dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
@@ -72,7 +77,8 @@ def validate_booking_datetime(start_datetime, end_datetime):
             end_dt = datetime.fromisoformat(end_datetime.replace('Z', '+00:00'))
         else:
             end_dt = end_datetime
-    except Exception:
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Invalid datetime format: {e}")
         return False, None, None, "Invalid datetime format"
     
     # Ensure datetimes are timezone-aware (UTC)
@@ -84,41 +90,46 @@ def validate_booking_datetime(start_datetime, end_datetime):
     # Get current time in UTC for comparison
     now = datetime.now(tzutc())
     
-    # Must be at least 1 hour in the future
-    if start_dt < now + timedelta(hours=1):
-        return False, None, None, "Booking must be at least 1 hour in the future"
+    # Must be at least configured advance hours in the future
+    min_advance = timedelta(hours=Config.BOOKING_MIN_ADVANCE_HOURS)
+    if start_dt < now + min_advance:
+        return False, None, None, f"Booking must be at least {Config.BOOKING_MIN_ADVANCE_HOURS} hour(s) in the future"
     
-    # For operating hours validation, convert to EST/EDT
+    # For operating hours validation, convert to configured timezone
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    start_dt_est = start_dt.astimezone(est_tz)
-    end_dt_est = end_dt.astimezone(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    start_dt_local = start_dt.astimezone(tz)
+    end_dt_local = end_dt.astimezone(tz)
     
-    # Operating hours: 8 AM - 10 PM (EST/EDT)
-    start_hour = start_dt_est.hour
-    end_hour = end_dt_est.hour
+    # Operating hours validation
+    start_hour = start_dt_local.hour
+    end_hour = end_dt_local.hour
+    start_minute = start_dt_local.minute
+    end_minute = end_dt_local.minute
     
     # End must be after start
     if end_dt <= start_dt:
         return False, None, None, "End datetime must be after start datetime"
     
-    # Duration must be between 30 minutes and 8 hours
+    # Duration validation
     duration = end_dt - start_dt
-    if duration < timedelta(minutes=30):
-        return False, None, None, "Minimum booking duration is 30 minutes"
-    if duration > timedelta(hours=8):
-        return False, None, None, "Maximum booking duration is 8 hours"
+    min_duration = timedelta(minutes=Config.BOOKING_MIN_DURATION_MINUTES)
+    max_duration = timedelta(hours=Config.BOOKING_MAX_DURATION_HOURS)
     
-    # Operating hours: 8 AM - 10 PM (EST/EDT)
-    if start_hour < 8:
-        return False, None, None, "Booking must start at or after 8:00 AM"
-    if start_hour == 8 and start_dt_est.minute > 0:
-        return False, None, None, "Booking must start at or after 8:00 AM"
+    if duration < min_duration:
+        return False, None, None, f"Minimum booking duration is {Config.BOOKING_MIN_DURATION_MINUTES} minutes"
+    if duration > max_duration:
+        return False, None, None, f"Maximum booking duration is {Config.BOOKING_MAX_DURATION_HOURS} hours"
     
-    if end_hour > 22:
-        return False, None, None, "Booking must end at or before 10:00 PM"
-    if end_hour == 22 and end_dt_est.minute > 0:
-        return False, None, None, "Booking must end at or before 10:00 PM"
+    # Operating hours validation
+    operating_start = Config.BOOKING_OPERATING_HOURS_START
+    operating_end = Config.BOOKING_OPERATING_HOURS_END
+    
+    if start_hour < operating_start or (start_hour == operating_start and start_minute > 0):
+        return False, None, None, f"Booking must start at or after {operating_start:02d}:00"
+    
+    if end_hour > operating_end or (end_hour == operating_end and end_minute > 0):
+        return False, None, None, f"Booking must end at or before {operating_end:02d}:00"
     
     return True, start_dt, end_dt, "Valid"
 
@@ -142,6 +153,7 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime):
         # This ensures that between check and insert, no other booking was created
         conflicts = check_conflicts(resource_id, start_dt, end_dt, cursor=cursor)
         if conflicts:
+            logger.warning(f"Booking conflict detected for resource {resource_id}: {len(conflicts)} conflicts")
             conn.rollback()
             conflict_details = []
             for conflict in conflicts:
@@ -168,6 +180,7 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime):
         
         booking_id = cursor.lastrowid
         conn.commit()
+        logger.info(f"Created booking {booking_id} for resource {resource_id} by user {requester_id}")
     
     return {'success': True, 'data': {'booking_id': booking_id}}
 
@@ -219,11 +232,13 @@ def get_booking(booking_id):
         
         if row:
             return {'success': True, 'data': dict(row)}
+        logger.warning(f"Booking {booking_id} not found")
         return {'success': False, 'error': 'Booking not found'}
 
 def update_booking_status(booking_id, status, rejection_reason=None):
     """Update booking status. Valid statuses: approved, cancelled, completed."""
     if status not in ['approved', 'cancelled', 'completed']:
+        logger.warning(f"Invalid booking status attempted: {status}")
         return {'success': False, 'error': 'Invalid status'}
     
     with get_db_connection() as conn:
@@ -236,7 +251,10 @@ def update_booking_status(booking_id, status, rejection_reason=None):
         """, (status, booking_id))
         
         if cursor.rowcount == 0:
+            logger.warning(f"Booking {booking_id} not found for status update")
             return {'success': False, 'error': 'Booking not found'}
+        
+        logger.info(f"Updated booking {booking_id} status to {status}")
     
     return {'success': True, 'data': {'booking_id': booking_id}}
 

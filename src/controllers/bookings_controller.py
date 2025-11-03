@@ -5,27 +5,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from src.services.booking_service import create_booking, get_booking, update_booking_status, list_bookings, check_conflicts
 from src.services.resource_service import get_resource
+from src.utils.datetime_utils import parse_datetime_aware
 from datetime import datetime
 import urllib.parse
 
 bookings_bp = Blueprint('bookings', __name__, url_prefix='/bookings')
-
-def _parse_datetime_aware(dt_str):
-    """Parse datetime string and ensure it's timezone-aware (UTC)."""
-    from dateutil.tz import tzutc
-    from dateutil import parser
-    
-    try:
-        dt = parser.parse(dt_str.replace('Z', '+00:00'))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=tzutc())
-        else:
-            # Convert to UTC if timezone-aware
-            dt = dt.astimezone(tzutc())
-        return dt
-    except Exception:
-        # Return a very old datetime as fallback for sorting
-        return datetime(1970, 1, 1, tzinfo=tzutc())
 
 @bookings_bp.route('/')
 @login_required
@@ -57,7 +41,7 @@ def index():
         for booking in all_bookings:
             try:
                 # Parse booking start datetime
-                start_dt = _parse_datetime_aware(booking['start_datetime'])
+                start_dt = parse_datetime_aware(booking['start_datetime'])
                 
                 if booking['status'] == 'cancelled':
                     # Canceled bookings go to canceled section
@@ -82,13 +66,13 @@ def index():
                     previous_bookings.append(booking)
         
         # Sort upcoming by start_datetime ASC (soonest first)
-        upcoming_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']))
+        upcoming_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']))
         
         # Sort previous by start_datetime DESC (most recent first)
-        previous_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
+        previous_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
         
         # Sort canceled by start_datetime DESC (most recent first)
-        canceled_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
+        canceled_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
         
         # Apply section filter if specified
         if section_filter == 'upcoming':

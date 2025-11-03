@@ -590,7 +590,12 @@ def query_concierge(user_query, conversation_history=None):
     All results are validated against actual database content.
     """
     # Get Gemini API key
-    api_key = os.environ.get('GOOGLE_GEMINI_API_KEY')
+    # Check if AI Concierge is enabled
+    from src.utils.config import Config
+    if not Config.ENABLE_AI_CONCIERGE:
+        return query_concierge_fallback(user_query)
+    
+    api_key = Config.GOOGLE_GEMINI_API_KEY
     
     # Debug logging (remove in production)
     if not GEMINI_AVAILABLE:
@@ -1168,9 +1173,9 @@ Respond naturally to the user's query, but strictly within the bounds of the cam
         }
     except Exception as e:
         # Fallback on error
-        print(f"Gemini API error: {e}")
-        import traceback
-        traceback.print_exc()
+        from src.utils.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error(f"Gemini API error: {e}", exc_info=True)
         return query_concierge_fallback(user_query)
 
 def query_concierge_fallback(user_query):

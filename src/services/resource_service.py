@@ -1,21 +1,9 @@
 """
 Resource management service.
 """
-import json
-import html
 from src.data_access.database import get_db_connection
-
-def sanitize_html(text, escape_html=False):
-    """Remove HTML tags. Optionally escape HTML characters for titles/locations."""
-    if not text:
-        return text
-    # Simple HTML tag removal
-    import re
-    text = re.sub(r'<[^>]+>', '', text)
-    # Only escape HTML characters if requested (for titles/locations, not descriptions)
-    if escape_html:
-        return html.escape(text)
-    return text
+from src.utils.json_utils import safe_json_dumps, parse_resource_json_fields
+from src.utils.html_utils import sanitize_html, unescape_description
 
 def create_resource(owner_id, title, description, category, location, capacity=None,
                    images=None, availability_rules=None, status='draft'):
@@ -48,10 +36,10 @@ def create_resource(owner_id, title, description, category, location, capacity=N
     location = sanitize_html(location, escape_html=True)
     
     # Handle images JSON
-    images_json = json.dumps(images) if images else None
+    images_json = safe_json_dumps(images)
     
     # Handle availability_rules JSON
-    availability_rules_json = json.dumps(availability_rules) if availability_rules else None
+    availability_rules_json = safe_json_dumps(availability_rules)
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -74,26 +62,11 @@ def get_resource(resource_id):
         if row:
             resource = dict(row)
             # Parse JSON fields
-            if resource.get('images'):
-                try:
-                    resource['images'] = json.loads(resource['images'])
-                except:
-                    resource['images'] = []
-            else:
-                resource['images'] = []
-            
-            if resource.get('availability_rules'):
-                try:
-                    resource['availability_rules'] = json.loads(resource['availability_rules'])
-                except:
-                    resource['availability_rules'] = None
+            resource = parse_resource_json_fields(resource)
             
             # Unescape HTML entities in description (handles legacy data that was escaped)
             if resource.get('description'):
-                try:
-                    resource['description'] = html.unescape(resource['description'])
-                except:
-                    pass  # If unescaping fails, keep original
+                resource['description'] = unescape_description(resource['description'])
             
             return {'success': True, 'data': resource}
         return {'success': False, 'error': 'Resource not found'}
@@ -140,10 +113,10 @@ def update_resource(resource_id, owner_id=None, **kwargs):
             values.append(value)
         elif key == 'images':
             update_fields.append("images = ?")
-            values.append(json.dumps(value) if value else None)
+            values.append(safe_json_dumps(value))
         elif key == 'availability_rules':
             update_fields.append("availability_rules = ?")
-            values.append(json.dumps(value) if value else None)
+            values.append(safe_json_dumps(value))
     
     if not update_fields:
         return {'success': False, 'error': 'No valid fields to update'}
@@ -212,23 +185,11 @@ def list_resources(status='published', category=None, owner_id=None, featured=No
         for row in rows:
             resource = dict(row)
             # Parse JSON fields
-            if resource.get('images'):
-                try:
-                    resource['images'] = json.loads(resource['images'])
-                except:
-                    resource['images'] = []
-            if resource.get('availability_rules'):
-                try:
-                    resource['availability_rules'] = json.loads(resource['availability_rules'])
-                except:
-                    resource['availability_rules'] = None
+            resource = parse_resource_json_fields(resource)
             
             # Unescape HTML entities in description (handles legacy data that was escaped)
             if resource.get('description'):
-                try:
-                    resource['description'] = html.unescape(resource['description'])
-                except:
-                    pass  # If unescaping fails, keep original
+                resource['description'] = unescape_description(resource['description'])
             
             resources.append(resource)
         
@@ -255,23 +216,11 @@ def get_featured_resources(limit=6):
         for row in rows:
             resource = dict(row)
             # Parse JSON fields
-            if resource.get('images'):
-                try:
-                    resource['images'] = json.loads(resource['images'])
-                except:
-                    resource['images'] = []
-            if resource.get('availability_rules'):
-                try:
-                    resource['availability_rules'] = json.loads(resource['availability_rules'])
-                except:
-                    resource['availability_rules'] = None
+            resource = parse_resource_json_fields(resource)
             
             # Unescape HTML entities in description (handles legacy data that was escaped)
             if resource.get('description'):
-                try:
-                    resource['description'] = html.unescape(resource['description'])
-                except:
-                    pass  # If unescaping fails, keep original
+                resource['description'] = unescape_description(resource['description'])
             
             resources.append(resource)
     

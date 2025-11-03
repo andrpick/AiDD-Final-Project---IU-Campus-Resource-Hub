@@ -48,12 +48,21 @@ The application is fully functional with all core features implemented:
    ```
 
 3. **Create a `.env` file** in the project root:
+   ```bash
+   # Copy the template
+   cp .env.example .env
    ```
-   SECRET_KEY=your-secret-key-change-this
-   DATABASE_PATH=campus_resource_hub.db
-   UPLOAD_FOLDER=uploads/
-   GOOGLE_GEMINI_API_KEY=your-api-key-here (optional, for AI Concierge)
-   ```
+   
+   Then edit `.env` and update at minimum:
+   - `SECRET_KEY` - Generate a secure random key: `python -c "import secrets; print(secrets.token_hex(32))"`
+   - Other values as needed
+   
+   See `.env.example` for all available configuration options including:
+   - Flask settings (host, port, debug mode)
+   - Logging configuration
+   - Booking system settings (operating hours, timezone, duration limits)
+   - Feature flags (AI Concierge, registration)
+   - Production settings
    
    **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly. The default admin account credentials are:
    - Email: `admin@iu.edu`
@@ -229,9 +238,13 @@ The application includes the following implemented features:
 ### 7. Deployment Preparation
 
 1. **Environment variables:**
-   - Set proper `SECRET_KEY` in production
+   - Copy `.env.example` to `.env`
+   - Set proper `SECRET_KEY` in production (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
    - Configure database path
    - Set upload folder permissions
+   - Set `PRODUCTION=1` and `FLASK_DEBUG=0` for production
+   - Configure all booking system settings as needed
+   - See `.env.example` for complete documentation and all available options
 
 2. **Database:**
    - Consider migrating to PostgreSQL for production
@@ -246,6 +259,13 @@ The application includes the following implemented features:
    - Enable HTTPS
    - Configure secure cookies
    - Set up rate limiting
+   - Ensure `SECRET_KEY` is strong and unique
+   - Review `archive/ERROR_HANDLING_REFACTORING.md` for error handling best practices (reference documentation)
+
+5. **Logging:**
+   - Configure log directory and rotation
+   - Set up log monitoring/alerting
+   - Review logs regularly for errors
 
 ## 🎯 Quick Reference
 
@@ -362,6 +382,29 @@ The `archive/` folder contains migration scripts and outdated documentation:
   - `ARCHIVE_REVIEW.md` - Archive review document
 
 These files are kept for reference but are no longer needed as the database is included with the project. The `init_db.py` script is available if you need to recreate the database from scratch.
+
+## 🆕 Recent Improvements
+
+### Code Refactoring (Completed)
+- ✅ **Utility Modules**: Centralized utilities for datetime, JSON, HTML processing (`src/utils/`)
+- ✅ **Error Handling**: Comprehensive error handling with custom exceptions and structured logging
+- ✅ **Configuration System**: Environment variable-based configuration with validation (`src/utils/config.py`)
+- ✅ **Calendar Service**: Extracted calendar processing logic into dedicated service (`src/services/calendar_service.py`)
+- ✅ **Logging**: Production-ready logging with file rotation and error tracking (`src/utils/logging_config.py`)
+
+### New Features Added
+- ✅ **Centralized Configuration**: `src/utils/config.py` for all environment variables
+- ✅ **Custom Exceptions**: `src/utils/exceptions.py` for better error categorization
+- ✅ **Structured Logging**: `src/utils/logging_config.py` with file rotation
+- ✅ **Calendar Service**: `src/services/calendar_service.py` for booking calendar logic
+- ✅ **Environment Variables**: Complete `.env.example` template with all options
+- ✅ **Decorators**: `src/utils/decorators.py` for common decorators (admin_required, etc.)
+
+### Documentation Updates
+- ✅ **Environment Variables**: See `.env.example` and README.md Environment Variables section
+- ✅ **Error Handling**: See `archive/ERROR_HANDLING_REFACTORING.md` (reference documentation)
+- ✅ **Refactoring Summary**: See `archive/CODEBASE_REVIEW_COMPLETE.md` (reference documentation)
+- ✅ **README**: Updated with comprehensive environment variable documentation
 
 ---
 
