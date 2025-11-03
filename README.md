@@ -4,34 +4,56 @@ A full-stack web application for managing and booking campus resources including
 
 ## Setup Instructions
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+1. **Create a virtual environment:**
+   ```bash
+   # Windows PowerShell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   
+   # Windows Command Prompt
+   python -m venv .venv
+   .venv\Scripts\activate.bat
+   
+   # Linux/Mac
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
 
-2. Initialize the database:
-```bash
-python init_db.py
-```
+2. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. Run the application:
-```bash
-python app.py
-```
+3. **Create a `.env` file** in the project root:
+   ```
+   SECRET_KEY=your-secret-key-change-this
+   DATABASE_PATH=campus_resource_hub.db
+   UPLOAD_FOLDER=uploads/
+   GOOGLE_GEMINI_API_KEY=your-api-key-here (optional, for AI Concierge)
+   ```
+   
+   **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly.
+
+4. **Run the application:**
+   ```bash
+   python app.py
+   ```
 
 The application will be available at `http://localhost:5000`
 
 ## Default Admin Account
 
-**Email:** admin@example.com  
-**Password:** Admin123!
+The database includes sample/starter data with a default admin account:
+- **Email:** admin@example.com  
+- **Password:** Admin123!
 
 **⚠️ IMPORTANT:** Change the default admin password immediately after first login in production!
 
 ## Project Structure
 
 - `app.py` - Flask application entry point
-- `init_db.py` - Database initialization script
+- `campus_resource_hub.db` - SQLite database with sample/starter data included
+- `init_db.py` - Database initialization script (available if you need to recreate the database from scratch)
 - `src/controllers/` - Flask blueprints (route handlers)
 - `src/models/` - Data models
 - `src/services/` - Business logic layer
@@ -112,4 +134,6 @@ DATABASE_PATH=campus_resource_hub.db
 UPLOAD_FOLDER=uploads/
 GOOGLE_GEMINI_API_KEY=your-gemini-api-key (optional, for AI Concierge)
 ```
+
+**Note:** The database (`campus_resource_hub.db`) is included with sample/starter data. No database initialization is required. The `init_db.py` script is available if you need to recreate the database from scratch.
 
