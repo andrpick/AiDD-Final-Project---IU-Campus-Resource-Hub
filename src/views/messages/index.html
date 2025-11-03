@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Messages - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Messages</h1>
+                <p class="text-muted mb-0">Manage your conversations</p>
+            </div>
+            <a href="{{ url_for('messages.new') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                <i class="bi bi-envelope-plus me-2"></i> New Message
+            </a>
+        </div>
+
+        {% if threads %}
+        <!-- Messages List -->
+        <div class="row g-3">
+            {% for thread in threads %}
+            <div class="col-12">
+                <div class="card bg-cream border-0 shadow-sm hover-card position-relative" style="transition: all 0.2s ease; {% if thread.is_unread %}border-left: 4px solid var(--crimson) !important;{% endif %}">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start">
+                            <!-- Avatar/Initial Circle -->
+                            <div class="flex-shrink-0 me-3">
+                                <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center" 
+                                     style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">
+                                    {{ (thread.other_user_name or 'U')[0]|upper }}
+                                </div>
+                            </div>
+                            
+                            <!-- Message Content -->
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <h5 class="mb-0 fw-semibold me-2" style="color: #333;">
+                                                {{ thread.other_user_name or 'User #' + thread.other_user_id|string }}
+                                            </h5>
+                                            {% if thread.resource_title %}
+                                                <span class="badge bg-secondary me-2" style="font-size: 0.7rem; font-weight: 400;">{{ thread.resource_title }}</span>
+                                            {% endif %}
+                                            {% if thread.is_unread %}
+                                                <span class="badge bg-crimson rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">Unread</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">Read</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-0 text-muted" style="font-size: 0.875rem; max-height: 2.5em; overflow: hidden; text-overflow: ellipsis;">
+                                            {{ thread.last_message }}
+                                        </p>
+                                    </div>
+                                    <div class="text-end ms-3 d-flex flex-column align-items-end gap-2 position-relative" style="z-index: 10;">
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 0.75rem; white-space: nowrap;">
+                                                {{ thread.last_message_time|format_datetime_est('short') }}
+                                            </small>
+                                        </div>
+                                        <!-- Thread Actions -->
+                                        <div class="d-flex gap-1">
+                                            {% if thread.is_unread %}
+                                                <form method="POST" action="{{ url_for('messages.mark_thread_read_route', thread_id=thread.thread_id) }}" class="d-inline thread-action-form">
+                                                    <button type="submit" class="btn btn-sm btn-crimson" title="Mark thread as read">
+                                                        <i class="bi bi-check-circle me-1"></i>Mark Read
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="POST" action="{{ url_for('messages.mark_thread_unread_route', thread_id=thread.thread_id) }}" class="d-inline thread-action-form">
+                                                    <button type="submit" class="btn btn-sm btn-outline-crimson" title="Mark thread as unread">
+                                                        <i class="bi bi-envelope me-1"></i>Mark Unread
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Clickable link overlay (behind action buttons) -->
+                    <a href="{{ url_for('messages.thread', thread_id=thread.thread_id) }}" class="stretched-link" style="text-decoration: none; color: transparent; z-index: 1;"></a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="card bg-cream border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-envelope" style="font-size: 4rem; color: #ccc;"></i>
+                </div>
+                <h4 class="mb-3 fw-semibold" style="color: #333;">No messages yet</h4>
+                <p class="text-muted mb-4">Start a conversation with other users</p>
+                <a href="{{ url_for('messages.new') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                    <i class="bi bi-envelope-plus me-2"></i> Start a new conversation
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.thread-action-form {
+    position: relative;
+    z-index: 20;
+}
+
+.thread-action-form button {
+    position: relative;
+    z-index: 20;
+}
+</style>
+
+<script>
+// Prevent navigation when clicking thread action buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const actionForms = document.querySelectorAll('.thread-action-form');
+    actionForms.forEach(function(form) {
+        const button = form.querySelector('button[type="submit"]');
+        
+        if (button) {
+            // Prevent button click from triggering navigation
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // Submit the form via fetch to avoid navigation
+                const formData = new FormData(form);
+                const action = form.getAttribute('action');
+                
+                fetch(action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(response) {
+                    if (response.ok || response.redirected) {
+                        // Reload the page to update the UI
+                        window.location.reload();
+                    } else {
+                        console.error('Error marking thread');
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    // Fallback to normal form submission
+                    form.submit();
+                });
+            });
+        }
+        
+        // Also prevent form submission from triggering navigation
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+});
+</script>
+{% endblock %}
+

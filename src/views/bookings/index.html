@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}My Bookings - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Title -->
+        <h1 class="mb-4 fw-bold" style="font-size: 2.5rem; color: #333; line-height: 1.2;">My Bookings</h1>
+
+        <!-- Status Filter Tabs -->
+        <div class="mb-4">
+            <div class="d-flex flex-wrap gap-2" role="group">
+                <a href="{{ url_for('bookings.index') }}" 
+                   class="btn px-4 py-2 {% if not status_filter %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if not status_filter %}600{% else %}500{% endif %};">
+                    All
+                </a>
+                <a href="{{ url_for('bookings.index', status='pending') }}" 
+                   class="btn px-4 py-2 {% if status_filter == 'pending' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if status_filter == 'pending' %}600{% else %}500{% endif %};">
+                    Pending
+                </a>
+                <a href="{{ url_for('bookings.index', status='approved') }}" 
+                   class="btn px-4 py-2 {% if status_filter == 'approved' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if status_filter == 'approved' %}600{% else %}500{% endif %};">
+                    Approved
+                </a>
+                <a href="{{ url_for('bookings.index', status='rejected') }}" 
+                   class="btn px-4 py-2 {% if status_filter == 'rejected' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if status_filter == 'rejected' %}600{% else %}500{% endif %};">
+                    Rejected
+                </a>
+                <a href="{{ url_for('bookings.index', status='cancelled') }}" 
+                   class="btn px-4 py-2 {% if status_filter == 'cancelled' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if status_filter == 'cancelled' %}600{% else %}500{% endif %};">
+                    Cancelled
+                </a>
+            </div>
+        </div>
+
+        {% if bookings %}
+        <!-- Bookings Table -->
+        <div class="table-responsive">
+            <table class="table bg-white" style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <thead style="background-color: #f8f9fa;">
+                    <tr>
+                        <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
+                        <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Start Time</th>
+                        <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">End Time</th>
+                        <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Status</th>
+                        <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td class="px-4 py-3">
+                            {% if booking.resource %}
+                            <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" class="text-crimson fw-semibold" style="text-decoration: none;">
+                                {{ booking.resource.title }}
+                            </a>
+                            {% else %}
+                            <span style="color: #333;">Resource #{{ booking.resource_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3" style="color: #333;">
+                            {{ booking.start_datetime|format_datetime_est('short') }}
+                        </td>
+                        <td class="px-4 py-3" style="color: #333;">
+                            {{ booking.end_datetime|format_datetime_est('short') }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                {% if booking.status == 'approved' %}bg-success
+                                {% elif booking.status == 'pending' %}bg-warning text-dark
+                                {% elif booking.status == 'rejected' %}bg-danger
+                                {% else %}bg-secondary{% endif %}" 
+                                style="font-size: 0.875rem;">
+                                {{ booking.status|title }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" 
+                               class="btn btn-crimson px-3 py-2" 
+                               style="border-radius: 8px; font-weight: 500; font-size: 0.875rem;">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- No Bookings Message -->
+        <div class="bg-white p-5 rounded-3 text-center" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p class="mb-0 text-muted" style="font-size: 1.1rem;">You have no bookings yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

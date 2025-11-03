@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ user.name }} - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Title -->
+        <h1 class="mb-4 fw-bold" style="font-size: 2.5rem; color: #333; line-height: 1.2;">{{ user.name }}</h1>
+        
+        <!-- Profile Card -->
+        <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <!-- Email -->
+            <div class="mb-4">
+                <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Email</label>
+                <p class="mb-0" style="color: #333; font-size: 1.125rem;">{{ user.email }}</p>
+            </div>
+            
+            <!-- Role -->
+            <div class="mb-4">
+                <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Role</label>
+                <span class="badge bg-crimson px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.9375rem;">
+                    {{ user.role|title }}
+                </span>
+            </div>
+            
+            <!-- Department -->
+            {% if user.department %}
+            <div class="mb-4">
+                <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Department</label>
+                <p class="mb-0" style="color: #333; font-size: 1.125rem;">{{ user.department }}</p>
+            </div>
+            {% endif %}
+            
+            <!-- Member Since -->
+            <div class="mb-4">
+                <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Member Since</label>
+                <p class="mb-0" style="color: #333; font-size: 1.125rem;">
+                    {{ user.created_at|format_datetime_est('datetime') }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

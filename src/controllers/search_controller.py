@@ -1,0 +1,59 @@
+"""
+Search controller (Flask blueprint).
+"""
+from flask import Blueprint, render_template, request
+from src.services.search_service import search_resources
+
+search_bp = Blueprint('search', __name__, url_prefix='/search')
+
+@search_bp.route('/')
+def index():
+    """Search resources with filters."""
+    keyword = request.args.get('keyword', '').strip() or None
+    category = request.args.get('category', '').strip() or None
+    location = request.args.get('location', '').strip() or None
+    capacity_min = request.args.get('capacity_min', type=int)
+    capacity_max = request.args.get('capacity_max', type=int)
+    available_from = request.args.get('available_from', '').strip() or None
+    available_to = request.args.get('available_to', '').strip() or None
+    sort_by = request.args.get('sort_by', 'created_at')
+    sort_order = request.args.get('sort_order', 'desc')
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    
+    result = search_resources(
+        keyword=keyword,
+        category=category,
+        location=location,
+        capacity_min=capacity_min,
+        capacity_max=capacity_max,
+        available_from=available_from,
+        available_to=available_to,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size
+    )
+    
+    if result['success']:
+        data = result['data']
+        return render_template('search/index.html',
+                             resources=data['resources'],
+                             page=data['page'],
+                             total_pages=data['total_pages'],
+                             total=data['total'],
+                             keyword=keyword,
+                             category=category,
+                             location=location,
+                             capacity_min=capacity_min,
+                             capacity_max=capacity_max,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
+    else:
+        return render_template('search/index.html',
+                             resources=[],
+                             page=1,
+                             total_pages=0,
+                             total=0,
+                             keyword=keyword)
+

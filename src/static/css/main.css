@@ -1,0 +1,368 @@
+/* Indiana University Color Scheme */
+:root {
+    --crimson: #990000;
+    --cream: #EEEDEB;
+    --cream-alt: #F0EAD6;
+}
+
+/* Global Font Family - Matching Navbar */
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Ensure all text elements use consistent font */
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, button, input, select, textarea,
+label, .nav-link, .navbar-brand, .card-title, .card-text,
+.table, .btn, .form-control, .form-select, .dropdown-item,
+.alert, .badge, .pagination {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+}
+
+/* Custom Color Classes */
+.bg-crimson {
+    background-color: var(--crimson) !important;
+}
+
+.text-crimson {
+    color: var(--crimson) !important;
+}
+
+.bg-cream {
+    background-color: var(--cream) !important;
+}
+
+/* Resource Image Display */
+.resource-image-container {
+    width: 100%;
+    max-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.resource-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.card-image-wrapper {
+    width: 100%;
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    overflow: hidden;
+}
+
+.card-image-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.btn-crimson {
+    background-color: var(--crimson);
+    border-color: var(--crimson);
+    color: white;
+}
+
+.btn-crimson:hover {
+    background-color: #770000;
+    border-color: #770000;
+    color: white;
+}
+
+.btn-outline-crimson {
+    color: var(--crimson);
+    border-color: var(--crimson);
+}
+
+.btn-outline-crimson:hover {
+    background-color: var(--crimson);
+    border-color: var(--crimson);
+    color: white;
+}
+
+/* Header Styling */
+header .navbar {
+    background-color: var(--crimson) !important;
+    padding: 0.75rem 0;
+}
+
+.navbar-nav .nav-link {
+    color: white !important;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.navbar-nav .nav-link:hover {
+    opacity: 0.8;
+}
+
+.navbar-brand {
+    padding: 0;
+}
+
+.btn-outline-light {
+    border-color: white;
+    color: white;
+    background-color: transparent;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+    color: white;
+}
+
+/* Card Styling */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Form Styling */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--crimson);
+    box-shadow: 0 0 0 0.2rem rgba(153, 0, 0, 0.25);
+}
+
+/* Link Styling */
+a {
+    color: var(--crimson);
+}
+
+a:hover {
+    color: #770000;
+}
+
+/* Badge Styling */
+.badge {
+    font-weight: normal;
+}
+
+/* Pagination */
+.page-link {
+    color: var(--crimson);
+}
+
+.page-item.active .page-link {
+    background-color: var(--crimson);
+    border-color: var(--crimson);
+}
+
+.page-link:hover {
+    color: #770000;
+}
+
+/* Home Page Styling */
+.display-3 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.input-group-lg .form-control {
+    border-radius: 8px 0 0 8px;
+}
+
+.input-group-lg .btn {
+    border-radius: 0 8px 8px 0;
+}
+
+/* Card improvements */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Chatbot Widget Styles */
+.chatbot-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chatbot-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(153, 0, 0, 0.4);
+}
+
+.chatbot-widget {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    height: 600px;
+    max-height: calc(100vh - 120px);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chatbot-header {
+    background-color: var(--crimson);
+    color: white;
+    border-radius: 16px 16px 0 0;
+}
+
+.chatbot-body {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+.chatbot-footer {
+    background-color: white;
+    border-top: 1px solid #dee2e6;
+}
+
+.chat-message {
+    display: flex;
+    width: 100%;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.assistant-message {
+    justify-content: flex-start;
+}
+
+.message-bubble {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    word-wrap: break-word;
+}
+
+.user-bubble {
+    background-color: var(--crimson);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.assistant-bubble {
+    background-color: white;
+    color: #333;
+    border: 1px solid #dee2e6;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-resources {
+    margin-top: 8px;
+}
+
+.resource-card {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.resource-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--crimson);
+}
+
+/* Scrollbar styling for chatbot */
+.chatbot-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chatbot-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.chatbot-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.chatbot-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Weekly Calendar Styles */
+.weekly-calendar-wrapper {
+    background-color: #ffffff;
+}
+
+.weekly-calendar-grid {
+    background-color: #ffffff;
+}
+
+.calendar-cell {
+    transition: background-color 0.1s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.calendar-cell:hover:not(.booked-cell) {
+    background-color: #e7f3ff !important;
+}
+
+.calendar-cell.booked-cell {
+    cursor: not-allowed;
+    background-color: #fee !important;
+}
+
+.booking-block {
+    user-select: none;
+    pointer-events: none;
+}
+
+.unavailable-block {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.selection-overlay {
+    pointer-events: none;
+}
+
+/* Ensure booked cells are clearly marked */
+.calendar-cell.booked-cell .unavailable-block {
+    display: flex !important;
+}
+
+@media (max-width: 991.98px) {
+    .weekly-calendar-wrapper {
+        overflow-x: scroll;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+

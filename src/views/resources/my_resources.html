@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}My Resources - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>My Resources</h2>
+            <a href="{{ url_for('resources.create') }}" class="btn btn-crimson">
+                <i class="bi bi-plus-circle"></i> Create Resource
+            </a>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="mb-3">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('resources.my_resources') }}" class="btn btn-outline-secondary {% if not status_filter %}active{% endif %}">
+                    All
+                </a>
+                <a href="{{ url_for('resources.my_resources', status='draft') }}" class="btn btn-outline-secondary {% if status_filter == 'draft' %}active{% endif %}">
+                    Drafts
+                </a>
+                <a href="{{ url_for('resources.my_resources', status='published') }}" class="btn btn-outline-secondary {% if status_filter == 'published' %}active{% endif %}">
+                    Published
+                </a>
+                <a href="{{ url_for('resources.my_resources', status='archived') }}" class="btn btn-outline-secondary {% if status_filter == 'archived' %}active{% endif %}">
+                    Archived
+                </a>
+            </div>
+        </div>
+
+        {% if resources %}
+        <div class="table-responsive">
+            <table class="table table-striped bg-cream">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for resource in resources %}
+                    <tr>
+                        <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
+                        <td>{{ resource.category|replace('_', ' ')|title }}</td>
+                        <td>{{ resource.location }}</td>
+                        <td><span class="badge {% if resource.status == 'published' %}bg-success{% elif resource.status == 'draft' %}bg-warning{% else %}bg-secondary{% endif %}">{{ resource.status|title }}</span></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" class="btn btn-sm btn-outline-crimson">Edit</a>
+                                {% if resource.status == 'draft' %}
+                                <form method="POST" action="{{ url_for('resources.publish', resource_id=resource.resource_id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success">Publish</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <p class="mb-0">You haven't created any resources yet. <a href="{{ url_for('resources.create') }}">Create one now</a></p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

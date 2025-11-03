@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Indiana University's Campus Resource Hub{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="bg-crimson text-white">
+        <nav class="navbar navbar-expand-lg navbar-dark px-4">
+            <div class="container-fluid d-flex align-items-center">
+                <!-- Logo on the left -->
+                <a class="navbar-brand d-flex align-items-center me-5" href="{{ url_for('home') }}" style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='images/iu_logo_main.svg') }}" alt="Indiana University" style="height: 35px;">
+                </a>
+                
+                <!-- Mobile toggle button -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <!-- Navigation links -->
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav d-flex align-items-center" style="gap: 2rem;">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('home') }}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('search.index') }}">Resources</a>
+                        </li>
+                        {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('bookings.index') }}">My Bookings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white position-relative" href="{{ url_for('messages.index') }}">
+                                Messages
+                                {% if unread_message_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white text-crimson" style="font-size: 0.65rem; padding: 0.25em 0.4em; border: 1px solid var(--crimson);">
+                                    {{ unread_message_count }}
+                                </span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% if current_user.is_admin() %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('admin.dashboard') }}">Admin</a>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+                    </ul>
+                </div>
+                
+                <!-- Right side: User actions -->
+                <div class="d-flex align-items-center ms-auto" style="gap: 1rem;">
+                    <!-- User actions button -->
+                    {% if current_user.is_authenticated %}
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm px-3" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 4px;">
+                            <i class="bi bi-person-circle me-1"></i>{{ current_user.name }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile', user_id=current_user.user_id) }}">Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('resources.my_resources') }}">My Resources</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-sm px-3" style="border-radius: 4px;">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                    </a>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-sm px-3" style="border-radius: 4px;">
+                        Register
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="container mt-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="bg-cream min-vh-100">
+        <div class="container-fluid px-4 py-4">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-crimson text-white py-3 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 Indiana University Campus Resource Hub. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Chatbot Widget -->
+    <div id="chatbotWidget" class="chatbot-widget d-none">
+        <div class="chatbot-header d-flex justify-content-between align-items-center p-3">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-robot me-2" style="font-size: 1.25rem;"></i>
+                <h6 class="mb-0 fw-semibold">AI Assistant</h6>
+            </div>
+            <div class="d-flex gap-2">
+                <button id="chatbotMinimize" class="btn btn-sm btn-link text-white p-0" style="border: none; background: none;">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <button id="chatbotClose" class="btn btn-sm btn-link text-white p-0" style="border: none; background: none;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div id="chatbotBody" class="chatbot-body p-3">
+            <!-- Messages will be added here -->
+        </div>
+        <div class="chatbot-footer p-3">
+            <div class="input-group">
+                <input type="text" id="chatbotInput" class="form-control" placeholder="Type your message..." style="border-radius: 8px 0 0 8px;">
+                <button id="chatbotSend" class="btn btn-crimson" type="button" style="border-radius: 0 8px 8px 0;">
+                    <i class="bi bi-send"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Toggle Button -->
+    <button id="chatbotToggle" class="chatbot-toggle-btn btn btn-crimson rounded-circle p-3 shadow-lg" type="button">
+        <i class="bi bi-chat-dots" style="font-size: 1.5rem;"></i>
+    </button>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chatbot JS -->
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+

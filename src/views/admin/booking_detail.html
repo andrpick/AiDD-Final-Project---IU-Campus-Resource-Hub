@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Booking - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Edit Booking</h1>
+            <p class="text-muted mb-0">View and modify booking details</p>
+        </div>
+
+        <!-- Booking Details Card -->
+        <div class="card bg-cream border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('admin.update_booking_admin', booking_id=booking.booking_id) }}">
+                    <!-- Booking ID -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Booking ID</label>
+                        <p class="mb-0" style="color: #333; font-size: 1rem;">#{{ booking.booking_id }}</p>
+                    </div>
+
+                    <!-- Resource -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Resource</label>
+                        {% if resource %}
+                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                           class="text-crimson fw-semibold" 
+                           style="font-size: 1.25rem; text-decoration: none;">
+                            {{ resource.title }}
+                        </a>
+                        {% else %}
+                        <span style="color: #333; font-size: 1.25rem;">Resource #{{ booking.resource_id }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Requester -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Requester</label>
+                        {% if requester %}
+                        <div>
+                            <span class="fw-semibold" style="color: #333; font-size: 1rem;">{{ requester.name }}</span>
+                            <br>
+                            <small class="text-muted">{{ requester.email }}</small>
+                        </div>
+                        {% else %}
+                        <span style="color: #333; font-size: 1rem;">User #{{ booking.requester_id }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Start DateTime -->
+                    <div class="mb-4">
+                        <label for="start_datetime" class="form-label fw-semibold" style="color: #333;">
+                            Start Date & Time <span class="text-danger">*</span>
+                        </label>
+                        <input type="datetime-local" 
+                               class="form-control" 
+                               id="start_datetime" 
+                               name="start_datetime" 
+                               value="{{ booking.start_datetime|format_datetime_local }}" 
+                               required
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ booking.start_datetime|format_datetime_est('datetime') }}</small>
+                    </div>
+
+                    <!-- End DateTime -->
+                    <div class="mb-4">
+                        <label for="end_datetime" class="form-label fw-semibold" style="color: #333;">
+                            End Date & Time <span class="text-danger">*</span>
+                        </label>
+                        <input type="datetime-local" 
+                               class="form-control" 
+                               id="end_datetime" 
+                               name="end_datetime" 
+                               value="{{ booking.end_datetime|format_datetime_local }}" 
+                               required
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ booking.end_datetime|format_datetime_est('datetime') }}</small>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="mb-4">
+                        <label for="status" class="form-label fw-semibold" style="color: #333;">
+                            Status <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="status" name="status" required style="border-radius: 8px;">
+                            <option value="pending" {% if booking.status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="approved" {% if booking.status == 'approved' %}selected{% endif %}>Approved</option>
+                            <option value="rejected" {% if booking.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                            <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            <option value="completed" {% if booking.status == 'completed' %}selected{% endif %}>Completed</option>
+                        </select>
+                    </div>
+
+                    <!-- Rejection Reason (shown if rejected) -->
+                    <div class="mb-4" id="rejection_reason_wrapper" style="display: {% if booking.status == 'rejected' %}block{% else %}none{% endif %};">
+                        <label for="rejection_reason" class="form-label fw-semibold" style="color: #333;">
+                            Rejection Reason
+                        </label>
+                        <textarea class="form-control" 
+                                  id="rejection_reason" 
+                                  name="rejection_reason" 
+                                  rows="3" 
+                                  style="border-radius: 8px;">{{ booking.rejection_reason or '' }}</textarea>
+                        <small class="text-muted">Required when status is "Rejected"</small>
+                    </div>
+
+                    <!-- Skip Validation -->
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="skip_validation" 
+                                   name="skip_validation">
+                            <label class="form-check-label fw-semibold" for="skip_validation" style="color: #333;">
+                                Skip validation (allow overwriting with custom dates/times)
+                            </label>
+                            <small class="d-block text-muted mt-1">Check this to bypass standard booking validation rules</small>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 flex-wrap mt-4 pt-4" style="border-top: 1px solid #dee2e6;">
+                        <button type="submit" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                            <i class="bi bi-check-circle me-2"></i> Update Booking
+                        </button>
+                        <a href="{{ url_for('admin.bookings') }}" class="btn btn-outline-secondary px-4 py-2" style="font-weight: 500;">
+                            <i class="bi bi-arrow-left me-2"></i> Back to Bookings
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('status');
+    const rejectionReasonWrapper = document.getElementById('rejection_reason_wrapper');
+    const rejectionReasonInput = document.getElementById('rejection_reason');
+    
+    function toggleRejectionReason() {
+        if (statusSelect.value === 'rejected') {
+            rejectionReasonWrapper.style.display = 'block';
+            rejectionReasonInput.setAttribute('required', 'required');
+        } else {
+            rejectionReasonWrapper.style.display = 'none';
+            rejectionReasonInput.removeAttribute('required');
+        }
+    }
+    
+    statusSelect.addEventListener('change', toggleRejectionReason);
+    
+    // Initialize on page load
+    toggleRejectionReason();
+    
+    // Convert UTC datetime to local datetime-local format
+    function formatForDatetimeLocal(datetimeStr) {
+        if (!datetimeStr) return '';
+        // Assuming datetimeStr is in ISO format
+        const dt = new Date(datetimeStr);
+        if (isNaN(dt.getTime())) return '';
+        
+        // Format: YYYY-MM-DDTHH:mm
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+});
+</script>
+{% endblock %}
+

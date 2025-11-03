@@ -1,0 +1,238 @@
+<script>
+// Day View JavaScript (only when day_data exists)
+{% if day_data %}
+document.addEventListener('DOMContentLoaded', function() {
+    const timeSlotCells = document.querySelectorAll('.time-slot-cell.available-slot');
+    const timeSelectionOverlay = document.getElementById('time-selection-overlay');
+    const timeSelectionInfo = document.getElementById('time-selection-info');
+    const selectedTimeDisplay = document.getElementById('selected-time-display');
+    const useSelectionBtn = document.getElementById('use-selection-btn');
+    const startDateTimeInput = document.getElementById('start_datetime');
+    const endDateTimeInput = document.getElementById('end_datetime');
+    const currentTimeLine = document.getElementById('current-time-line');
+    
+    let isSelecting = false;
+    let startSlot = null;
+    let endSlot = null;
+    
+    // Position current time indicator
+    {% if day_data.is_today and current_time_info %}
+    if (currentTimeLine) {
+        const timeMinutes = {{ current_time_info.minutes_from_midnight }};
+        const minutesFrom8am = timeMinutes - (8 * 60);
+        if (minutesFrom8am >= 0 && minutesFrom8am < (14 * 60)) {
+            const slotIndex = Math.floor(minutesFrom8am / 30);
+            const minutesIntoSlot = minutesFrom8am % 30;
+            const topPosition = (slotIndex * 30) + (minutesIntoSlot / 30 * 30);
+            
+            currentTimeLine.style.top = topPosition + 'px';
+            currentTimeLine.style.display = 'block';
+        }
+    }
+    {% endif %}
+    
+    // Helper function to check if slot is available
+    function isSlotAvailable(slot) {
+        return slot.classList.contains('available-slot') && 
+               !slot.classList.contains('booked-slot') && 
+               !slot.classList.contains('unavailable-slot');
+    }
+    
+    // Helper function to get slot position
+    function getSlotPosition(slot) {
+        const container = document.querySelector('.time-slots-container');
+        if (!container) return null;
+        const containerRect = container.getBoundingClientRect();
+        const slotRect = slot.getBoundingClientRect();
+        return {
+            top: slotRect.top - containerRect.top + container.scrollTop,
+            left: slotRect.left - containerRect.left + container.scrollLeft,
+            width: slotRect.width,
+            height: slotRect.height,
+            timeMinutes: parseInt(slot.getAttribute('data-time-minutes'))
+        };
+    }
+    
+    // Update selection overlay
+    function updateTimeSelectionOverlay(startSlot, endSlot) {
+        if (!startSlot || !endSlot || !isSlotAvailable(startSlot) || !isSlotAvailable(endSlot)) {
+            timeSelectionOverlay.style.display = 'none';
+            timeSelectionInfo.style.display = 'none';
+            return;
+        }
+        
+        const startPos = getSlotPosition(startSlot);
+        const endPos = getSlotPosition(endSlot);
+        
+        let startMinutes = Math.min(startPos.timeMinutes, endPos.timeMinutes);
+        let endMinutes = Math.max(startPos.timeMinutes, endPos.timeMinutes);
+        
+        // Each slot represents a 30-minute interval (e.g., 9:00 slot = 9:00-9:30, 9:30 slot = 9:30-10:00)
+        // The time_minutes value is the START of each slot
+        // To include the full duration of the selected end slot, we always add 30 minutes
+        // Example: Selecting 9:00 slot gives 9:00-9:30 (30 min)
+        // Example: Selecting 9:00 slot to 9:30 slot gives 9:00-10:00 (1 hour)
+        endMinutes = endMinutes + 30;
+        
+        const firstPos = startPos.timeMinutes <= endPos.timeMinutes ? startPos : endPos;
+        const lastPos = startPos.timeMinutes <= endPos.timeMinutes ? endPos : startPos;
+        
+        const overlayTop = firstPos.top;
+        // If single slot selected, height should be one slot height (30px)
+        // Otherwise, calculate from first to last position
+        const overlayHeight = (startSlot === endSlot) ? firstPos.height : ((lastPos.top + lastPos.height) - firstPos.top);
+        
+        timeSelectionOverlay.style.display = 'block';
+        timeSelectionOverlay.style.top = overlayTop + 'px';
+        timeSelectionOverlay.style.left = firstPos.left + 'px';
+        timeSelectionOverlay.style.width = firstPos.width + 'px';
+        timeSelectionOverlay.style.height = overlayHeight + 'px';
+        
+        // Update selection info
+        const duration = endMinutes - startMinutes;
+        const hours = Math.floor(duration / 60);
+        const minutes = duration % 60;
+        
+        const startHour24 = Math.floor(startMinutes / 60);
+        const startMin = startMinutes % 60;
+        const endHour24 = Math.floor(endMinutes / 60);
+        const endMin = endMinutes % 60;
+        
+        // Convert to 12-hour format
+        const startHour12 = startHour24 === 0 ? 12 : (startHour24 > 12 ? startHour24 - 12 : startHour24);
+        const endHour12 = endHour24 === 0 ? 12 : (endHour24 > 12 ? endHour24 - 12 : endHour24);
+        const startAmPm = startHour24 >= 12 ? 'PM' : 'AM';
+        const endAmPm = endHour24 >= 12 ? 'PM' : 'AM';
+        
+        const startTimeStr = `${startHour12}:${startMin.toString().padStart(2, '0')} ${startAmPm}`;
+        const endTimeStr = `${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+        
+        selectedTimeDisplay.textContent = `${startTimeStr} - ${endTimeStr} (${hours}h${minutes > 0 ? ' ' + minutes + 'm' : ''})`;
+        timeSelectionInfo.style.display = 'block';
+    }
+    
+    // Mouse events for drag selection
+    timeSlotCells.forEach(slot => {
+        slot.addEventListener('mousedown', function(e) {
+            if (!isSlotAvailable(slot)) return;
+            
+            isSelecting = true;
+            startSlot = slot;
+            endSlot = slot;
+            updateTimeSelectionOverlay(startSlot, endSlot);
+            e.preventDefault();
+        });
+        
+        slot.addEventListener('mouseenter', function() {
+            if (isSelecting && isSlotAvailable(slot)) {
+                endSlot = slot;
+                updateTimeSelectionOverlay(startSlot, endSlot);
+            }
+        });
+        
+        slot.addEventListener('mouseup', function() {
+            if (isSelecting) {
+                isSelecting = false;
+            }
+        });
+    });
+    
+    // Stop selection when mouse leaves
+    document.addEventListener('mouseup', function() {
+        isSelecting = false;
+    });
+    
+    // Use selection button
+    if (useSelectionBtn) {
+        useSelectionBtn.addEventListener('click', function() {
+            if (!startSlot || !endSlot) return;
+            
+            const startPos = getSlotPosition(startSlot);
+            const endPos = getSlotPosition(endSlot);
+            
+            let startMinutes = Math.min(startPos.timeMinutes, endPos.timeMinutes);
+            let endMinutes = Math.max(startPos.timeMinutes, endPos.timeMinutes);
+            
+            // Each slot represents a 30-minute interval (e.g., 9:00 slot = 9:00-9:30, 9:30 slot = 9:30-10:00)
+            // The time_minutes value is the START of each slot
+            // To include the full duration of the selected end slot, we always add 30 minutes
+            // Example: Selecting 9:00 slot gives 9:00-9:30 (30 min)
+            // Example: Selecting 9:00 slot to 9:30 slot gives 9:00-10:00 (1 hour)
+            endMinutes = endMinutes + 30;
+            
+            const startHour = Math.floor(startMinutes / 60);
+            const startMin = startMinutes % 60;
+            const endHour = Math.floor(endMinutes / 60);
+            const endMin = endMinutes % 60;
+            
+            const dayDate = '{{ day_data.date_iso }}';
+            const [year, month, day] = dayDate.split('-');
+            
+            const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+            const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+            
+            const startDateTime = `${year}-${month}-${day}T${startTimeStr}`;
+            const endDateTime = `${year}-${month}-${day}T${endTimeStr}`;
+            
+            if (startDateTimeInput) {
+                startDateTimeInput.value = startDateTime;
+            }
+            if (endDateTimeInput) {
+                endDateTimeInput.value = endDateTime;
+            }
+            
+            // Hide selection info
+            timeSelectionOverlay.style.display = 'none';
+            timeSelectionInfo.style.display = 'none';
+            
+            // Scroll to form
+            const bookingForm = document.getElementById('bookingForm');
+            if (bookingForm) {
+                bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    }
+    
+    // Validate form on submit
+    const bookingForm = document.getElementById('bookingForm');
+    if (bookingForm && startDateTimeInput && endDateTimeInput) {
+        bookingForm.addEventListener('submit', function(e) {
+            const start = new Date(startDateTimeInput.value);
+            const end = new Date(endDateTimeInput.value);
+            const now = new Date();
+            
+            // Check if start is at least 1 hour in future
+            const minStart = new Date(now.getTime() + 60 * 60 * 1000);
+            if (start < minStart) {
+                e.preventDefault();
+                alert('Booking must be at least 1 hour in the future.');
+                return false;
+            }
+            
+            // Check if end is after start
+            if (end <= start) {
+                e.preventDefault();
+                alert('End time must be after start time.');
+                return false;
+            }
+            
+            // Check duration (30 minutes to 8 hours)
+            const durationMinutes = (end - start) / (1000 * 60);
+            if (durationMinutes < 30) {
+                e.preventDefault();
+                alert('Minimum booking duration is 30 minutes.');
+                return false;
+            }
+            if (durationMinutes > 480) {
+                e.preventDefault();
+                alert('Maximum booking duration is 8 hours.');
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+{% endif %}
+</script>
+

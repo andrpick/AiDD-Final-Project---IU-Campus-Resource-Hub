@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Flask
+instance/
+.webassets-cache
+
+# Database - COMMENTED OUT to include database in repository
+# *.db
+# *.sqlite
+# *.sqlite3
+
+# Environment variables
+.env
+
+# Uploads - COMMENTED OUT to include uploaded images in repository
+# uploads/*
+# !uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+

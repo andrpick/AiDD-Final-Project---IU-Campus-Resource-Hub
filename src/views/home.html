@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Hero Section -->
+        <div class="text-center mb-5" style="padding: 3rem 2rem;">
+            <h1 class="display-3 fw-bold text-crimson mb-4" style="line-height: 1.2;">
+                Welcome to Indiana University's<br>Campus Resource Hub!
+            </h1>
+            <p class="lead text-muted mb-5" style="font-size: 1.25rem; color: #666 !important;">
+                Find and book study rooms, equipment, event spaces, and more!
+            </p>
+            
+            <!-- Search Box -->
+            <form action="{{ url_for('search.index') }}" method="GET" class="mt-4">
+                <div class="row justify-content-center">
+                    <div class="col-12 col-md-10 col-lg-9 col-xl-8">
+                        <div class="input-group input-group-lg shadow-sm">
+                            <input type="text" name="keyword" class="form-control form-control-lg" placeholder="Search for resources..." aria-label="Search" style="border-radius: 8px 0 0 8px; border: 2px solid #dee2e6; padding: 0.75rem 1.25rem;">
+                            <button class="btn btn-crimson btn-lg" type="submit" style="border-radius: 0 8px 8px 0; padding: 0.75rem 2rem; font-weight: 500;">
+                                <i class="bi bi-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Quick Filters -->
+        <div class="mb-5">
+            <h3 class="mb-4 text-center fw-semibold" style="color: #333;">Browse by Category</h3>
+            <div class="row g-3 justify-content-center">
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='study_room') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">Study Rooms</a>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='lab_equipment') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">Lab Equipment</a>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='av_equipment') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">AV Equipment</a>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='event_space') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">Event Spaces</a>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='tutoring') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">Tutoring</a>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('search.index', category='other') }}" class="btn btn-outline-crimson px-4 py-2" style="border-radius: 8px; font-weight: 500;">Other</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Featured Resources -->
+        <div class="mb-5">
+            <h3 class="mb-4 text-center fw-semibold" style="color: #333;">Featured Resources</h3>
+            {% if featured_resources %}
+            <div class="row g-4">
+                {% for resource in featured_resources %}
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="card bg-cream h-100">
+                        {% if resource.images and resource.images|length > 0 %}
+                        <div class="card-image-wrapper">
+                            <img src="{{ url_for('resources.uploaded_file', filename=resource.images[0]) }}" 
+                                 class="card-img-top" 
+                                 alt="{{ resource.title }}">
+                        </div>
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
+                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ resource.title }}</h5>
+                            <p class="card-text text-muted">
+                                <i class="bi bi-geo-alt"></i> {{ resource.location }}<br>
+                                {% if resource.capacity %}
+                                <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}<br>
+                                {% endif %}
+                                <span class="badge bg-crimson">{{ resource.category|replace('_', ' ')|title }}</span>
+                            </p>
+                            <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-crimson">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center">
+                <p class="text-muted">No featured resources yet. <a href="{{ url_for('search.index') }}">Browse all resources</a></p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Call to Action -->
+        {% if not current_user.is_authenticated %}
+        <div class="bg-cream p-5 rounded-3 text-center mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h4 class="fw-semibold mb-3" style="color: #333;">Get Started</h4>
+            <p class="text-muted mb-4">Create an account to start booking resources!</p>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-crimson btn-lg me-2 px-4" style="border-radius: 8px; font-weight: 500;">Register</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-crimson btn-lg px-4" style="border-radius: 8px; font-weight: 500;">Login</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

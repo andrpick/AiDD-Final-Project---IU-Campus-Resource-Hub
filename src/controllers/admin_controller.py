@@ -1,0 +1,448 @@
+"""
+Admin controller (Flask blueprint).
+"""
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
+from src.services.admin_service import (
+    get_statistics, list_users, suspend_user, unsuspend_user,
+    change_user_role, delete_user, get_admin_logs
+)
+from src.services.resource_service import list_resources, update_resource, get_resource
+from src.services.booking_service import list_bookings, get_booking, update_booking
+
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+def admin_required(f):
+    """Decorator to require admin role."""
+    from functools import wraps
+    
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin():
+            flash('Admin access required.', 'error')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@admin_bp.route('/')
+@login_required
+@admin_required
+def dashboard():
+    """Admin dashboard."""
+    result = get_statistics()
+    
+    if result['success']:
+        stats = result['data']
+        return render_template('admin/dashboard.html', stats=stats)
+    else:
+        return render_template('admin/dashboard.html', stats={})
+
+@admin_bp.route('/users')
+@login_required
+@admin_required
+def users():
+    """List all users."""
+    role = request.args.get('role', '').strip() or None
+    suspended_arg = request.args.get('suspended', '').strip()
+    # Properly handle suspended filter: empty = None, "1" = True, "0" = False
+    suspended = None
+    if suspended_arg == '1':
+        suspended = True
+    elif suspended_arg == '0':
+        suspended = False
+    # If suspended_arg is empty or anything else, suspended stays None
+    
+    department = request.args.get('department', '').strip() or None
+    search = request.args.get('search', '').strip() or None
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    offset = (page - 1) * page_size
+    
+    result = list_users(role=role, suspended=suspended, department=department,
+                       search=search, limit=page_size, offset=offset)
+    
+    if result['success']:
+        data = result['data']
+        users = data['users']
+        total = data['total']
+        total_pages = (total + page_size - 1) // page_size
+        
+        return render_template('admin/users.html',
+                             users=users,
+                             page=page,
+                             total_pages=total_pages,
+                             total=total,
+                             role_filter=role,
+                             suspended_filter=suspended,
+                             department_filter=department,
+                             search_query=search)
+    else:
+        return render_template('admin/users.html', users=[], page=1, total_pages=0, total=0,
+                             role_filter=None, suspended_filter=None, department_filter=None, search_query=None)
+
+@admin_bp.route('/users/<int:user_id>/suspend', methods=['POST'])
+@login_required
+@admin_required
+def suspend(user_id):
+    """Suspend a user."""
+    reason = request.form.get('reason', '').strip()
+    
+    if not reason:
+        flash('Suspension reason is required.', 'error')
+        return redirect(url_for('admin.users'))
+    
+    result = suspend_user(user_id, current_user.user_id, reason)
+    
+    if result['success']:
+        flash('User suspended.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/unsuspend', methods=['POST'])
+@login_required
+@admin_required
+def unsuspend(user_id):
+    """Unsuspend a user."""
+    result = unsuspend_user(user_id, current_user.user_id)
+    
+    if result['success']:
+        flash('User unsuspended.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/role', methods=['POST'])
+@login_required
+@admin_required
+def change_role(user_id):
+    """Change user role."""
+    new_role = request.form.get('role', '').strip()
+    
+    if not new_role:
+        flash('Role is required.', 'error')
+        return redirect(url_for('admin.users'))
+    
+    result = change_user_role(user_id, new_role, current_user.user_id)
+    
+    if result['success']:
+        flash(f'User role changed to {new_role}.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete(user_id):
+    """Delete a user."""
+    result = delete_user(user_id, current_user.user_id)
+    
+    if result['success']:
+        flash('User deleted.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/logs')
+@login_required
+@admin_required
+def logs():
+    """View admin logs."""
+    admin_id = request.args.get('admin_id', type=int)
+    action = request.args.get('action', '').strip() or None
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 50, type=int)))
+    offset = (page - 1) * page_size
+    
+    result = get_admin_logs(admin_id=admin_id, action=action, limit=page_size, offset=offset)
+    
+    if result['success']:
+        data = result['data']
+        logs = data['logs']
+        total = data['total']
+        total_pages = (total + page_size - 1) // page_size
+        
+        return render_template('admin/logs.html',
+                             logs=logs,
+                             page=page,
+                             total_pages=total_pages,
+                             total=total,
+                             admin_id_filter=admin_id,
+                             action_filter=action)
+    else:
+        return render_template('admin/logs.html', logs=[], page=1, total_pages=0, total=0)
+
+@admin_bp.route('/resources')
+@login_required
+@admin_required
+def resources():
+    """List all resources for admin management."""
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    offset = (page - 1) * page_size
+    status_filter = request.args.get('status', '').strip() or None
+    
+    result = list_resources(status=status_filter, limit=page_size, offset=offset)
+    
+    if result['success']:
+        resources_list = result['data']['resources']
+        total = result['data']['total']
+        total_pages = (total + page_size - 1) // page_size
+        return render_template('admin/resources.html',
+                             resources=resources_list,
+                             page=page,
+                             total_pages=total_pages,
+                             total=total,
+                             status_filter=status_filter)
+    else:
+        return render_template('admin/resources.html', resources=[], page=1, total_pages=0, total=0, status_filter=status_filter)
+
+@admin_bp.route('/resources/<int:resource_id>/feature', methods=['POST'])
+@login_required
+@admin_required
+def feature_resource(resource_id):
+    """Feature a resource on the homepage."""
+    result = update_resource(resource_id, featured=1)
+    
+    if result['success']:
+        # Log admin action
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, 'feature_resource', 'resources', ?, 'Resource featured on homepage')
+            """, (current_user.user_id, resource_id))
+            conn.commit()
+        
+        flash('Resource featured on homepage.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.resources'))
+
+@admin_bp.route('/resources/<int:resource_id>/unfeature', methods=['POST'])
+@login_required
+@admin_required
+def unfeature_resource(resource_id):
+    """Unfeature a resource from the homepage."""
+    result = update_resource(resource_id, featured=0)
+    
+    if result['success']:
+        # Log admin action
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, 'unfeature_resource', 'resources', ?, 'Resource removed from homepage')
+            """, (current_user.user_id, resource_id))
+            conn.commit()
+        
+        flash('Resource removed from homepage.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.resources'))
+
+@admin_bp.route('/resources/<int:resource_id>/archive', methods=['POST'])
+@login_required
+@admin_required
+def archive_resource(resource_id):
+    """Archive a resource."""
+    from src.services.resource_service import delete_resource
+    
+    result = delete_resource(resource_id)
+    
+    if result['success']:
+        # Log admin action
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, 'archive_resource', 'resources', ?, 'Resource archived')
+            """, (current_user.user_id, resource_id))
+            conn.commit()
+        
+        flash('Resource archived successfully.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.resources'))
+
+@admin_bp.route('/resources/<int:resource_id>/unarchive', methods=['POST'])
+@login_required
+@admin_required
+def unarchive_resource(resource_id):
+    """Unarchive a resource (set status back to published)."""
+    result = update_resource(resource_id, status='published')
+    
+    if result['success']:
+        # Log admin action
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, 'unarchive_resource', 'resources', ?, 'Resource unarchived (set to published)')
+            """, (current_user.user_id, resource_id))
+            conn.commit()
+        
+        flash('Resource unarchived successfully.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.resources'))
+
+@admin_bp.route('/bookings')
+@login_required
+@admin_required
+def bookings():
+    """List all bookings for admin management."""
+    status_filter = request.args.get('status', '').strip() or None
+    resource_id = request.args.get('resource_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    offset = (page - 1) * page_size
+    
+    result = list_bookings(resource_id=resource_id, status=status_filter, limit=page_size, offset=offset)
+    
+    if result['success']:
+        bookings_list = result['data']['bookings']
+        total = result['data']['total']
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Enrich with resource and user info
+        from src.services.resource_service import get_resource
+        from src.models.user import User
+        
+        for booking in bookings_list:
+            resource_result = get_resource(booking['resource_id'])
+            if resource_result['success']:
+                booking['resource'] = resource_result['data']
+            
+            user = User.get(booking['requester_id'])
+            if user:
+                booking['requester'] = {
+                    'user_id': user.user_id,
+                    'name': user.name,
+                    'email': user.email
+                }
+        
+        return render_template('admin/bookings.html',
+                             bookings=bookings_list,
+                             page=page,
+                             total_pages=total_pages,
+                             total=total,
+                             status_filter=status_filter,
+                             resource_id_filter=resource_id)
+    else:
+        return render_template('admin/bookings.html', bookings=[], page=1, total_pages=0, total=0,
+                             status_filter=status_filter, resource_id_filter=resource_id)
+
+@admin_bp.route('/bookings/<int:booking_id>')
+@login_required
+@admin_required
+def booking_detail(booking_id):
+    """View and edit booking details."""
+    result = get_booking(booking_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    booking = result['data']
+    
+    # Get resource and user info
+    from src.services.resource_service import get_resource
+    from src.models.user import User
+    
+    resource_result = get_resource(booking['resource_id'])
+    resource = resource_result['data'] if resource_result['success'] else None
+    
+    user = User.get(booking['requester_id'])
+    requester = {
+        'user_id': user.user_id,
+        'name': user.name,
+        'email': user.email
+    } if user else None
+    
+    return render_template('admin/booking_detail.html', booking=booking, resource=resource, requester=requester)
+
+@admin_bp.route('/bookings/<int:booking_id>/update', methods=['POST'])
+@login_required
+@admin_required
+def update_booking_admin(booking_id):
+    """Update booking fields (admin can overwrite)."""
+    from dateutil import parser
+    from dateutil.tz import gettz, tzutc
+    from datetime import datetime
+    
+    start_datetime_str = request.form.get('start_datetime', '').strip() or None
+    end_datetime_str = request.form.get('end_datetime', '').strip() or None
+    status = request.form.get('status', '').strip() or None
+    rejection_reason = request.form.get('rejection_reason', '').strip() or None
+    skip_validation = request.form.get('skip_validation') == 'on'
+    
+    # Convert datetime-local input (EST/EDT) to UTC for storage
+    start_datetime = None
+    end_datetime = None
+    
+    if start_datetime_str:
+        try:
+            # Parse as local time (EST/EDT)
+            est_tz = gettz('America/New_York')
+            dt_local = datetime.strptime(start_datetime_str, '%Y-%m-%dT%H:%M')
+            dt_local = dt_local.replace(tzinfo=est_tz)
+            # Convert to UTC
+            dt_utc = dt_local.astimezone(tzutc())
+            start_datetime = dt_utc.isoformat()
+        except Exception as e:
+            flash(f'Invalid start datetime format: {str(e)}', 'error')
+            return redirect(url_for('admin.booking_detail', booking_id=booking_id))
+    
+    if end_datetime_str:
+        try:
+            # Parse as local time (EST/EDT)
+            est_tz = gettz('America/New_York')
+            dt_local = datetime.strptime(end_datetime_str, '%Y-%m-%dT%H:%M')
+            dt_local = dt_local.replace(tzinfo=est_tz)
+            # Convert to UTC
+            dt_utc = dt_local.astimezone(tzutc())
+            end_datetime = dt_utc.isoformat()
+        except Exception as e:
+            flash(f'Invalid end datetime format: {str(e)}', 'error')
+            return redirect(url_for('admin.booking_detail', booking_id=booking_id))
+    
+    result = update_booking(booking_id, start_datetime=start_datetime, end_datetime=end_datetime,
+                           status=status, rejection_reason=rejection_reason, skip_validation=skip_validation)
+    
+    if result['success']:
+        # Log admin action
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            details = f"Booking updated by admin"
+            if start_datetime or end_datetime:
+                details += f" (datetime changed)"
+            if status:
+                details += f" (status: {status})"
+            
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, 'update_booking', 'bookings', ?, ?)
+            """, (current_user.user_id, booking_id, details))
+            conn.commit()
+        
+        flash('Booking updated successfully.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.booking_detail', booking_id=booking_id))
+

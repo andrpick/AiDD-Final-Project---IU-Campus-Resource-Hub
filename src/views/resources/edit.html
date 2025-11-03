@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Resource - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card bg-cream">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Edit Resource</h2>
+                <form method="POST" action="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ resource.title }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4">{{ resource.description or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category *</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="study_room" {% if resource.category == 'study_room' %}selected{% endif %}>Study Room</option>
+                            <option value="lab_equipment" {% if resource.category == 'lab_equipment' %}selected{% endif %}>Lab Equipment</option>
+                            <option value="av_equipment" {% if resource.category == 'av_equipment' %}selected{% endif %}>AV Equipment</option>
+                            <option value="event_space" {% if resource.category == 'event_space' %}selected{% endif %}>Event Space</option>
+                            <option value="tutoring" {% if resource.category == 'tutoring' %}selected{% endif %}>Tutoring</option>
+                            <option value="other" {% if resource.category == 'other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="location" class="form-label">Location *</label>
+                        <input type="text" class="form-control" id="location" name="location" value="{{ resource.location }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="has_capacity" name="has_capacity" {% if resource.capacity %}checked{% endif %}>
+                            <label class="form-check-label" for="has_capacity">
+                                This resource has a capacity constraint
+                            </label>
+                        </div>
+                        <div id="capacity_wrapper" style="display: {% if resource.capacity %}block{% else %}none{% endif %};">
+                            <label for="capacity" class="form-label">Capacity *</label>
+                            <input type="number" class="form-control" id="capacity" name="capacity" value="{{ resource.capacity or '' }}" min="1">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="draft" {% if resource.status == 'draft' %}selected{% endif %}>Draft</option>
+                            <option value="published" {% if resource.status == 'published' %}selected{% endif %}>Published</option>
+                            {% if current_user.is_admin() %}
+                            <option value="archived" {% if resource.status == 'archived' %}selected{% endif %}>Archived</option>
+                            {% endif %}
+                        </select>
+                        {% if not current_user.is_admin() and resource.status == 'archived' %}
+                        <small class="form-text text-muted">Current status: Archived (only admins can change archived status)</small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Resource Images</label>
+                        {% if resource.images and resource.images|length > 0 %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-2">Current images ({{ resource.images|length }}):</small>
+                            <div class="d-flex flex-wrap gap-3">
+                                {% for image in resource.images %}
+                                <div class="position-relative" style="width: 120px;">
+                                    <div class="card border" style="width: 120px; background-color: #f8f9fa;">
+                                        <div class="card-body p-2 d-flex align-items-center justify-content-center" style="height: 120px;">
+                                            <img src="{{ url_for('resources.uploaded_file', filename=image) }}" 
+                                                 alt="Resource image" 
+                                                 style="max-width: 100%; max-height: 100%; object-fit: contain;" 
+                                                 class="img-fluid">
+                                        </div>
+                                        {% if current_user.is_admin() %}
+                                        <div class="card-footer p-2 bg-white border-top-0">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="remove_image_{{ loop.index0 }}" 
+                                                       name="remove_images" 
+                                                       value="{{ image }}"
+                                                       style="cursor: pointer;">
+                                                <label class="form-check-label" 
+                                                       for="remove_image_{{ loop.index0 }}" 
+                                                       style="cursor: pointer; font-size: 0.875rem; color: #dc3545;">
+                                                    <i class="bi bi-trash me-1"></i> Remove
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if current_user.is_admin() %}
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-info-circle me-1"></i> Check the boxes above to remove images when you save.
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <input type="file" class="form-control" id="image" name="image" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" multiple>
+                        <small class="form-text text-muted">Upload additional images to add to existing ones. Accepted: PNG, JPG, JPEG, GIF, WebP (Max 16MB per image)</small>
+                    </div>
+                    <button type="submit" class="btn btn-crimson">Update Resource</button>
+                    <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const hasCapacityCheckbox = document.getElementById('has_capacity');
+    const capacityWrapper = document.getElementById('capacity_wrapper');
+    const capacityInput = document.getElementById('capacity');
+    
+    function toggleCapacityInput() {
+        if (hasCapacityCheckbox.checked) {
+            capacityWrapper.style.display = 'block';
+            capacityInput.setAttribute('required', 'required');
+        } else {
+            capacityWrapper.style.display = 'none';
+            capacityInput.removeAttribute('required');
+            capacityInput.value = '';
+        }
+    }
+    
+    hasCapacityCheckbox.addEventListener('change', toggleCapacityInput);
+    
+    // Initialize on page load
+    toggleCapacityInput();
+});
+</script>
+{% endblock %}
+

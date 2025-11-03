@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}AI Concierge - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card bg-cream">
+            <div class="card-body">
+                <h2 class="card-title mb-4">AI Resource Concierge</h2>
+                <p class="text-muted">Ask questions in natural language to find resources.</p>
+                
+                <form method="POST" action="{{ url_for('ai_concierge.concierge') }}">
+                    <div class="mb-3">
+                        <label for="query" class="form-label">Your Question</label>
+                        <textarea class="form-control" id="query" name="query" rows="3" placeholder="e.g., Find me a study room for 4 people" required>{% if query %}{{ query }}{% endif %}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-crimson">Ask</button>
+                </form>
+
+                {% if response %}
+                <div class="mt-4">
+                    <h4>Response</h4>
+                    <div class="alert alert-info">
+                        <p class="mb-0">{{ response }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if resources %}
+                <div class="mt-4">
+                    <h4>Recommended Resources</h4>
+                    <div class="list-group">
+                        {% for resource in resources %}
+                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="list-group-item list-group-item-action">
+                            <h5 class="mb-1">{{ resource.title }}</h5>
+                            <p class="mb-1 text-muted">
+                                <i class="bi bi-geo-alt"></i> {{ resource.location }}
+                                {% if resource.capacity %}
+                                | <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}
+                                {% endif %}
+                                {% if resource.rating %}
+                                | <i class="bi bi-star-fill text-warning"></i> {{ "%.1f"|format(resource.rating) }}
+                                {% endif %}
+                            </p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

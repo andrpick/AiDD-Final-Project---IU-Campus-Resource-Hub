@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Resource Management - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resource Management</h1>
+            <p class="text-muted mb-0">Manage resources and feature them on the homepage</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="card bg-cream border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="GET" action="{{ url_for('admin.resources') }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" style="color: #333;">Status</label>
+                            <select class="form-select" name="status" style="border-radius: 8px;">
+                                <option value="">All Status</option>
+                                <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                                <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
+                                <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-crimson w-100 px-4 py-2" style="font-weight: 500;">
+                                <i class="bi bi-funnel me-2"></i> Filter
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary w-100 px-4 py-2" style="font-weight: 500;">
+                                <i class="bi bi-x-circle me-2"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if resources %}
+        <!-- Resources Table -->
+        <div class="card bg-cream border-0 shadow-sm mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Title</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Category</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Location</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Status</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Featured</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 200px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resource in resources %}
+                            <tr>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                                       class="text-decoration-none fw-semibold" style="color: var(--crimson);">
+                                        {{ resource.title }}
+                                    </a>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge bg-secondary">{{ resource.category|replace('_', ' ')|title }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="text-muted">{{ resource.location }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge rounded-pill {% if resource.status == 'published' %}bg-success{% elif resource.status == 'draft' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {{ resource.status|title }}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    {% if resource.featured %}
+                                    <span class="badge bg-primary rounded-pill">
+                                        <i class="bi bi-star-fill me-1"></i> Featured
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary rounded-pill">Not Featured</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        {% if resource.featured %}
+                                        <form method="POST" action="{{ url_for('admin.unfeature_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary px-3">
+                                                <i class="bi bi-star me-1"></i> Unfeature
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <form method="POST" action="{{ url_for('admin.feature_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-primary px-3">
+                                                <i class="bi bi-star-fill me-1"></i> Feature
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% if resource.status == 'archived' %}
+                                        <form method="POST" action="{{ url_for('admin.unarchive_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-success px-3">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Unarchive
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <form method="POST" action="{{ url_for('admin.archive_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning px-3" onclick="return confirm('Are you sure you want to archive this resource?')">
+                                                <i class="bi bi-archive me-1"></i> Archive
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                                           class="btn btn-sm btn-outline-crimson px-3">
+                                            <i class="bi bi-eye me-1"></i> View
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav aria-label="Resource pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page - 1 }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       style="border-radius: 8px; margin: 0 0.25rem;">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </a>
+                </li>
+                {% endif %}
+                {% for p in range(1, total_pages + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="?page={{ p }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       style="border-radius: 8px; margin: 0 0.25rem;">
+                        {{ p }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page + 1 }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       style="border-radius: 8px; margin: 0 0.25rem;">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <!-- Empty State -->
+        <div class="card bg-cream border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-boxes" style="font-size: 4rem; color: #ccc;"></i>
+                </div>
+                <h4 class="mb-3 fw-semibold" style="color: #333;">No resources found</h4>
+                <p class="text-muted mb-0">Try adjusting your filters.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
