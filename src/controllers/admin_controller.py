@@ -389,24 +389,86 @@ def unarchive_resource(resource_id):
 @admin_required
 def bookings():
     """List all bookings for admin management."""
+    from datetime import datetime
+    from dateutil.tz import tzutc
+    from src.services.booking_service import list_bookings
+    from src.services.resource_service import get_resource
+    from src.models.user import User
+    
     status_filter = request.args.get('status', '').strip() or None
     resource_id = request.args.get('resource_id', type=int)
-    page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
-    offset = (page - 1) * page_size
     
-    result = list_bookings(resource_id=resource_id, status=status_filter, limit=page_size, offset=offset)
+    # Get all bookings (ignore pagination for sectioning, but limit to reasonable amount)
+    result = list_bookings(resource_id=resource_id, status=status_filter, limit=1000, offset=0)
     
     if result['success']:
-        bookings_list = result['data']['bookings']
+        all_bookings = result['data']['bookings']
         total = result['data']['total']
-        total_pages = (total + page_size - 1) // page_size
+        
+        # Helper function to parse datetime (same as bookings_controller)
+        def _parse_datetime_aware(dt_str):
+            """Parse datetime string and ensure it's timezone-aware (UTC)."""
+            from dateutil.tz import tzutc
+            from dateutil import parser
+            
+            try:
+                dt = parser.parse(dt_str.replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=tzutc())
+                else:
+                    # Convert to UTC if timezone-aware
+                    dt = dt.astimezone(tzutc())
+                return dt
+            except Exception:
+                # Return a very old datetime as fallback for sorting
+                return datetime(1970, 1, 1, tzinfo=tzutc())
+        
+        # Get current time in UTC
+        now = datetime.now(tzutc())
+        
+        # Separate bookings into three categories (same logic as user bookings)
+        upcoming_bookings = []  # Approved bookings that haven't started yet
+        previous_bookings = []  # Approved bookings that have passed OR completed bookings
+        canceled_bookings = []  # Canceled bookings regardless of date
+        
+        for booking in all_bookings:
+            try:
+                # Parse booking start datetime
+                start_dt = _parse_datetime_aware(booking['start_datetime'])
+                
+                if booking['status'] == 'cancelled':
+                    # Canceled bookings go to canceled section
+                    canceled_bookings.append(booking)
+                elif booking['status'] == 'approved' and start_dt >= now:
+                    # Upcoming approved bookings
+                    upcoming_bookings.append(booking)
+                elif booking['status'] == 'approved' and start_dt < now:
+                    # Previous approved bookings (past their start time)
+                    previous_bookings.append(booking)
+                elif booking['status'] == 'completed':
+                    # Completed bookings go to previous section
+                    previous_bookings.append(booking)
+                else:
+                    # Any other status goes to previous section
+                    previous_bookings.append(booking)
+            except Exception:
+                # If parsing fails, treat as previous booking
+                if booking['status'] == 'cancelled':
+                    canceled_bookings.append(booking)
+                else:
+                    previous_bookings.append(booking)
+        
+        # Sort upcoming by start_datetime ASC (soonest first)
+        upcoming_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']))
+        
+        # Sort previous by start_datetime DESC (most recent first)
+        previous_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
+        
+        # Sort canceled by start_datetime DESC (most recent first)
+        canceled_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
         
         # Enrich with resource and user info
-        from src.services.resource_service import get_resource
-        from src.models.user import User
-        
-        for booking in bookings_list:
+        for booking in upcoming_bookings + previous_bookings + canceled_bookings:
             resource_result = get_resource(booking['resource_id'])
             if resource_result['success']:
                 booking['resource'] = resource_result['data']
@@ -420,15 +482,20 @@ def bookings():
                 }
         
         return render_template('admin/bookings.html',
-                             bookings=bookings_list,
-                             page=page,
-                             total_pages=total_pages,
+                             upcoming_bookings=upcoming_bookings,
+                             previous_bookings=previous_bookings,
+                             canceled_bookings=canceled_bookings,
                              total=total,
                              status_filter=status_filter,
                              resource_id_filter=resource_id)
     else:
-        return render_template('admin/bookings.html', bookings=[], page=1, total_pages=0, total=0,
-                             status_filter=status_filter, resource_id_filter=resource_id)
+        return render_template('admin/bookings.html', 
+                             upcoming_bookings=[],
+                             previous_bookings=[],
+                             canceled_bookings=[],
+                             total=0,
+                             status_filter=status_filter, 
+                             resource_id_filter=resource_id)
 
 @admin_bp.route('/bookings/<int:booking_id>')
 @login_required

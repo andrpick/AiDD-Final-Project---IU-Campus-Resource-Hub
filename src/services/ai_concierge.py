@@ -376,7 +376,7 @@ def check_resource_availability(resource_id, date_str=None):
             
             resource_info = dict(row)
             
-            # Get upcoming bookings (approved and pending)
+            # Get upcoming bookings (approved only)
             now = datetime.now(tzutc())
             
             if date_str:
@@ -403,7 +403,7 @@ def check_resource_availability(resource_id, date_str=None):
                     SELECT start_datetime, end_datetime, status
                     FROM bookings
                     WHERE resource_id = ?
-                    AND status IN ('pending', 'approved')
+                    AND status IN ('approved')
                     AND start_datetime >= ? AND start_datetime <= ?
                     ORDER BY start_datetime
                 """, (resource_id, date_start.isoformat(), date_end.isoformat()))
@@ -413,7 +413,7 @@ def check_resource_availability(resource_id, date_str=None):
                     SELECT start_datetime, end_datetime, status
                     FROM bookings
                     WHERE resource_id = ?
-                    AND status IN ('pending', 'approved')
+                    AND status IN ('approved')
                     AND start_datetime >= ?
                     ORDER BY start_datetime
                     LIMIT 10

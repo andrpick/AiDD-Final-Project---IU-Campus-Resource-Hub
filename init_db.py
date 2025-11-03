@@ -59,7 +59,7 @@ def init_database():
             requester_id INTEGER NOT NULL,
             start_datetime DATETIME NOT NULL,
             end_datetime DATETIME NOT NULL,
-            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled', 'completed')),
+            status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed')),
             rejection_reason TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

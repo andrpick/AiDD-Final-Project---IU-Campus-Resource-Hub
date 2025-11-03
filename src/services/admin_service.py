@@ -297,7 +297,7 @@ def delete_user(user_id, admin_id):
         # Cancel user's active bookings
         cursor.execute("""
             UPDATE bookings SET status = 'cancelled'
-            WHERE requester_id = ? AND status IN ('pending', 'approved')
+            WHERE requester_id = ? AND status IN ('approved')
         """, (user_id,))
         
         # Delete user

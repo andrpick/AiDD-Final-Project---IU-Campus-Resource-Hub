@@ -8,7 +8,6 @@ from src.data_access.database import get_db_connection
 import os
 import tempfile
 from datetime import datetime, timedelta
-from dateutil.tz import tzutc
 
 
 @pytest.fixture
@@ -167,7 +166,7 @@ def test_booking_flow_search_to_book(client):
         assert booking is not None
         assert booking['resource_id'] == resource_id
         assert booking['requester_id'] == student_id
-        assert booking['status'] in ['pending', 'approved']
+        assert booking['status'] == 'approved'
 
 
 def test_booking_conflict_detection(client):
@@ -267,13 +266,20 @@ def test_booking_validation_min_duration(client):
     """Test that bookings shorter than 30 minutes are rejected."""
     client_obj, resource_id, student_id = client
     
-    future_start = datetime.now(tzutc()) + timedelta(hours=2)
-    future_end = future_start + timedelta(minutes=15)  # Only 15 minutes
+    # Use EST/EDT time (controller expects EST/EDT)
+    from dateutil.tz import gettz
+    est_tz = gettz('America/New_York')
+    now_est = datetime.now(est_tz)
+    
+    # Create booking during operating hours (10 AM - 11 AM tomorrow EST/EDT)
+    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    future_start_est = tomorrow
+    future_end_est = future_start_est + timedelta(minutes=15)  # Only 15 minutes
     
     response = client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
-        'start_datetime': future_start.strftime('%Y-%m-%dT%H:%M'),
-        'end_datetime': future_end.strftime('%Y-%m-%dT%H:%M'),
+        'start_datetime': future_start_est.strftime('%Y-%m-%dT%H:%M'),
+        'end_datetime': future_end_est.strftime('%Y-%m-%dT%H:%M'),
         'purpose': 'Too short booking'
     }, follow_redirects=True)
     

@@ -228,6 +228,7 @@ def update_booking_status(booking_id, status, rejection_reason=None):
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        # Clear rejection_reason for all status updates
         cursor.execute("""
             UPDATE bookings
             SET status = ?, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP

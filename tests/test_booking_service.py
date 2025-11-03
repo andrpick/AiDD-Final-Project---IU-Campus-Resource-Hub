@@ -61,7 +61,7 @@ def test_db():
                 requester_id INTEGER REFERENCES users(user_id),
                 start_datetime DATETIME NOT NULL,
                 end_datetime DATETIME NOT NULL,
-                status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled', 'completed')),
+                status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed')),
                 rejection_reason TEXT,
                 purpose TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -157,7 +157,7 @@ def test_check_conflicts_exclude_booking(test_db):
 
 
 def test_check_conflicts_only_active_bookings(test_db):
-    """Test that cancelled/rejected bookings don't conflict."""
+    """Test that cancelled bookings don't conflict."""
     now = datetime.now(tzutc())
     start1 = now + timedelta(hours=2)
     end1 = now + timedelta(hours=3)
@@ -312,7 +312,7 @@ def test_create_booking_auto_approval(test_db):
 
 
 def test_create_booking_with_conflict(test_db):
-    """Test that bookings with conflicts are set to pending."""
+    """Test that bookings with conflicts are rejected."""
     from src.services.booking_service import create_booking
     from dateutil.tz import gettz
 
@@ -358,28 +358,28 @@ def test_create_booking_with_conflict(test_db):
 
 
 def test_booking_status_transition_approve(test_db):
-    """Test status transition from pending to approved."""
+    """Test that bookings can be updated (bookings are auto-approved on creation)."""
     now = datetime.now(tzutc())
     start = now + timedelta(hours=2)
     end = now + timedelta(hours=3)
     
-    # Create pending booking
+    # Create approved booking (default state - bookings are auto-approved)
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO bookings (resource_id, requester_id, start_datetime, end_datetime, status)
             VALUES (?, ?, ?, ?, ?)
-        """, (1, 1, start.isoformat(), end.isoformat(), 'pending'))
+        """, (1, 1, start.isoformat(), end.isoformat(), 'approved'))
         booking_id = cursor.lastrowid
         conn.commit()
     
-    # Update status to approved
+    # Verify status is approved (can update to same status)
     from src.services.booking_service import update_booking_status
     result = update_booking_status(booking_id, 'approved')
     
     assert result['success'] == True
     
-    # Verify status updated
+    # Verify status remains approved
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT status FROM bookings WHERE booking_id = ?", (booking_id,))
@@ -387,34 +387,36 @@ def test_booking_status_transition_approve(test_db):
         assert status == 'approved'
 
 
-def test_booking_status_transition_reject(test_db):
-    """Test status transition from pending to rejected."""
+def test_booking_status_transition_invalid_rejected(test_db):
+    """Test that rejected status is no longer valid (simplified workflow)."""
     now = datetime.now(tzutc())
     start = now + timedelta(hours=2)
     end = now + timedelta(hours=3)
     
-    # Create pending booking
+    # Create approved booking (default state - bookings are auto-approved)
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO bookings (resource_id, requester_id, start_datetime, end_datetime, status)
             VALUES (?, ?, ?, ?, ?)
-        """, (1, 1, start.isoformat(), end.isoformat(), 'pending'))
+        """, (1, 1, start.isoformat(), end.isoformat(), 'approved'))
         booking_id = cursor.lastrowid
         conn.commit()
     
-    # Update status to rejected
+    # Try to update status to rejected (should fail - rejected status removed)
     from src.services.booking_service import update_booking_status
     result = update_booking_status(booking_id, 'rejected', rejection_reason='Not available')
     
-    assert result['success'] == True
+    # Should fail because rejected is no longer a valid status
+    assert result['success'] == False
+    assert 'Invalid status' in result['error']
     
-    # Verify status updated
+    # Verify status remains unchanged
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT status FROM bookings WHERE booking_id = ?", (booking_id,))
         status = cursor.fetchone()['status']
-        assert status == 'rejected'
+        assert status == 'approved'  # Status should remain approved
 
 
 def test_booking_status_transition_cancel(test_db):
