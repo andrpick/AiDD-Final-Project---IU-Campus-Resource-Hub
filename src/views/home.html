@@ -57,42 +57,62 @@
         <!-- Featured Resources -->
         <div class="mb-5">
             <h3 class="mb-4 text-center fw-semibold" style="color: #333;">Featured Resources</h3>
-            {% if featured_resources %}
-            <div class="row g-4">
-                {% for resource in featured_resources %}
-                <div class="col-md-6 col-lg-4 col-xl-3">
-                    <div class="card bg-cream h-100">
-                        {% if resource.images and resource.images|length > 0 %}
-                        <div class="card-image-wrapper">
-                            <img src="{{ url_for('resources.uploaded_file', filename=resource.images[0]) }}" 
-                                 class="card-img-top" 
-                                 alt="{{ resource.title }}">
-                        </div>
-                        {% else %}
-                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
-                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                        </div>
-                        {% endif %}
-                        <div class="card-body">
-                            <h5 class="card-title">{{ resource.title }}</h5>
-                            <p class="card-text text-muted">
-                                <i class="bi bi-geo-alt"></i> {{ resource.location }}<br>
-                                {% if resource.capacity %}
-                                <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}<br>
-                                {% endif %}
-                                <span class="badge bg-crimson">{{ resource.category|replace('_', ' ')|title }}</span>
-                            </p>
-                            <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-crimson">View Details</a>
+            {% set react_resources = namespace(items=[]) %}
+            {% for resource in featured_resources %}
+                {% set image_filename = resource.images[0] if resource.images and resource.images|length > 0 else None %}
+                {% set react_resources.items = react_resources.items + [{
+                    'resource_id': resource.resource_id,
+                    'title': resource.title,
+                    'location': resource.location,
+                    'capacity': resource.capacity,
+                    'category': resource.category,
+                    'image_url': url_for('resources.uploaded_file', filename=image_filename) if image_filename else None,
+                    'detail_url': url_for('resources.detail', resource_id=resource.resource_id)
+                }] %}
+            {% endfor %}
+            <div id="featured-resources-root"
+                 class="featured-resources-react-container"
+                 data-resources='{{ react_resources.items | tojson | safe }}'
+                 data-browse-url="{{ url_for('search.index') }}">
+            </div>
+            <noscript>
+                {% if featured_resources %}
+                <div class="row g-4">
+                    {% for resource in featured_resources %}
+                    <div class="col-md-6 col-lg-4 col-xl-3">
+                        <div class="card bg-cream h-100">
+                            {% if resource.images and resource.images|length > 0 %}
+                            <div class="card-image-wrapper">
+                                <img src="{{ url_for('resources.uploaded_file', filename=resource.images[0]) }}"
+                                     class="card-img-top"
+                                     alt="{{ resource.title }}">
+                            </div>
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
+                                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ resource.title }}</h5>
+                                <p class="card-text text-muted">
+                                    <i class="bi bi-geo-alt"></i> {{ resource.location }}<br>
+                                    {% if resource.capacity %}
+                                    <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}<br>
+                                    {% endif %}
+                                    <span class="badge bg-crimson">{{ resource.category|replace('_', ' ')|title }}</span>
+                                </p>
+                                <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-crimson">View Details</a>
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="text-center">
-                <p class="text-muted">No featured resources yet. <a href="{{ url_for('search.index') }}">Browse all resources</a></p>
-            </div>
-            {% endif %}
+                {% else %}
+                <div class="text-center">
+                    <p class="text-muted">No featured resources yet. <a href="{{ url_for('search.index') }}">Browse all resources</a></p>
+                </div>
+                {% endif %}
+            </noscript>
         </div>
 
         <!-- Call to Action -->
@@ -108,3 +128,10 @@
 </div>
 {% endblock %}
 
+
+{% block extra_scripts %}
+    {{ super() }}
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin defer></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin defer></script>
+    <script src="{{ url_for('static', filename='js/home-react.js') }}" defer></script>
+{% endblock %}
