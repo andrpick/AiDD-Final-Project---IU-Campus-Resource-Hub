@@ -58,7 +58,7 @@
                                 <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %} p-3 rounded-3" 
                                      style="word-wrap: break-word;">
                                     <p class="mb-0" style="line-height: 1.5;">
-                                        {{ message.content|nl2br|safe }}
+                                        {{ message.content|nl2br }}
                                     </p>
                                 </div>
                             </div>

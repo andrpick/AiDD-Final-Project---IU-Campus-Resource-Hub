@@ -45,6 +45,7 @@
                 <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</label>
                 <span class="badge px-3 py-2 rounded-pill fw-semibold 
                     {% if booking.status == 'approved' %}bg-success
+                    {% elif booking.status == 'completed' %}bg-info
                     {% elif booking.status == 'cancelled' %}bg-secondary
                     {% else %}bg-secondary{% endif %}" 
                     style="font-size: 1rem;">

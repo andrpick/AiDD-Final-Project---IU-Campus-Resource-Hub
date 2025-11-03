@@ -3,6 +3,7 @@ Booking service with conflict detection.
 """
 from datetime import datetime, timedelta
 from src.data_access.database import get_db_connection
+from dateutil.tz import tzutc
 
 def check_conflicts(resource_id, start_datetime, end_datetime, exclude_booking_id=None, cursor=None):
     """
@@ -170,8 +171,47 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime):
     
     return {'success': True, 'data': {'booking_id': booking_id}}
 
+def mark_completed_bookings():
+    """
+    Automatically mark approved bookings as completed when their end_datetime has passed.
+    This function should be called periodically or when bookings are accessed.
+    """
+    now = datetime.now(tzutc())
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Find all approved bookings where end_datetime < current_time
+        cursor.execute("""
+            SELECT booking_id, end_datetime
+            FROM bookings
+            WHERE status = 'approved'
+            AND end_datetime < ?
+        """, (now.isoformat(),))
+        
+        bookings_to_complete = cursor.fetchall()
+        
+        if bookings_to_complete:
+            # Update all found bookings to completed status
+            booking_ids = [row['booking_id'] for row in bookings_to_complete]
+            placeholders = ','.join(['?'] * len(booking_ids))
+            
+            cursor.execute(f"""
+                UPDATE bookings
+                SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+                WHERE booking_id IN ({placeholders})
+            """, booking_ids)
+            
+            conn.commit()
+            
+            return {'success': True, 'data': {'count': len(booking_ids)}}
+    
+    return {'success': True, 'data': {'count': 0}}
+
 def get_booking(booking_id):
-    """Get a booking by ID."""
+    """Get a booking by ID. Automatically marks as completed if past end time."""
+    # Mark completed bookings before getting specific booking
+    mark_completed_bookings()
+    
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM bookings WHERE booking_id = ?", (booking_id,))
@@ -241,7 +281,10 @@ def update_booking(booking_id, start_datetime=None, end_datetime=None, status=No
     return {'success': True, 'data': {'booking_id': booking_id}}
 
 def list_bookings(user_id=None, resource_id=None, status=None, limit=20, offset=0):
-    """List bookings with filters."""
+    """List bookings with filters. Automatically marks completed bookings."""
+    # Mark completed bookings before listing
+    mark_completed_bookings()
+    
     conditions = []
     values = []
     

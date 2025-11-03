@@ -92,8 +92,9 @@
                                 <td style="padding: 1rem; vertical-align: middle;">
                                     <span class="badge rounded-pill 
                                         {% if booking.status == 'approved' %}bg-success
+                                        {% elif booking.status == 'completed' %}bg-info
                                         {% elif booking.status == 'cancelled' %}bg-secondary
-                                        {% else %}bg-info{% endif %}">
+                                        {% else %}bg-secondary{% endif %}">
                                         {{ booking.status|title }}
                                     </span>
                                 </td>

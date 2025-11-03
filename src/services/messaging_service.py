@@ -1,7 +1,6 @@
 """
 Messaging service with thread management.
 """
-import html
 from src.data_access.database import get_db_connection
 
 def generate_thread_id(user1_id, user2_id, resource_id=None):
@@ -44,9 +43,8 @@ def send_message(sender_id, receiver_id, content, resource_id=None):
     if len(content) > 2000:
         return {'success': False, 'error': 'Message must be less than 2000 characters'}
     
-    # Sanitize content
-    content = html.escape(content)
-    
+    # Don't escape here - let Jinja2 templates handle escaping for security
+    # This prevents double-escaping which causes HTML entities to display incorrectly
     thread_id = generate_thread_id(sender_id, receiver_id, resource_id)
     
     with get_db_connection() as conn:
@@ -72,77 +70,200 @@ def send_message(sender_id, receiver_id, content, resource_id=None):
     return {'success': True, 'data': {'message_id': message_id, 'thread_id': thread_id}}
 
 def get_thread_messages(thread_id, user_id):
-    """Get all messages in a thread for a user. Automatically marks the thread as read when opened."""
+    """Get all messages in a thread for a user. Automatically marks the thread as read when opened.
+    
+    This function consolidates messages across all thread_ids for the same (other_user_id, resource_id)
+    combination to ensure all messages are shown even if they have different legacy thread_ids.
+    """
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # Verify user has access to this thread
+        # First, get one message to determine other_user_id and resource_id
         cursor.execute("""
-            SELECT 1 FROM messages
+            SELECT sender_id, receiver_id, resource_id
+            FROM messages
             WHERE thread_id = ?
             AND (sender_id = ? OR receiver_id = ?)
             AND deleted = 0
             LIMIT 1
         """, (thread_id, user_id, user_id))
         
-        if not cursor.fetchone():
+        first_message = cursor.fetchone()
+        if not first_message:
             return {'success': False, 'error': 'Thread not found or access denied'}
         
-        # Get all messages in the thread
+        # Determine other_user_id and resource_id
+        if first_message['sender_id'] == user_id:
+            other_user_id = first_message['receiver_id']
+        else:
+            other_user_id = first_message['sender_id']
+        resource_id = first_message['resource_id']
+        
+        # Get all messages for this (other_user_id, resource_id) combination across all thread_ids
+        # This consolidates messages that may have different thread_ids due to legacy data
         cursor.execute("""
             SELECT * FROM messages
-            WHERE thread_id = ?
+            WHERE (sender_id = ? OR receiver_id = ?)
             AND (sender_id = ? OR receiver_id = ?)
+            AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
             AND deleted = 0
             ORDER BY timestamp ASC
-        """, (thread_id, user_id, user_id))
+        """, (user_id, user_id, other_user_id, other_user_id, resource_id, resource_id))
         
         messages = [dict(row) for row in cursor.fetchall()]
         
-        # Automatically mark thread as read when opened
+        # Mark all thread_ids for this user-resource combination as read
+        # Get all thread_ids for this combination
         cursor.execute("""
-            INSERT INTO thread_read (user_id, thread_id, is_read, updated_at)
-            VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-            ON CONFLICT(user_id, thread_id) DO UPDATE SET
-                is_read = 1,
-                updated_at = CURRENT_TIMESTAMP
-        """, (user_id, thread_id))
+            SELECT DISTINCT thread_id
+            FROM messages
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND (sender_id = ? OR receiver_id = ?)
+            AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+            AND deleted = 0
+        """, (user_id, user_id, other_user_id, other_user_id, resource_id, resource_id))
+        
+        thread_ids = [row['thread_id'] for row in cursor.fetchall()]
+        
+        # Mark all thread_ids as read
+        for tid in thread_ids:
+            cursor.execute("""
+                INSERT INTO thread_read (user_id, thread_id, is_read, updated_at)
+                VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, thread_id) DO UPDATE SET
+                    is_read = 1,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (user_id, tid))
         conn.commit()
     
     return {'success': True, 'data': {'messages': messages}}
 
 def list_threads(user_id):
-    """List all message threads for a user, including resource information and thread read status."""
+    """List all message threads for a user, including resource information and thread read status.
+    
+    Threads are consolidated by (other_user_id, resource_id) combination, so there's only
+    one thread per user-resource pair, regardless of legacy thread_ids.
+    """
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        # Get latest message per thread, including resource_id and thread read status
+        # Get all messages for the user, grouped by (other_user_id, resource_id)
+        # This consolidates threads that may have different thread_ids due to legacy data
         cursor.execute("""
-            SELECT m1.thread_id,
+            SELECT 
                    CASE 
-                       WHEN m1.sender_id = ? THEN m1.receiver_id
-                       ELSE m1.sender_id
+                       WHEN m.sender_id = ? THEN m.receiver_id
+                       ELSE m.sender_id
                    END as other_user_id,
-                   m1.content as last_message,
-                   m1.timestamp as last_message_time,
-                   m1.resource_id,
-                   COALESCE(tr.is_read, 0) as is_read
-            FROM messages m1
-            LEFT JOIN thread_read tr ON m1.thread_id = tr.thread_id AND tr.user_id = ?
-            WHERE (m1.sender_id = ? OR m1.receiver_id = ?)
-            AND m1.deleted = 0
-            AND m1.timestamp = (
-                SELECT MAX(timestamp)
-                FROM messages
-                WHERE thread_id = m1.thread_id
-                AND deleted = 0
-            )
-            GROUP BY m1.thread_id, other_user_id, m1.content, m1.timestamp, m1.resource_id, tr.is_read
-            ORDER BY last_message_time DESC
+                   m.resource_id,
+                   MAX(m.timestamp) as last_message_time
+            FROM messages m
+            WHERE (m.sender_id = ? OR m.receiver_id = ?)
+            AND m.deleted = 0
+            GROUP BY 
+                CASE 
+                    WHEN m.sender_id = ? THEN m.receiver_id
+                    ELSE m.sender_id
+                END,
+                m.resource_id
         """, (user_id, user_id, user_id, user_id))
         
-        threads = []
+        # Get the latest message for each (other_user_id, resource_id) combination
+        consolidated_threads = {}
         for row in cursor.fetchall():
-            thread = dict(row)
+            other_user_id = row['other_user_id']
+            resource_id = row['resource_id']
+            last_message_time = row['last_message_time']
+            
+            # Get the actual latest message with full details
+            cursor.execute("""
+                SELECT m.thread_id,
+                       m.content as last_message,
+                       m.timestamp as last_message_time,
+                       m.resource_id,
+                       CASE 
+                           WHEN m.sender_id = ? THEN m.receiver_id
+                           ELSE m.sender_id
+                       END as other_user_id
+                FROM messages m
+                WHERE (m.sender_id = ? OR m.receiver_id = ?)
+                AND m.deleted = 0
+                AND (
+                    CASE 
+                        WHEN m.sender_id = ? THEN m.receiver_id
+                        ELSE m.sender_id
+                    END = ?
+                )
+                AND (m.resource_id = ? OR (? IS NULL AND m.resource_id IS NULL))
+                AND m.timestamp = ?
+                ORDER BY m.timestamp DESC
+                LIMIT 1
+            """, (user_id, user_id, user_id, user_id, other_user_id, resource_id, resource_id, last_message_time))
+            
+            message_row = cursor.fetchone()
+            if message_row:
+                # Create a unique key for this user-resource combination
+                thread_key = f"{other_user_id}_{resource_id if resource_id else 'NULL'}"
+                
+                # Get read status for all thread_ids matching this user-resource combination
+                # A thread is unread if ANY of its thread_ids are unread
+                cursor.execute("""
+                    SELECT DISTINCT m.thread_id
+                    FROM messages m
+                    WHERE (m.sender_id = ? OR m.receiver_id = ?)
+                    AND m.deleted = 0
+                    AND (
+                        CASE 
+                            WHEN m.sender_id = ? THEN m.receiver_id
+                            ELSE m.sender_id
+                        END = ?
+                    )
+                    AND (m.resource_id = ? OR (? IS NULL AND m.resource_id IS NULL))
+                """, (user_id, user_id, user_id, other_user_id, resource_id, resource_id))
+                
+                thread_ids = [row['thread_id'] for row in cursor.fetchall()]
+                
+                # Check if any thread_id is unread
+                is_unread = False
+                if thread_ids:
+                    placeholders = ','.join(['?'] * len(thread_ids))
+                    cursor.execute(f"""
+                        SELECT COUNT(*) as unread_count
+                        FROM thread_read tr
+                        WHERE tr.thread_id IN ({placeholders})
+                        AND tr.user_id = ?
+                        AND tr.is_read = 0
+                    """, thread_ids + [user_id])
+                    
+                    unread_result = cursor.fetchone()
+                    if unread_result and unread_result['unread_count'] > 0:
+                        is_unread = True
+                    else:
+                        # If no thread_read entries exist for any of these thread_ids, default to unread
+                        cursor.execute(f"""
+                            SELECT COUNT(*) as read_count
+                            FROM thread_read tr
+                            WHERE tr.thread_id IN ({placeholders})
+                            AND tr.user_id = ?
+                            AND tr.is_read = 1
+                        """, thread_ids + [user_id])
+                        
+                        read_result = cursor.fetchone()
+                        # If no read entries exist, thread is unread
+                        if not read_result or read_result['read_count'] == 0:
+                            is_unread = True
+                
+                consolidated_threads[thread_key] = {
+                    'thread_id': message_row['thread_id'],  # Use the thread_id of the latest message
+                    'other_user_id': other_user_id,
+                    'resource_id': resource_id,
+                    'last_message': message_row['last_message'],
+                    'last_message_time': message_row['last_message_time'],
+                    'is_unread': is_unread
+                }
+        
+        # Convert to list and enrich with user/resource info
+        threads = []
+        for thread_key, thread in consolidated_threads.items():
             # Get other user info
             other_user_id = thread['other_user_id']
             cursor.execute("SELECT name, email FROM users WHERE user_id = ?", (other_user_id,))
@@ -159,11 +280,10 @@ def list_threads(user_id):
                     thread['resource_title'] = resource['title']
                     thread['resource_id'] = resource['resource_id']
             
-            # Thread is unread if is_read is 0 or NULL (defaults to unread)
-            # COALESCE already handles NULL as 0, so we check if is_read == 0
-            thread['is_unread'] = (thread.get('is_read', 0) == 0)
-            
             threads.append(thread)
+        
+        # Sort by last_message_time descending
+        threads.sort(key=lambda t: t['last_message_time'], reverse=True)
     
     return {'success': True, 'data': {'threads': threads}}
 
