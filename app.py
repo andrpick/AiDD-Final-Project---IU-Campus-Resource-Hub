@@ -6,12 +6,14 @@ from flask_login import LoginManager
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Load environment variables FIRST, before importing Config
+# This ensures environment variables are available when Config class is evaluated
+load_dotenv()
+
 from src.utils.datetime_utils import format_datetime_est, format_datetime_local
 from src.utils.logging_config import setup_logging
 from src.utils.config import Config
-
-# Load environment variables
-load_dotenv()
 
 # Set up logging
 setup_logging()
