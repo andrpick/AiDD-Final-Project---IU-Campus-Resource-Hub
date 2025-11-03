@@ -164,7 +164,8 @@ def delete_resource(resource_id):
     """Soft delete a resource (set status to archived)."""
     return update_resource(resource_id, status='archived')
 
-def list_resources(status='published', category=None, owner_id=None, limit=20, offset=0):
+def list_resources(status='published', category=None, owner_id=None, featured=None, 
+                   keyword=None, location=None, limit=20, offset=0):
     """List resources with filters."""
     conditions = []
     values = []
@@ -180,6 +181,19 @@ def list_resources(status='published', category=None, owner_id=None, limit=20, o
     if owner_id:
         conditions.append("owner_id = ?")
         values.append(owner_id)
+    
+    if featured is not None:
+        conditions.append("featured = ?")
+        values.append(1 if featured else 0)
+    
+    if keyword:
+        conditions.append("(title LIKE ? OR description LIKE ?)")
+        keyword_pattern = f"%{keyword}%"
+        values.extend([keyword_pattern, keyword_pattern])
+    
+    if location:
+        conditions.append("location LIKE ?")
+        values.append(f"%{location}%")
     
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     

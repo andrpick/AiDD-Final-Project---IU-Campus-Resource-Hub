@@ -131,14 +131,23 @@ The application includes the following implemented features:
      - Change user roles (with self-demotion prevention)
      - Delete users (with cascade effects)
      - Streamlined dropdown menu interface for all user actions
-   - Resource management and archiving
-   - Booking management and override
+   - **Resource Management**:
+     - Comprehensive filtering options (status, category, featured status, location, owner, keyword search)
+     - Resource archiving and unarchiving
+     - Feature/unfeature resources for homepage
+     - Edit any resource (admins can edit all resources)
+     - Filter combinations preserved across pagination
+   - **Booking Management**:
+     - View all bookings with section filtering (upcoming, previous, canceled)
+     - Filter by status, resource, and requester
+     - Admin booking override capabilities
    - **Statistics Dashboard**:
      - Resource Statistics section with detailed analytics (bookings, reviews, ratings)
      - Filtering options (category, location, featured status)
      - Sorting options (by bookings, reviews, rating, title, category, location)
      - Table format display for easy comparison
-   - Admin action logging
+     - Summary cards with breakdown statistics (users by role, resources by status, bookings by status, reviews by rating)
+   - Admin action logging with comprehensive filtering and audit trail
 
 5. **AI Concierge:**
    - Chatbot widget accessible from any page (bottom-right corner)
@@ -178,8 +187,10 @@ The application includes the following implemented features:
    - Edit users (change name, email, password, role, department, profile image, suspension status)
    - Suspend/unsuspend users
    - Change user roles
+   - Test Resource Management filtering (status, category, featured, location, owner, keyword search)
    - Archive/unarchive resources
-   - View booking management
+   - Feature/unfeature resources
+   - View booking management with section and status filtering
    - Explore Resource Statistics with filtering and sorting
 
 ### 6. Testing Checklist
@@ -285,6 +296,8 @@ The application includes the following implemented features:
 - ✅ Admin user editing functionality (full user profile management)
 - ✅ Simplified booking workflow (automatic approval, no pending/rejected statuses)
 - ✅ Enhanced Resource Statistics section with filtering and sorting
+- ✅ Comprehensive Resource Management filtering (status, category, featured, location, owner, keyword search)
+- ✅ Admin dashboard summary cards with breakdown statistics displayed in table format
 
 ## 🧪 Testing
 

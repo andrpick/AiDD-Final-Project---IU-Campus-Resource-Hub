@@ -34,6 +34,7 @@ def index():
     from dateutil.tz import tzutc
     
     status = request.args.get('status')
+    section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
     offset = (page - 1) * page_size
@@ -89,6 +90,18 @@ def index():
         # Sort canceled by start_datetime DESC (most recent first)
         canceled_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
         
+        # Apply section filter if specified
+        if section_filter == 'upcoming':
+            previous_bookings = []
+            canceled_bookings = []
+        elif section_filter == 'previous':
+            upcoming_bookings = []
+            canceled_bookings = []
+        elif section_filter == 'canceled':
+            upcoming_bookings = []
+            previous_bookings = []
+        # If section_filter is None or 'all', show all sections
+        
         # Enrich with resource info
         for booking in upcoming_bookings + previous_bookings + canceled_bookings:
             resource_result = get_resource(booking['resource_id'])
@@ -102,7 +115,8 @@ def index():
                              page=1,
                              total_pages=1,
                              total=total,
-                             status_filter=status)
+                             status_filter=status,
+                             section_filter=section_filter)
     else:
         return render_template('bookings/index.html', 
                              upcoming_bookings=[],
@@ -111,7 +125,8 @@ def index():
                              page=1, 
                              total_pages=0, 
                              total=0,
-                             status_filter=status)
+                             status_filter=status,
+                             section_filter=section_filter)
 
 @bookings_bp.route('/create', methods=['POST'])
 @login_required

@@ -14,26 +14,76 @@
         <!-- Filters -->
         <div class="card bg-cream border-0 shadow-sm mb-4">
             <div class="card-body p-4">
-                <form method="GET" action="{{ url_for('admin.resources') }}">
+                <form method="GET" action="{{ url_for('admin.resources') }}" id="resourceFiltersForm">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold" style="color: #333;">Status</label>
-                            <select class="form-select" name="status" style="border-radius: 8px;">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Status</label>
+                            <select class="form-select form-select-sm" name="status" style="border-radius: 8px;">
                                 <option value="">All Status</option>
                                 <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
                                 <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
                                 <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-crimson w-100 px-4 py-2" style="font-weight: 500;">
-                                <i class="bi bi-funnel me-2"></i> Filter
-                            </button>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Category</label>
+                            <select class="form-select form-select-sm" name="category" style="border-radius: 8px;">
+                                <option value="">All Categories</option>
+                                {% for cat in categories_list %}
+                                <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
+                                    {{ cat|format_category }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary w-100 px-4 py-2" style="font-weight: 500;">
-                                <i class="bi bi-x-circle me-2"></i> Reset
-                            </a>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Featured</label>
+                            <select class="form-select form-select-sm" name="featured" style="border-radius: 8px;">
+                                <option value="">All</option>
+                                <option value="1" {% if featured_filter == '1' %}selected{% endif %}>Featured</option>
+                                <option value="0" {% if featured_filter == '0' %}selected{% endif %}>Not Featured</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Search</label>
+                            <input type="text" 
+                                   class="form-control form-control-sm" 
+                                   name="keyword" 
+                                   value="{{ keyword_filter or '' }}" 
+                                   placeholder="Search by title or description..."
+                                   style="border-radius: 8px;">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Location</label>
+                            <select class="form-select form-select-sm" name="location" style="border-radius: 8px;">
+                                <option value="">All Locations</option>
+                                {% for loc in locations_list %}
+                                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>
+                                    {{ loc }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Owner</label>
+                            <select class="form-select form-select-sm" name="owner_id" style="border-radius: 8px;">
+                                <option value="">All Owners</option>
+                                {% for owner in owners_list %}
+                                <option value="{{ owner.user_id }}" {% if owner_id_filter == owner.user_id %}selected{% endif %}>
+                                    {{ owner.name }} ({{ owner.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-funnel me-2"></i> Filter
+                                </button>
+                                <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-x-circle me-2"></i> Reset
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -66,7 +116,7 @@
                                     </a>
                                 </td>
                                 <td style="padding: 1rem; vertical-align: middle;">
-                                    <span class="badge bg-secondary">{{ resource.category|replace('_', ' ')|title }}</span>
+                                    <span class="badge bg-secondary">{{ resource.category|format_category }}</span>
                                 </td>
                                 <td style="padding: 1rem; vertical-align: middle;">
                                     <span class="text-muted">{{ resource.location }}</span>
@@ -160,9 +210,18 @@
         {% if total_pages > 1 %}
         <nav aria-label="Resource pagination" class="mt-4">
             <ul class="pagination justify-content-center">
+                {% set query_parts = [] %}
+                {% if status_filter %}{% set _ = query_parts.append('status=' + status_filter) %}{% endif %}
+                {% if category_filter %}{% set _ = query_parts.append('category=' + category_filter) %}{% endif %}
+                {% if featured_filter %}{% set _ = query_parts.append('featured=' + featured_filter) %}{% endif %}
+                {% if keyword_filter %}{% set _ = query_parts.append('keyword=' + keyword_filter|urlencode) %}{% endif %}
+                {% if location_filter %}{% set _ = query_parts.append('location=' + location_filter|urlencode) %}{% endif %}
+                {% if owner_id_filter %}{% set _ = query_parts.append('owner_id=' + owner_id_filter|string) %}{% endif %}
+                {% set base_query = query_parts|join('&') if query_parts else '' %}
+                
                 {% if page > 1 %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page - 1 }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                    <a class="page-link" href="?page={{ page - 1 }}{% if base_query %}&{{ base_query }}{% endif %}" 
                        style="border-radius: 8px; margin: 0 0.25rem;">
                         <i class="bi bi-chevron-left"></i> Previous
                     </a>
@@ -170,7 +229,7 @@
                 {% endif %}
                 {% for p in range(1, total_pages + 1) %}
                 <li class="page-item {% if p == page %}active{% endif %}">
-                    <a class="page-link" href="?page={{ p }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                    <a class="page-link" href="?page={{ p }}{% if base_query %}&{{ base_query }}{% endif %}" 
                        style="border-radius: 8px; margin: 0 0.25rem;">
                         {{ p }}
                     </a>
@@ -178,7 +237,7 @@
                 {% endfor %}
                 {% if page < total_pages %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page + 1 }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                    <a class="page-link" href="?page={{ page + 1 }}{% if base_query %}&{{ base_query }}{% endif %}" 
                        style="border-radius: 8px; margin: 0 0.25rem;">
                         Next <i class="bi bi-chevron-right"></i>
                     </a>

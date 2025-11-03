@@ -81,7 +81,7 @@
                                 {% if resource.capacity %}
                                 <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}<br>
                                 {% endif %}
-                                <span class="badge bg-crimson mt-2">{{ resource.category|replace('_', ' ')|title }}</span>
+                                <span class="badge bg-crimson mt-2">{{ resource.category|format_category }}</span>
                             </p>
                             <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
                                class="btn btn-crimson mt-auto" 

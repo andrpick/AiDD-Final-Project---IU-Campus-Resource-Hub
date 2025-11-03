@@ -98,6 +98,28 @@ def nl2br(value):
         return ''
     return str(value).replace('\n', '<br>')
 
+@app.template_filter('format_category')
+def format_category(value):
+    """Format category name with proper capitalization. Handles special cases like 'AV'."""
+    if not value:
+        return ''
+    
+    # Replace underscores with spaces
+    formatted = value.replace('_', ' ')
+    
+    # Split into words and capitalize each word
+    words = formatted.split()
+    formatted_words = []
+    
+    for word in words:
+        # Keep "AV" as uppercase, otherwise title case
+        if word.lower() == 'av':
+            formatted_words.append('AV')
+        else:
+            formatted_words.append(word.capitalize())
+    
+    return ' '.join(formatted_words)
+
 @app.template_filter('format_datetime_local')
 def format_datetime_local(value):
     """Format datetime for HTML datetime-local input (YYYY-MM-DDTHH:mm)."""

@@ -49,12 +49,12 @@
                         <select class="form-select" id="status" name="status">
                             <option value="draft" {% if resource.status == 'draft' %}selected{% endif %}>Draft</option>
                             <option value="published" {% if resource.status == 'published' %}selected{% endif %}>Published</option>
-                            {% if current_user.is_admin() %}
+                            {% if current_user.is_admin() or resource.owner_id == current_user.user_id %}
                             <option value="archived" {% if resource.status == 'archived' %}selected{% endif %}>Archived</option>
                             {% endif %}
                         </select>
-                        {% if not current_user.is_admin() and resource.status == 'archived' %}
-                        <small class="form-text text-muted">Current status: Archived (only admins can change archived status)</small>
+                        {% if resource.status == 'archived' %}
+                        <small class="form-text text-muted">Current status: Archived (only owners and admins can change archived status)</small>
                         {% endif %}
                     </div>
                     <div class="mb-3">

@@ -46,7 +46,7 @@
                     {% for resource in resources %}
                     <tr>
                         <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
-                        <td>{{ resource.category|replace('_', ' ')|title }}</td>
+                        <td>{{ resource.category|format_category }}</td>
                         <td>{{ resource.location }}</td>
                         <td><span class="badge {% if resource.status == 'published' %}bg-success{% elif resource.status == 'draft' %}bg-warning{% else %}bg-secondary{% endif %}">{{ resource.status|title }}</span></td>
                         <td>

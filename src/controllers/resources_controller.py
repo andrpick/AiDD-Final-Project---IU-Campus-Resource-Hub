@@ -404,9 +404,9 @@ def edit(resource_id):
         capacity = request.form.get('capacity', type=int) if has_capacity else None
         status = request.form.get('status', '').strip()
         
-        # Only admin users can set status to 'archived'
-        if status == 'archived' and not current_user.is_admin():
-            flash('Only administrators can archive resources.', 'error')
+        # Owners can archive their own resources, admins can archive any resource
+        if status == 'archived' and resource['owner_id'] != current_user.user_id and not current_user.is_admin():
+            flash('Only resource owners and administrators can archive resources.', 'error')
             return redirect(url_for('resources.edit', resource_id=resource_id))
         
         updates = {
@@ -515,10 +515,10 @@ def publish(resource_id):
         flash(result['error'], 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
 
-@resources_bp.route('/<int:resource_id>/delete', methods=['POST'])
+@resources_bp.route('/<int:resource_id>/archive', methods=['POST'])
 @login_required
-def delete(resource_id):
-    """Delete a resource (soft delete - archive). Only admin users can archive resources."""
+def archive(resource_id):
+    """Archive a resource. Owners can archive their own resources, admins can archive any resource."""
     result = get_resource(resource_id)
     
     if not result['success']:
@@ -527,16 +527,46 @@ def delete(resource_id):
     
     resource = result['data']
     
-    # Only admin users can archive resources
-    if not current_user.is_admin():
-        flash('Only administrators can archive resources.', 'error')
+    # Permission check: Owners can archive their own resources, admins can archive any resource
+    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
+        flash('Only resource owners and administrators can archive resources.', 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
     
     result = delete_resource(resource_id)
     
     if result['success']:
         flash('Resource archived successfully.', 'success')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
+    else:
+        flash(result['error'], 'error')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
+
+@resources_bp.route('/<int:resource_id>/unarchive', methods=['POST'])
+@login_required
+def unarchive(resource_id):
+    """Unarchive a resource. Owners can unarchive their own resources, admins can unarchive any resource."""
+    result = get_resource(resource_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
         return redirect(url_for('search.index'))
+    
+    resource = result['data']
+    
+    # Permission check: Owners can unarchive their own resources, admins can unarchive any resource
+    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
+        flash('Only resource owners and administrators can unarchive resources.', 'error')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
+    
+    if resource['status'] != 'archived':
+        flash('Resource is not archived.', 'error')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
+    
+    result = update_resource(resource_id, status='published')
+    
+    if result['success']:
+        flash('Resource unarchived successfully.', 'success')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
     else:
         flash(result['error'], 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))

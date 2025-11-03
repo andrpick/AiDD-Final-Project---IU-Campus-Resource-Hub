@@ -52,29 +52,78 @@
             <p class="text-muted mb-0">View and manage all bookings across the system</p>
         </div>
 
-        <!-- Filters -->
+        <!-- Section Filter Tabs -->
+        <div class="mb-4">
+            <div class="d-flex flex-wrap gap-2" role="group">
+                <a href="{{ url_for('admin.bookings', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if not section_filter %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if not section_filter %}600{% else %}500{% endif %};">
+                    All
+                </a>
+                <a href="{{ url_for('admin.bookings', section='upcoming', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'upcoming' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'upcoming' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-calendar-check me-2"></i>Upcoming
+                </a>
+                <a href="{{ url_for('admin.bookings', section='previous', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'previous' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'previous' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-clock-history me-2"></i>Previous
+                </a>
+                <a href="{{ url_for('admin.bookings', section='canceled', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'canceled' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'canceled' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-x-circle me-2"></i>Canceled
+                </a>
+            </div>
+        </div>
+
+        <!-- Admin Filters -->
         <div class="card bg-cream border-0 shadow-sm mb-4">
             <div class="card-body p-4">
-                <form method="GET" action="{{ url_for('admin.bookings') }}">
+                <form method="GET" action="{{ url_for('admin.bookings') }}" id="bookingFiltersForm">
+                    <input type="hidden" name="section" value="{{ section_filter or '' }}">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold" style="color: #333;">Status</label>
-                            <select class="form-select" name="status" style="border-radius: 8px;">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Status</label>
+                            <select class="form-select form-select-sm" name="status" style="border-radius: 8px;">
                                 <option value="">All Status</option>
                                 <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
                                 <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                 <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-crimson w-100 px-4 py-2" style="font-weight: 500;">
-                                <i class="bi bi-funnel me-2"></i> Filter
-                            </button>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Resource</label>
+                            <select class="form-select form-select-sm" name="resource_id" style="border-radius: 8px;">
+                                <option value="">All Resources</option>
+                                {% for resource in resources_list %}
+                                <option value="{{ resource.resource_id }}" {% if resource_id_filter == resource.resource_id %}selected{% endif %}>
+                                    {{ resource.title }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <a href="{{ url_for('admin.bookings') }}" class="btn btn-outline-secondary w-100 px-4 py-2" style="font-weight: 500;">
-                                <i class="bi bi-x-circle me-2"></i> Reset
-                            </a>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Requester</label>
+                            <select class="form-select form-select-sm" name="user_id" style="border-radius: 8px;">
+                                <option value="">All Users</option>
+                                {% for user in users_list %}
+                                <option value="{{ user.user_id }}" {% if user_id_filter == user.user_id %}selected{% endif %}>
+                                    {{ user.name }} ({{ user.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-funnel me-2"></i> Filter
+                                </button>
+                                <a href="{{ url_for('admin.bookings') }}" class="btn btn-outline-secondary px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-x-circle me-2"></i> Reset
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -351,7 +400,11 @@
                     <i class="bi bi-calendar-check" style="font-size: 4rem; color: #ccc;"></i>
                 </div>
                 <h4 class="mb-3 fw-semibold" style="color: #333;">No bookings found</h4>
+                {% if status_filter or resource_id_filter or user_id_filter or section_filter %}
                 <p class="text-muted mb-0">Try adjusting your filters.</p>
+                {% else %}
+                <p class="text-muted mb-0">There are no bookings in the system yet.</p>
+                {% endif %}
             </div>
         </div>
         {% endif %}

@@ -21,7 +21,7 @@
             {% endif %}
             <span class="text-muted">|</span>
             <span class="badge bg-crimson px-3 py-2" style="font-size: 0.9rem; font-weight: 500;">
-                {{ resource.category|replace('_', ' ')|title }}
+                {{ resource.category|format_category }}
             </span>
         </div>
 
@@ -81,6 +81,22 @@
                 <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" class="btn btn-outline-crimson px-4 py-2" style="font-weight: 500;">
                     <i class="bi bi-pencil me-2"></i>Edit Resource
                 </a>
+                {% endif %}
+                {% if current_user.is_authenticated and (resource.owner_id == current_user.user_id or current_user.is_admin()) %}
+                    {% if resource.status == 'archived' %}
+                    <form method="POST" action="{{ url_for('resources.unarchive', resource_id=resource.resource_id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-success px-4 py-2" style="font-weight: 500;">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i>Unarchive Resource
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('resources.archive', resource_id=resource.resource_id) }}" class="d-inline"
+                          onsubmit="return confirm('Are you sure you want to archive this resource? It will no longer be visible to other users.');">
+                        <button type="submit" class="btn btn-outline-warning px-4 py-2" style="font-weight: 500;">
+                            <i class="bi bi-archive me-2"></i>Archive Resource
+                        </button>
+                    </form>
+                    {% endif %}
                 {% endif %}
                 {% if current_user.is_authenticated and resource.owner_id and resource.owner_id != current_user.user_id %}
                 <a href="{{ url_for('messages.new', receiver_id=resource.owner_id, resource_id=resource.resource_id) }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">

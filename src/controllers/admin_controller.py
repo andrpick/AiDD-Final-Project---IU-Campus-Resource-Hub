@@ -237,13 +237,16 @@ def edit_user(user_id):
 @admin_required
 def logs():
     """View admin logs."""
+    from src.models.user import User
+    
     admin_id = request.args.get('admin_id', type=int)
     action = request.args.get('action', '').strip() or None
+    target_table = request.args.get('target_table', '').strip() or None
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 50, type=int)))
     offset = (page - 1) * page_size
     
-    result = get_admin_logs(admin_id=admin_id, action=action, limit=page_size, offset=offset)
+    result = get_admin_logs(admin_id=admin_id, action=action, target_table=target_table, limit=page_size, offset=offset)
     
     if result['success']:
         data = result['data']
@@ -251,27 +254,86 @@ def logs():
         total = data['total']
         total_pages = (total + page_size - 1) // page_size
         
+        # Get list of admins for filter dropdown
+        from src.services.admin_service import list_users
+        admins_result = list_users(role='admin', limit=500, offset=0)
+        admins_list = admins_result['data']['users'] if admins_result['success'] else []
+        
+        # Get unique actions and target tables for filter dropdowns
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT action FROM admin_logs ORDER BY action")
+            actions_list = [row['action'] for row in cursor.fetchall()]
+            
+            cursor.execute("SELECT DISTINCT target_table FROM admin_logs ORDER BY target_table")
+            target_tables_list = [row['target_table'] for row in cursor.fetchall()]
+        
         return render_template('admin/logs.html',
                              logs=logs,
                              page=page,
                              total_pages=total_pages,
                              total=total,
                              admin_id_filter=admin_id,
-                             action_filter=action)
+                             action_filter=action,
+                             target_table_filter=target_table,
+                             admins_list=admins_list,
+                             actions_list=actions_list,
+                             target_tables_list=target_tables_list)
     else:
-        return render_template('admin/logs.html', logs=[], page=1, total_pages=0, total=0)
+        return render_template('admin/logs.html', logs=[], page=1, total_pages=0, total=0,
+                             admin_id_filter=None, action_filter=None, target_table_filter=None,
+                             admins_list=[], actions_list=[], target_tables_list=[])
 
 @admin_bp.route('/resources')
 @login_required
 @admin_required
 def resources():
     """List all resources for admin management."""
+    from src.data_access.database import get_db_connection
+    
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
     offset = (page - 1) * page_size
-    status_filter = request.args.get('status', '').strip() or None
     
-    result = list_resources(status=status_filter, limit=page_size, offset=offset)
+    # Get filter parameters
+    status_filter = request.args.get('status', '').strip() or None
+    category_filter = request.args.get('category', '').strip() or None
+    featured_filter = request.args.get('featured', '').strip()
+    featured = None
+    if featured_filter == '1':
+        featured = True
+    elif featured_filter == '0':
+        featured = False
+    keyword_filter = request.args.get('keyword', '').strip() or None
+    location_filter = request.args.get('location', '').strip() or None
+    owner_id_filter = request.args.get('owner_id', type=int)
+    
+    # Get filter options for dropdowns
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Get unique categories
+        cursor.execute("SELECT DISTINCT category FROM resources ORDER BY category")
+        categories_list = [row['category'] for row in cursor.fetchall()]
+        
+        # Get unique locations (limit to 50 most common)
+        cursor.execute("SELECT DISTINCT location FROM resources ORDER BY location LIMIT 50")
+        locations_list = [row['location'] for row in cursor.fetchall()]
+    
+    # Get list of users who own resources
+    owners_result = list_users(limit=500, offset=0)
+    owners_list = owners_result['data']['users'] if owners_result['success'] else []
+    
+    result = list_resources(
+        status=status_filter,
+        category=category_filter,
+        owner_id=owner_id_filter,
+        featured=featured,
+        keyword=keyword_filter,
+        location=location_filter,
+        limit=page_size,
+        offset=offset
+    )
     
     if result['success']:
         resources_list = result['data']['resources']
@@ -282,9 +344,30 @@ def resources():
                              page=page,
                              total_pages=total_pages,
                              total=total,
-                             status_filter=status_filter)
+                             status_filter=status_filter,
+                             category_filter=category_filter,
+                             featured_filter=featured_filter,
+                             keyword_filter=keyword_filter,
+                             location_filter=location_filter,
+                             owner_id_filter=owner_id_filter,
+                             categories_list=categories_list,
+                             locations_list=locations_list,
+                             owners_list=owners_list)
     else:
-        return render_template('admin/resources.html', resources=[], page=1, total_pages=0, total=0, status_filter=status_filter)
+        return render_template('admin/resources.html', 
+                             resources=[], 
+                             page=1, 
+                             total_pages=0, 
+                             total=0,
+                             status_filter=status_filter,
+                             category_filter=category_filter,
+                             featured_filter=featured_filter,
+                             keyword_filter=keyword_filter,
+                             location_filter=location_filter,
+                             owner_id_filter=owner_id_filter,
+                             categories_list=categories_list,
+                             locations_list=locations_list,
+                             owners_list=owners_list)
 
 @admin_bp.route('/resources/<int:resource_id>/feature', methods=['POST'])
 @login_required
@@ -338,7 +421,7 @@ def unfeature_resource(resource_id):
 @login_required
 @admin_required
 def archive_resource(resource_id):
-    """Archive a resource."""
+    """Archive a resource. Admins can archive any resource."""
     from src.services.resource_service import delete_resource
     
     result = delete_resource(resource_id)
@@ -364,7 +447,7 @@ def archive_resource(resource_id):
 @login_required
 @admin_required
 def unarchive_resource(resource_id):
-    """Unarchive a resource (set status back to published)."""
+    """Unarchive a resource. Admins can unarchive any resource."""
     result = update_resource(resource_id, status='published')
     
     if result['success']:
@@ -392,14 +475,16 @@ def bookings():
     from datetime import datetime
     from dateutil.tz import tzutc
     from src.services.booking_service import list_bookings
-    from src.services.resource_service import get_resource
+    from src.services.resource_service import get_resource, list_resources
     from src.models.user import User
     
     status_filter = request.args.get('status', '').strip() or None
     resource_id = request.args.get('resource_id', type=int)
+    user_id = request.args.get('user_id', type=int)
+    section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
     
     # Get all bookings (ignore pagination for sectioning, but limit to reasonable amount)
-    result = list_bookings(resource_id=resource_id, status=status_filter, limit=1000, offset=0)
+    result = list_bookings(user_id=user_id, resource_id=resource_id, status=status_filter, limit=1000, offset=0)
     
     if result['success']:
         all_bookings = result['data']['bookings']
@@ -467,6 +552,18 @@ def bookings():
         # Sort canceled by start_datetime DESC (most recent first)
         canceled_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
         
+        # Apply section filter if specified
+        if section_filter == 'upcoming':
+            previous_bookings = []
+            canceled_bookings = []
+        elif section_filter == 'previous':
+            upcoming_bookings = []
+            canceled_bookings = []
+        elif section_filter == 'canceled':
+            upcoming_bookings = []
+            previous_bookings = []
+        # If section_filter is None or 'all', show all sections
+        
         # Enrich with resource and user info
         for booking in upcoming_bookings + previous_bookings + canceled_bookings:
             resource_result = get_resource(booking['resource_id'])
@@ -481,21 +578,37 @@ def bookings():
                     'email': user.email
                 }
         
+        # Get resources list for filter dropdown
+        resources_result = list_resources(status=None, limit=500, offset=0)
+        resources_list = resources_result['data']['resources'] if resources_result['success'] else []
+        
+        # Get users list for filter dropdown
+        users_result = list_users(limit=500, offset=0)
+        users_list = users_result['data']['users'] if users_result['success'] else []
+        
         return render_template('admin/bookings.html',
                              upcoming_bookings=upcoming_bookings,
                              previous_bookings=previous_bookings,
                              canceled_bookings=canceled_bookings,
                              total=total,
                              status_filter=status_filter,
-                             resource_id_filter=resource_id)
+                             resource_id_filter=resource_id,
+                             user_id_filter=user_id,
+                             section_filter=section_filter,
+                             resources_list=resources_list,
+                             users_list=users_list)
     else:
         return render_template('admin/bookings.html', 
                              upcoming_bookings=[],
                              previous_bookings=[],
                              canceled_bookings=[],
                              total=0,
-                             status_filter=status_filter, 
-                             resource_id_filter=resource_id)
+                             status_filter=status_filter,
+                             resource_id_filter=resource_id,
+                             user_id_filter=user_id,
+                             section_filter=section_filter,
+                             resources_list=[],
+                             users_list=[])
 
 @admin_bp.route('/bookings/<int:booking_id>')
 @login_required

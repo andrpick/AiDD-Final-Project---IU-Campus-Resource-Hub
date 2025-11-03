@@ -3,58 +3,274 @@
 {% block title %}Admin Logs - Admin{% endblock %}
 
 {% block content %}
+<style>
+    .logs-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .logs-table th:nth-child(1),
+    .logs-table td:nth-child(1) {
+        width: 12%;
+    }
+    .logs-table th:nth-child(2),
+    .logs-table td:nth-child(2) {
+        width: 15%;
+    }
+    .logs-table th:nth-child(3),
+    .logs-table td:nth-child(3) {
+        width: 15%;
+    }
+    .logs-table th:nth-child(4),
+    .logs-table td:nth-child(4) {
+        width: 20%;
+    }
+    .logs-table th:nth-child(5),
+    .logs-table td:nth-child(5) {
+        width: 30%;
+    }
+    .logs-table th:nth-child(6),
+    .logs-table td:nth-child(6) {
+        width: 8%;
+    }
+    /* Ensure dropdown menus can escape table boundaries */
+    .table-responsive {
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+    .dropstart .dropdown-menu {
+        position: absolute;
+        right: 0;
+        left: auto;
+    }
+    .action-badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.75rem;
+        font-weight: 500;
+    }
+    .action-user { background-color: #4a90e2 !important; }
+    .action-resource { background-color: #50c878 !important; }
+    .action-booking { background-color: #ff6b6b !important; }
+    .action-system { background-color: #9b59b6 !important; }
+    /* Ensure modals display correctly */
+    .modal {
+        z-index: 1055;
+    }
+    .modal-backdrop {
+        z-index: 1050;
+    }
+</style>
+
 <div class="row">
     <div class="col-12">
         <!-- Page Header -->
         <div class="mb-4">
-            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Admin Logs</h1>
-            <p class="text-muted mb-0">View admin action logs and audit trail</p>
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Admin Logs</h1>
+                    <p class="text-muted mb-0">View admin action logs and audit trail</p>
+                </div>
+                {% if total %}
+                <div class="text-end">
+                    <div class="fw-bold" style="font-size: 1.5rem; color: #333;">{{ total }}</div>
+                    <div class="text-muted" style="font-size: 0.875rem;">Total Logs</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card bg-cream border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="GET" action="{{ url_for('admin.logs') }}" id="logsFiltersForm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Admin</label>
+                            <select class="form-select form-select-sm" name="admin_id" style="border-radius: 8px;">
+                                <option value="">All Admins</option>
+                                {% for admin in admins_list %}
+                                <option value="{{ admin.user_id }}" {% if admin_id_filter == admin.user_id %}selected{% endif %}>
+                                    {{ admin.name }} ({{ admin.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Action</label>
+                            <select class="form-select form-select-sm" name="action" style="border-radius: 8px;">
+                                <option value="">All Actions</option>
+                                {% for action_item in actions_list %}
+                                <option value="{{ action_item }}" {% if action_filter == action_item %}selected{% endif %}>
+                                    {{ action_item|replace('_', ' ')|title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Target Table</label>
+                            <select class="form-select form-select-sm" name="target_table" style="border-radius: 8px;">
+                                <option value="">All Tables</option>
+                                {% for table in target_tables_list %}
+                                <option value="{{ table }}" {% if target_table_filter == table %}selected{% endif %}>
+                                    {{ table|replace('_', ' ')|title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-funnel me-2"></i> Filter
+                                </button>
+                                <a href="{{ url_for('admin.logs') }}" class="btn btn-outline-secondary px-3 py-2" style="font-weight: 500;">
+                                    <i class="bi bi-x-circle me-2"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
 
         {% if logs %}
         <!-- Logs Table -->
-        <div class="card bg-cream border-0 shadow-sm">
+        <div class="card bg-white border-0 shadow-sm">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                    <table class="table logs-table mb-0">
+                        <thead style="background-color: #f8f9fa;">
                             <tr>
-                                <th style="font-weight: 600; color: #333; padding: 1rem;">Timestamp</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem;">Admin</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem;">Action</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem;">Target</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem;">Details</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Timestamp</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Admin</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Action</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Target</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Details</th>
+                                <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6; width: 80px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for log in logs %}
-                            <tr>
-                                <td style="padding: 1rem; vertical-align: middle;">
-                                    <span class="text-muted" style="font-size: 0.875rem;">
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td class="px-4 py-3" style="vertical-align: middle;">
+                                    <span class="fw-semibold" style="color: #333; font-size: 0.875rem;">
                                         {{ log.timestamp|format_datetime_est('short') }}
                                     </span>
                                 </td>
-                                <td style="padding: 1rem; vertical-align: middle;">
+                                <td class="px-4 py-3" style="vertical-align: middle;">
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-2" 
-                                             style="width: 35px; height: 35px; font-size: 0.875rem; font-weight: 600;">
+                                             style="width: 40px; height: 40px; font-size: 0.875rem; font-weight: 600;">
                                             {{ (log.admin_name or log.admin_email or 'A')[0]|upper }}
                                         </div>
-                                        <span class="fw-semibold" style="color: #333;">
-                                            {{ log.admin_name or log.admin_email or 'Unknown' }}
-                                        </span>
+                                        <div>
+                                            <div class="fw-semibold" style="color: #333; font-size: 0.875rem;">
+                                                {{ log.admin_name or log.admin_email or 'Unknown' }}
+                                            </div>
+                                            {% if log.admin_email %}
+                                            <div class="text-muted" style="font-size: 0.75rem;">
+                                                {{ log.admin_email }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </td>
-                                <td style="padding: 1rem; vertical-align: middle;">
-                                    <span class="badge bg-crimson rounded-pill">{{ log.action }}</span>
-                                </td>
-                                <td style="padding: 1rem; vertical-align: middle;">
-                                    <span class="text-muted">
-                                        <span class="fw-semibold">{{ log.target_table }}</span> #{{ log.target_id }}
+                                <td class="px-4 py-3" style="vertical-align: middle;">
+                                    {% set action_class = 'action-system' %}
+                                    {% if 'user' in log.action %}
+                                        {% set action_class = 'action-user' %}
+                                    {% elif 'resource' in log.action %}
+                                        {% set action_class = 'action-resource' %}
+                                    {% elif 'booking' in log.action %}
+                                        {% set action_class = 'action-booking' %}
+                                    {% endif %}
+                                    <span class="badge rounded-pill {{ action_class }} action-badge">
+                                        {{ log.action|replace('_', ' ')|title }}
                                     </span>
                                 </td>
-                                <td style="padding: 1rem; vertical-align: middle;">
-                                    <span class="text-muted">{{ log.details or '-' }}</span>
+                                <td class="px-4 py-3" style="vertical-align: middle;">
+                                    <div class="d-flex flex-column">
+                                        {% if log.target_table == 'users' %}
+                                            <a href="{{ url_for('admin.edit_user', user_id=log.target_id) }}" 
+                                               class="text-crimson fw-semibold text-decoration-none" style="font-size: 0.875rem;">
+                                                <i class="bi bi-person me-1"></i>{{ log.target_name or 'Unknown User' }}
+                                            </a>
+                                            <span class="text-muted" style="font-size: 0.75rem;">User #{{ log.target_id }}</span>
+                                            {% if log.target_email %}
+                                            <span class="text-muted" style="font-size: 0.75rem;">{{ log.target_email }}</span>
+                                            {% endif %}
+                                        {% elif log.target_table == 'resources' %}
+                                            <a href="{{ url_for('resources.detail', resource_id=log.target_id) }}" 
+                                               class="text-crimson fw-semibold text-decoration-none" style="font-size: 0.875rem;">
+                                                <i class="bi bi-box me-1"></i>{{ log.target_name or 'Unknown Resource' }}
+                                            </a>
+                                            <span class="text-muted" style="font-size: 0.75rem;">Resource #{{ log.target_id }}</span>
+                                        {% elif log.target_table == 'bookings' %}
+                                            <a href="{{ url_for('admin.booking_detail', booking_id=log.target_id) }}" 
+                                               class="text-crimson fw-semibold text-decoration-none" style="font-size: 0.875rem;">
+                                                <i class="bi bi-calendar-check me-1"></i>{{ log.target_name or 'Unknown Booking' }}
+                                            </a>
+                                            <span class="text-muted" style="font-size: 0.75rem;">Booking #{{ log.target_id }}</span>
+                                        {% else %}
+                                            <span class="text-muted fw-semibold" style="font-size: 0.875rem;">
+                                                {{ log.target_table|title }} #{{ log.target_id }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3" style="vertical-align: middle;">
+                                    <div class="text-muted" style="font-size: 0.875rem; line-height: 1.5;">
+                                        {% if log.details %}
+                                            {{ log.details[:100] }}{% if log.details|length > 100 %}...{% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3" style="vertical-align: middle;">
+                                    <div class="dropstart">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                id="actionsDropdown{{ log.log_id }}" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false"
+                                                style="border-radius: 8px;">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" 
+                                            aria-labelledby="actionsDropdown{{ log.log_id }}"
+                                            style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                            <li>
+                                                <button type="button" class="dropdown-item" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#logDetailsModal{{ log.log_id }}">
+                                                    <i class="bi bi-info-circle me-2 text-primary"></i> View Details
+                                                </button>
+                                            </li>
+                                            {% if log.target_table == 'users' %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a href="{{ url_for('admin.edit_user', user_id=log.target_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-pencil me-2 text-crimson"></i> Edit User
+                                                </a>
+                                            </li>
+                                            {% elif log.target_table == 'resources' %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a href="{{ url_for('resources.detail', resource_id=log.target_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-eye me-2 text-primary"></i> View Resource
+                                                </a>
+                                            </li>
+                                            {% elif log.target_table == 'bookings' %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a href="{{ url_for('admin.booking_detail', booking_id=log.target_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-calendar-check me-2 text-primary"></i> View Booking
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -63,6 +279,160 @@
                 </div>
             </div>
         </div>
+
+        <!-- Log Details Modals (placed outside table to prevent display issues) -->
+        {% for log in logs %}
+        <div class="modal fade" id="logDetailsModal{{ log.log_id }}" tabindex="-1" aria-labelledby="logDetailsModalLabel{{ log.log_id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content" style="border-radius: 12px;">
+                    <div class="modal-header" style="border-bottom: 1px solid #dee2e6;">
+                        <h5 class="modal-title fw-bold" id="logDetailsModalLabel{{ log.log_id }}" style="color: #333;">
+                            <i class="bi bi-info-circle me-2 text-primary"></i>Log Details
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Log ID</label>
+                                <p class="mb-0" style="color: #333;">#{{ log.log_id }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Timestamp</label>
+                                <p class="mb-0" style="color: #333;">{{ log.timestamp|format_datetime_est('datetime') }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Admin</label>
+                                <p class="mb-0" style="color: #333;">
+                                    {{ log.admin_name or log.admin_email or 'Unknown' }}
+                                    {% if log.admin_email %}
+                                    <br><small class="text-muted">{{ log.admin_email }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Action</label>
+                                <p class="mb-0">
+                                    {% set action_class = 'action-system' %}
+                                    {% if 'user' in log.action %}
+                                        {% set action_class = 'action-user' %}
+                                    {% elif 'resource' in log.action %}
+                                        {% set action_class = 'action-resource' %}
+                                    {% elif 'booking' in log.action %}
+                                        {% set action_class = 'action-booking' %}
+                                    {% endif %}
+                                    <span class="badge rounded-pill {{ action_class }} action-badge">
+                                        {{ log.action|replace('_', ' ')|title }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Target Table</label>
+                                <p class="mb-0" style="color: #333;">{{ log.target_table|title }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Target ID</label>
+                                <p class="mb-0" style="color: #333;">#{{ log.target_id }}</p>
+                            </div>
+                            {% if log.target_name %}
+                            <div class="col-12">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Target Name</label>
+                                <p class="mb-0" style="color: #333;">
+                                    <strong>{{ log.target_name }}</strong>
+                                    {% if log.target_email %}
+                                    <br><small class="text-muted">{{ log.target_email }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
+                            {% if log.target_booking_info %}
+                            <div class="col-12">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Booking Information</label>
+                                <div class="bg-light p-3 rounded" style="border-radius: 8px;">
+                                    <p class="mb-2" style="color: #333;">
+                                        <strong>Start:</strong> {{ log.target_booking_info.start_datetime|format_datetime_est('datetime') }}
+                                    </p>
+                                    <p class="mb-2" style="color: #333;">
+                                        <strong>End:</strong> {{ log.target_booking_info.end_datetime|format_datetime_est('datetime') }}
+                                    </p>
+                                    <p class="mb-0" style="color: #333;">
+                                        <strong>Status:</strong> 
+                                        <span class="badge {% if log.target_booking_info.status == 'approved' %}bg-success{% elif log.target_booking_info.status == 'completed' %}bg-info{% elif log.target_booking_info.status == 'cancelled' %}bg-secondary{% else %}bg-secondary{% endif %}">
+                                            {{ log.target_booking_info.status|title }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="col-12">
+                                <label class="fw-semibold mb-1" style="color: #333; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Details</label>
+                                <div class="bg-light p-3 rounded" style="border-radius: 8px;">
+                                    <p class="mb-0" style="color: #333; white-space: pre-wrap;">{{ log.details or 'No details available' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+                        <button type="button" class="btn btn-outline-secondary px-4 py-2" data-bs-dismiss="modal" style="font-weight: 500;">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted" style="font-size: 0.875rem;">
+                Showing {{ (page - 1) * page_size + 1 }} to {{ [page * page_size, total]|min }} of {{ total }} logs
+            </div>
+            <nav aria-label="Logs pagination">
+                <ul class="pagination mb-0">
+                    {% if page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.logs', page=page-1, admin_id=admin_id_filter, action=action_filter, target_table=target_table_filter) }}" style="border-radius: 8px;">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link" style="border-radius: 8px;"><i class="bi bi-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                            {% if p == page %}
+                            <li class="page-item active">
+                                <span class="page-link" style="border-radius: 8px; background-color: var(--crimson); border-color: var(--crimson);">{{ p }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.logs', page=p, admin_id=admin_id_filter, action=action_filter, target_table=target_table_filter) }}" style="border-radius: 8px;">{{ p }}</a>
+                            </li>
+                            {% endif %}
+                        {% elif p == page - 3 or p == page + 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link" style="border-radius: 8px;">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.logs', page=page+1, admin_id=admin_id_filter, action=action_filter, target_table=target_table_filter) }}" style="border-radius: 8px;">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link" style="border-radius: 8px;"><i class="bi bi-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
         {% else %}
         <!-- Empty State -->
         <div class="card bg-cream border-0 shadow-sm">
@@ -71,11 +441,14 @@
                     <i class="bi bi-file-text" style="font-size: 4rem; color: #ccc;"></i>
                 </div>
                 <h4 class="mb-3 fw-semibold" style="color: #333;">No logs found</h4>
+                {% if admin_id_filter or action_filter or target_table_filter %}
+                <p class="text-muted mb-0">Try adjusting your filters.</p>
+                {% else %}
                 <p class="text-muted mb-0">Admin action logs will appear here.</p>
+                {% endif %}
             </div>
         </div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
-

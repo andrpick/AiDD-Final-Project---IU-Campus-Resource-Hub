@@ -35,6 +35,32 @@
         <!-- Page Title -->
         <h1 class="mb-4 fw-bold" style="font-size: 2.5rem; color: #333; line-height: 1.2;">My Bookings</h1>
 
+        <!-- Filter Tabs -->
+        <div class="mb-4">
+            <div class="d-flex flex-wrap gap-2" role="group">
+                <a href="{{ url_for('bookings.index') }}" 
+                   class="btn px-4 py-2 {% if not section_filter %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if not section_filter %}600{% else %}500{% endif %};">
+                    All
+                </a>
+                <a href="{{ url_for('bookings.index', section='upcoming') }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'upcoming' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'upcoming' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-calendar-check me-2"></i>Upcoming
+                </a>
+                <a href="{{ url_for('bookings.index', section='previous') }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'previous' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'previous' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-clock-history me-2"></i>Previous
+                </a>
+                <a href="{{ url_for('bookings.index', section='canceled') }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'canceled' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'canceled' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-x-circle me-2"></i>Canceled
+                </a>
+            </div>
+        </div>
+
         {% if upcoming_bookings %}
         <!-- Upcoming Bookings Section -->
         <div class="mb-5">
@@ -207,7 +233,11 @@
         {% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}
         <!-- No Bookings Message -->
         <div class="bg-white p-5 rounded-3 text-center" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            {% if section_filter %}
+            <p class="mb-0 text-muted" style="font-size: 1.1rem;">No {{ section_filter|title }} bookings found.</p>
+            {% else %}
             <p class="mb-0 text-muted" style="font-size: 1.1rem;">You have no bookings yet.</p>
+            {% endif %}
         </div>
         {% endif %}
     </div>

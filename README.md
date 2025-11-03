@@ -94,8 +94,9 @@ The database includes sample/starter data with a default admin account:
 - **Featured Resources**: Admin can feature resources for homepage display
 - **Admin Dashboard**: Comprehensive statistics, user management, resource management, booking management, and action logging
   - **User Management**: Full user editing capabilities (edit name, email, password, role, department, profile image, suspension status)
+  - **Resource Management**: Comprehensive filtering and management (filter by status, category, featured status, location, owner, and keyword search)
   - **Resource Statistics**: Detailed resource analytics with filtering and sorting options
-  - **UI Improvements**: Streamlined dropdown menus for admin actions
+  - **UI Improvements**: Streamlined dropdown menus for admin actions, table-based statistics display
 
 ## Technology Stack
 

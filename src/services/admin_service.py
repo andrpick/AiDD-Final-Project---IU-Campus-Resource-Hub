@@ -52,6 +52,15 @@ def get_statistics(category_filter=None, location_filter=None, featured_filter=N
         cursor.execute("SELECT COUNT(*) as count FROM reviews")
         total_reviews = cursor.fetchone()['count']
         
+        # Reviews by rating
+        cursor.execute("""
+            SELECT rating, COUNT(*) as count
+            FROM reviews
+            GROUP BY rating
+            ORDER BY rating DESC
+        """)
+        reviews_by_rating = {row['rating']: row['count'] for row in cursor.fetchall()}
+        
         # Active users in last 30 days (users with bookings or reviews)
         cursor.execute("""
             SELECT COUNT(DISTINCT user_id) as count
@@ -153,6 +162,7 @@ def get_statistics(category_filter=None, location_filter=None, featured_filter=N
             'bookings_by_status': bookings_by_status,
             'total_bookings': total_bookings,
             'total_reviews': total_reviews,
+            'reviews_by_rating': reviews_by_rating,
             'active_users_30_days': active_users,
             'popular_resources': popular_resources,
             'available_categories': available_categories,
@@ -221,7 +231,8 @@ def suspend_user(user_id, admin_id, reason):
         cursor.execute("""
             INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
             VALUES (?, 'suspend_user', 'users', ?, ?)
-        """, (admin_id, user_id, reason))
+        """, (admin_id, user_id, f"User suspended. Reason: {reason}"))
+        conn.commit()
     
     return {'success': True, 'data': {'user_id': user_id}}
 
@@ -243,6 +254,7 @@ def unsuspend_user(user_id, admin_id):
             INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
             VALUES (?, 'unsuspend_user', 'users', ?, 'User unsuspended')
         """, (admin_id, user_id))
+        conn.commit()
     
     return {'success': True, 'data': {'user_id': user_id}}
 
@@ -444,18 +456,22 @@ def update_user(user_id, admin_id, name=None, email=None, password=None, role=No
     
     return {'success': True, 'data': {'user_id': user_id}}
 
-def get_admin_logs(admin_id=None, action=None, limit=50, offset=0):
-    """Get admin action logs."""
+def get_admin_logs(admin_id=None, action=None, target_table=None, limit=50, offset=0):
+    """Get admin action logs with target names."""
     conditions = []
     values = []
     
     if admin_id:
-        conditions.append("admin_id = ?")
+        conditions.append("al.admin_id = ?")
         values.append(admin_id)
     
     if action:
-        conditions.append("action = ?")
+        conditions.append("al.action = ?")
         values.append(action)
+    
+    if target_table:
+        conditions.append("al.target_table = ?")
+        values.append(target_table)
     
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     
@@ -472,7 +488,40 @@ def get_admin_logs(admin_id=None, action=None, limit=50, offset=0):
         
         logs = [dict(row) for row in cursor.fetchall()]
         
-        cursor.execute(f"SELECT COUNT(*) FROM admin_logs WHERE {where_clause}", values)
+        # Enrich logs with target names
+        for log in logs:
+            target_id = log['target_id']
+            target_table_name = log['target_table']
+            
+            if target_table_name == 'users':
+                cursor.execute("SELECT name, email FROM users WHERE user_id = ?", (target_id,))
+                target_row = cursor.fetchone()
+                if target_row:
+                    log['target_name'] = target_row['name']
+                    log['target_email'] = target_row['email']
+            elif target_table_name == 'resources':
+                cursor.execute("SELECT title FROM resources WHERE resource_id = ?", (target_id,))
+                target_row = cursor.fetchone()
+                if target_row:
+                    log['target_name'] = target_row['title']
+            elif target_table_name == 'bookings':
+                # Get booking info and resource name
+                cursor.execute("""
+                    SELECT b.start_datetime, b.end_datetime, b.status, r.title as resource_title
+                    FROM bookings b
+                    LEFT JOIN resources r ON b.resource_id = r.resource_id
+                    WHERE b.booking_id = ?
+                """, (target_id,))
+                target_row = cursor.fetchone()
+                if target_row:
+                    log['target_name'] = target_row['resource_title'] or f"Booking #{target_id}"
+                    log['target_booking_info'] = {
+                        'start_datetime': target_row['start_datetime'],
+                        'end_datetime': target_row['end_datetime'],
+                        'status': target_row['status']
+                    }
+        
+        cursor.execute(f"SELECT COUNT(*) FROM admin_logs al WHERE {where_clause}", values)
         total = cursor.fetchone()[0]
     
     return {'success': True, 'data': {'logs': logs, 'total': total}}
