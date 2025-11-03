@@ -75,13 +75,20 @@
         {% endif %}
 
         <!-- Action Buttons Section -->
-        {% if current_user.is_authenticated and resource.owner_id and resource.owner_id != current_user.user_id %}
         <div class="mb-4">
-            <a href="{{ url_for('messages.new', receiver_id=resource.owner_id, resource_id=resource.resource_id) }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
-                <i class="bi bi-envelope me-2"></i>Message Owner
-            </a>
+            <div class="d-flex gap-2 flex-wrap">
+                {% if current_user.is_authenticated and (resource.owner_id == current_user.user_id or current_user.is_admin()) %}
+                <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" class="btn btn-outline-crimson px-4 py-2" style="font-weight: 500;">
+                    <i class="bi bi-pencil me-2"></i>Edit Resource
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and resource.owner_id and resource.owner_id != current_user.user_id %}
+                <a href="{{ url_for('messages.new', receiver_id=resource.owner_id, resource_id=resource.resource_id) }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                    <i class="bi bi-envelope me-2"></i>Message Owner
+                </a>
+                {% endif %}
+            </div>
         </div>
-        {% endif %}
 
         <!-- Request Booking Section -->
         {% include 'resources/detail_booking_section.html' %}

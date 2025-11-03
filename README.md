@@ -44,10 +44,12 @@ The application will be available at `http://localhost:5000`
 ## Default Admin Account
 
 The database includes sample/starter data with a default admin account:
-- **Email:** admin@example.com  
+- **Email:** admin@iu.edu  
 - **Password:** Admin123!
 
 **⚠️ IMPORTANT:** Change the default admin password immediately after first login in production!
+
+**Note:** The sample database may include additional test users with various email addresses. Check the User Management page after logging in to see all available accounts.
 
 ## Project Structure
 
@@ -72,7 +74,8 @@ The database includes sample/starter data with a default admin account:
 - **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, and capacity-based search
 - **Booking System**: 
   - Interactive month/day calendar view with drag-and-select time selection
-  - Automatic approval for available time slots
+  - Automatic approval for available time slots (no manual approval needed)
+  - Booking statuses: approved, cancelled, completed (simplified workflow)
   - Conflict detection and validation (prevents double-booking)
   - Calendar export to Google Calendar, Outlook, and iCal formats
   - Admin booking management with override capabilities
@@ -90,6 +93,9 @@ The database includes sample/starter data with a default admin account:
   - Supports queries for statistics, resource details, availability, comparisons, and recommendations
 - **Featured Resources**: Admin can feature resources for homepage display
 - **Admin Dashboard**: Comprehensive statistics, user management, resource management, booking management, and action logging
+  - **User Management**: Full user editing capabilities (edit name, email, password, role, department, profile image, suspension status)
+  - **Resource Statistics**: Detailed resource analytics with filtering and sorting options
+  - **UI Improvements**: Streamlined dropdown menus for admin actions
 
 ## Technology Stack
 

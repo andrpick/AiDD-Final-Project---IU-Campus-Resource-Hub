@@ -53,7 +53,7 @@
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Location</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Status</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Featured</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 200px;">Actions</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 80px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -86,37 +86,66 @@
                                     {% endif %}
                                 </td>
                                 <td style="padding: 1rem; vertical-align: middle;">
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        {% if resource.featured %}
-                                        <form method="POST" action="{{ url_for('admin.unfeature_resource', resource_id=resource.resource_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary px-3">
-                                                <i class="bi bi-star me-1"></i> Unfeature
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <form method="POST" action="{{ url_for('admin.feature_resource', resource_id=resource.resource_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-primary px-3">
-                                                <i class="bi bi-star-fill me-1"></i> Feature
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                        {% if resource.status == 'archived' %}
-                                        <form method="POST" action="{{ url_for('admin.unarchive_resource', resource_id=resource.resource_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-success px-3">
-                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Unarchive
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <form method="POST" action="{{ url_for('admin.archive_resource', resource_id=resource.resource_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-warning px-3" onclick="return confirm('Are you sure you want to archive this resource?')">
-                                                <i class="bi bi-archive me-1"></i> Archive
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
-                                           class="btn btn-sm btn-outline-crimson px-3">
-                                            <i class="bi bi-eye me-1"></i> View
-                                        </a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                id="actionsDropdown{{ resource.resource_id }}" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false"
+                                                style="border-radius: 8px;">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" 
+                                            aria-labelledby="actionsDropdown{{ resource.resource_id }}"
+                                            style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                            <li>
+                                                <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-eye me-2 text-primary"></i> View
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-pencil me-2 text-crimson"></i> Edit
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            {% if resource.featured %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.unfeature_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-star me-2 text-secondary"></i> Unfeature
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% else %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.feature_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-star-fill me-2 text-primary"></i> Feature
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                            {% if resource.status == 'archived' %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.unarchive_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-arrow-counterclockwise me-2 text-success"></i> Unarchive
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% else %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.archive_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item" 
+                                                            onclick="return confirm('Are you sure you want to archive this resource?')">
+                                                        <i class="bi bi-archive me-2 text-warning"></i> Archive
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
                                     </div>
                                 </td>
                             </tr>

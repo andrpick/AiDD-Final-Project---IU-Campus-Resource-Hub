@@ -16,20 +16,10 @@
                    style="border-radius: 8px; font-weight: {% if not status_filter %}600{% else %}500{% endif %};">
                     All
                 </a>
-                <a href="{{ url_for('bookings.index', status='pending') }}" 
-                   class="btn px-4 py-2 {% if status_filter == 'pending' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
-                   style="border-radius: 8px; font-weight: {% if status_filter == 'pending' %}600{% else %}500{% endif %};">
-                    Pending
-                </a>
                 <a href="{{ url_for('bookings.index', status='approved') }}" 
                    class="btn px-4 py-2 {% if status_filter == 'approved' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
                    style="border-radius: 8px; font-weight: {% if status_filter == 'approved' %}600{% else %}500{% endif %};">
                     Approved
-                </a>
-                <a href="{{ url_for('bookings.index', status='rejected') }}" 
-                   class="btn px-4 py-2 {% if status_filter == 'rejected' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
-                   style="border-radius: 8px; font-weight: {% if status_filter == 'rejected' %}600{% else %}500{% endif %};">
-                    Rejected
                 </a>
                 <a href="{{ url_for('bookings.index', status='cancelled') }}" 
                    class="btn px-4 py-2 {% if status_filter == 'cancelled' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
@@ -73,8 +63,7 @@
                         <td class="px-4 py-3">
                             <span class="badge px-3 py-2 rounded-pill fw-semibold 
                                 {% if booking.status == 'approved' %}bg-success
-                                {% elif booking.status == 'pending' %}bg-warning text-dark
-                                {% elif booking.status == 'rejected' %}bg-danger
+                                {% elif booking.status == 'cancelled' %}bg-secondary
                                 {% else %}bg-secondary{% endif %}" 
                                 style="font-size: 0.875rem;">
                                 {{ booking.status|title }}

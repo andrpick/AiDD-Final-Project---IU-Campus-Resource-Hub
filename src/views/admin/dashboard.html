@@ -91,7 +91,7 @@
         <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="card bg-cream border-0 shadow-sm h-100 hover-card">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center mb-3">
                             <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
                                  style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -99,8 +99,8 @@
                             </div>
                             <h5 class="card-title mb-0 fw-semibold" style="color: #333;">User Management</h5>
                         </div>
-                        <p class="card-text text-muted mb-3">Manage users, roles, and permissions.</p>
-                        <a href="{{ url_for('admin.users') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                        <p class="card-text text-muted mb-3 flex-grow-1">Manage users, roles, and permissions.</p>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-crimson px-4 py-2 mt-auto" style="font-weight: 500;">
                             <i class="bi bi-arrow-right me-2"></i> Manage Users
                         </a>
                     </div>
@@ -108,7 +108,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card bg-cream border-0 shadow-sm h-100 hover-card">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center mb-3">
                             <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
                                  style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -116,8 +116,8 @@
                             </div>
                             <h5 class="card-title mb-0 fw-semibold" style="color: #333;">Resource Management</h5>
                         </div>
-                        <p class="card-text text-muted mb-3">Manage resources and feature them on the homepage.</p>
-                        <a href="{{ url_for('admin.resources') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                        <p class="card-text text-muted mb-3 flex-grow-1">Manage resources and feature them on the homepage.</p>
+                        <a href="{{ url_for('admin.resources') }}" class="btn btn-crimson px-4 py-2 mt-auto" style="font-weight: 500;">
                             <i class="bi bi-arrow-right me-2"></i> Manage Resources
                         </a>
                     </div>
@@ -125,7 +125,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card bg-cream border-0 shadow-sm h-100 hover-card">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center mb-3">
                             <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
                                  style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -133,8 +133,8 @@
                             </div>
                             <h5 class="card-title mb-0 fw-semibold" style="color: #333;">Booking Management</h5>
                         </div>
-                        <p class="card-text text-muted mb-3">View and manage all bookings across the system.</p>
-                        <a href="{{ url_for('admin.bookings') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                        <p class="card-text text-muted mb-3 flex-grow-1">View and manage all bookings across the system.</p>
+                        <a href="{{ url_for('admin.bookings') }}" class="btn btn-crimson px-4 py-2 mt-auto" style="font-weight: 500;">
                             <i class="bi bi-arrow-right me-2"></i> Manage Bookings
                         </a>
                     </div>
@@ -142,7 +142,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card bg-cream border-0 shadow-sm h-100 hover-card">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center mb-3">
                             <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
                                  style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -150,8 +150,8 @@
                             </div>
                             <h5 class="card-title mb-0 fw-semibold" style="color: #333;">Admin Logs</h5>
                         </div>
-                        <p class="card-text text-muted mb-3">View admin action logs and audit trail.</p>
-                        <a href="{{ url_for('admin.logs') }}" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                        <p class="card-text text-muted mb-3 flex-grow-1">View admin action logs and audit trail.</p>
+                        <a href="{{ url_for('admin.logs') }}" class="btn btn-crimson px-4 py-2 mt-auto" style="font-weight: 500;">
                             <i class="bi bi-arrow-right me-2"></i> View Logs
                         </a>
                     </div>
@@ -159,34 +159,146 @@
             </div>
         </div>
 
-        <!-- Popular Resources -->
-        {% if stats.popular_resources %}
+        <!-- Resource Statistics -->
         <div class="card bg-cream border-0 shadow-sm">
             <div class="card-header bg-white border-0 py-3">
-                <h4 class="mb-0 fw-semibold" style="color: #333;">
-                    <i class="bi bi-trophy-fill text-crimson me-2"></i> Popular Resources
-                </h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0 fw-semibold" style="color: #333;">
+                        <i class="bi bi-bar-chart-fill text-crimson me-2"></i> Resource Statistics
+                    </h4>
+                </div>
+                
+                <!-- Filters and Sort -->
+                <form method="GET" action="{{ url_for('admin.dashboard') }}" class="mb-0" id="resourceStatsForm">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Category</label>
+                            <select class="form-select form-select-sm" name="category" style="border-radius: 8px;">
+                                <option value="">All Categories</option>
+                                {% if stats.available_categories %}
+                                {% for cat in stats.available_categories %}
+                                <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
+                                    {{ cat|replace('_', ' ')|title }}
+                                </option>
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Location</label>
+                            <select class="form-select form-select-sm" name="location" style="border-radius: 8px;">
+                                <option value="">All Locations</option>
+                                {% if stats.available_locations %}
+                                {% for loc in stats.available_locations %}
+                                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>
+                                    {{ loc }}
+                                </option>
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Featured</label>
+                            <select class="form-select form-select-sm" name="featured" style="border-radius: 8px;">
+                                <option value="">All Resources</option>
+                                <option value="1" {% if featured_filter == '1' %}selected{% endif %}>Featured Only</option>
+                                <option value="0" {% if featured_filter == '0' %}selected{% endif %}>Not Featured</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Sort By</label>
+                            <select class="form-select form-select-sm" name="sort_by" id="sort_by_select" style="border-radius: 8px;">
+                                <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Bookings</option>
+                                <option value="review_count" {% if sort_by == 'review_count' %}selected{% endif %}>Reviews</option>
+                                <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Rating</option>
+                                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                                <option value="category" {% if sort_by == 'category' %}selected{% endif %}>Category</option>
+                                <option value="location" {% if sort_by == 'location' %}selected{% endif %}>Location</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Order</label>
+                            <select class="form-select form-select-sm" name="sort_order" id="sort_order_select" style="border-radius: 8px;">
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-crimson btn-sm w-100 px-3 py-2" style="font-weight: 500; border-radius: 8px;">
+                                <i class="bi bi-funnel me-1"></i> Apply
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-12">
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm px-3 py-1" style="font-weight: 500; border-radius: 8px;">
+                                <i class="bi bi-x-circle me-1"></i> Clear Filters
+                            </a>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div class="card-body">
+            {% if stats.popular_resources and stats.popular_resources|length > 0 %}
+            <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th style="font-weight: 600; color: #333;">Resource</th>
-                                <th style="font-weight: 600; color: #333;" class="text-end">Bookings</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Resource</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Category</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Location</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Capacity</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Bookings</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Reviews</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Rating</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for resource in stats.popular_resources[:10] %}
+                            {% for resource in stats.popular_resources %}
                             <tr>
-                                <td>
+                                <td style="padding: 1rem; vertical-align: middle;">
                                     <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
-                                       class="text-decoration-none fw-semibold" style="color: var(--crimson);">
+                                       class="text-decoration-none fw-semibold" 
+                                       style="color: var(--crimson);">
                                         {{ resource.title }}
                                     </a>
                                 </td>
-                                <td class="text-end">
-                                    <span class="badge bg-crimson rounded-pill">{{ resource.booking_count }}</span>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge bg-secondary">{{ resource.category|replace('_', ' ')|title }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="text-muted">{{ resource.location }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.capacity %}
+                                    <span class="badge bg-info">{{ resource.capacity }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    <span class="fw-bold text-crimson">{{ resource.booking_count or 0 }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    <span class="fw-bold text-crimson">{{ resource.review_count or 0 }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.avg_rating %}
+                                    <span class="fw-bold text-crimson">{{ "%.1f"|format(resource.avg_rating) }}</span>
+                                    <i class="bi bi-star-fill text-warning ms-1"></i>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.featured %}
+                                    <span class="badge bg-primary rounded-pill">
+                                        <i class="bi bi-star-fill me-1"></i> Featured
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary rounded-pill">Regular</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -194,8 +306,17 @@
                     </table>
                 </div>
             </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="card-body text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                </div>
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No resources found</h5>
+                <p class="text-muted mb-0">Try adjusting your filters to see more results.</p>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </div>
 
@@ -207,6 +328,31 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
+
+/* Auto-submit form when sort options change */
+#sort_by_select,
+#sort_order_select {
+    cursor: pointer;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sortBySelect = document.getElementById('sort_by_select');
+    const sortOrderSelect = document.getElementById('sort_order_select');
+    const form = document.getElementById('resourceStatsForm');
+    
+    // Auto-submit when sort options change
+    if (sortBySelect && sortOrderSelect && form) {
+        sortBySelect.addEventListener('change', function() {
+            form.submit();
+        });
+        
+        sortOrderSelect.addEventListener('change', function() {
+            form.submit();
+        });
+    }
+});
+</script>
 {% endblock %}
 

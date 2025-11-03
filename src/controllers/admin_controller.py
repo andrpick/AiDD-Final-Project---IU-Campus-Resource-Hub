@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from src.services.admin_service import (
     get_statistics, list_users, suspend_user, unsuspend_user,
-    change_user_role, delete_user, get_admin_logs
+    change_user_role, delete_user, get_admin_logs, get_user, update_user
 )
 from src.services.resource_service import list_resources, update_resource, get_resource
 from src.services.booking_service import list_bookings, get_booking, update_booking
@@ -29,13 +29,40 @@ def admin_required(f):
 @admin_required
 def dashboard():
     """Admin dashboard."""
-    result = get_statistics()
+    # Get filter parameters for popular resources
+    category_filter = request.args.get('category', '').strip() or None
+    location_filter = request.args.get('location', '').strip() or None
+    featured_filter = request.args.get('featured', '').strip()
+    featured = None
+    if featured_filter == '1':
+        featured = True
+    elif featured_filter == '0':
+        featured = False
+    
+    # Get sort parameter
+    sort_by = request.args.get('sort_by', 'booking_count').strip()
+    sort_order = request.args.get('sort_order', 'desc').strip()
+    
+    result = get_statistics(category_filter=category_filter, location_filter=location_filter, 
+                           featured_filter=featured, sort_by=sort_by, sort_order=sort_order)
     
     if result['success']:
         stats = result['data']
-        return render_template('admin/dashboard.html', stats=stats)
+        return render_template('admin/dashboard.html', 
+                             stats=stats,
+                             category_filter=category_filter,
+                             location_filter=location_filter,
+                             featured_filter=featured_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
     else:
-        return render_template('admin/dashboard.html', stats={})
+        return render_template('admin/dashboard.html', 
+                             stats={},
+                             category_filter=None,
+                             location_filter=None,
+                             featured_filter=None,
+                             sort_by='booking_count',
+                             sort_order='desc')
 
 @admin_bp.route('/users')
 @login_required
@@ -147,6 +174,63 @@ def delete(user_id):
         flash(result['error'], 'error')
     
     return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(user_id):
+    """View and edit user details."""
+    if request.method == 'POST':
+        # Get form data
+        # Required fields - always sent
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        role = request.form.get('role', '').strip()
+        
+        # Optional fields
+        password = request.form.get('password', '').strip() or None  # None means don't change
+        department = request.form.get('department', '').strip()  # Empty string means clear
+        profile_image = request.form.get('profile_image', '').strip()  # Empty string means clear
+        
+        suspended_str = request.form.get('suspended', '').strip()
+        suspended = None
+        if suspended_str == '1':
+            suspended = True
+        elif suspended_str == '0':
+            suspended = False
+        suspended_reason = request.form.get('suspended_reason', '').strip() or None
+        
+        # Update user - always send required fields
+        # For optional fields: send empty string to clear, None to skip
+        result = update_user(
+            user_id=user_id,
+            admin_id=current_user.user_id,
+            name=name,
+            email=email,
+            password=password,
+            role=role,
+            department=department,  # Empty string will clear, non-empty will set
+            profile_image=profile_image,  # Empty string will clear, non-empty will set
+            suspended=suspended,
+            suspended_reason=suspended_reason
+        )
+        
+        if result['success']:
+            flash('User updated successfully.', 'success')
+            return redirect(url_for('admin.users'))
+        else:
+            flash(result['error'], 'error')
+            # Fall through to GET to show form with errors
+    
+    # GET request - show edit form
+    result = get_user(user_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(url_for('admin.users'))
+    
+    user = result['data']
+    return render_template('admin/user_edit.html', user=user)
 
 @admin_bp.route('/logs')
 @login_required
@@ -387,8 +471,12 @@ def update_booking_admin(booking_id):
     start_datetime_str = request.form.get('start_datetime', '').strip() or None
     end_datetime_str = request.form.get('end_datetime', '').strip() or None
     status = request.form.get('status', '').strip() or None
-    rejection_reason = request.form.get('rejection_reason', '').strip() or None
     skip_validation = request.form.get('skip_validation') == 'on'
+    
+    # Validate status
+    if status and status not in ['approved', 'cancelled', 'completed']:
+        flash('Invalid status.', 'error')
+        return redirect(url_for('admin.booking_detail', booking_id=booking_id))
     
     # Convert datetime-local input (EST/EDT) to UTC for storage
     start_datetime = None
@@ -421,7 +509,7 @@ def update_booking_admin(booking_id):
             return redirect(url_for('admin.booking_detail', booking_id=booking_id))
     
     result = update_booking(booking_id, start_datetime=start_datetime, end_datetime=end_datetime,
-                           status=status, rejection_reason=rejection_reason, skip_validation=skip_validation)
+                           status=status, skip_validation=skip_validation)
     
     if result['success']:
         # Log admin action

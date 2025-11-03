@@ -3,7 +3,7 @@ Admin service for user management and statistics.
 """
 from src.data_access.database import get_db_connection
 
-def get_statistics():
+def get_statistics(category_filter=None, location_filter=None, featured_filter=None, sort_by='booking_count', sort_order='desc'):
     """Get system statistics for admin dashboard."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -65,17 +65,84 @@ def get_statistics():
         """)
         active_users = cursor.fetchone()['count']
         
-        # Popular resources (most booked)
-        cursor.execute("""
-            SELECT r.resource_id, r.title, COUNT(b.booking_id) as booking_count
+        # Build filter conditions for popular resources
+        filter_conditions = ["r.status = 'published'"]
+        filter_values = []
+        
+        if category_filter:
+            filter_conditions.append("r.category = ?")
+            filter_values.append(category_filter)
+        
+        if location_filter:
+            filter_conditions.append("r.location LIKE ?")
+            filter_values.append(f"%{location_filter}%")
+        
+        if featured_filter is not None:
+            filter_conditions.append("r.featured = ?")
+            filter_values.append(1 if featured_filter else 0)
+        
+        where_clause = " AND ".join(filter_conditions)
+        
+        # Validate sort parameters
+        valid_sort_fields = ['booking_count', 'review_count', 'avg_rating', 'title', 'category', 'location']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'booking_count'
+        
+        if sort_order.lower() not in ['asc', 'desc']:
+            sort_order = 'desc'
+        
+        sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
+        
+        # Popular resources (most booked) with additional statistics and filters
+        query = f"""
+            SELECT 
+                r.resource_id, 
+                r.title, 
+                r.category,
+                r.location,
+                r.capacity,
+                r.featured,
+                COUNT(DISTINCT b.booking_id) as booking_count,
+                COUNT(DISTINCT rev.review_id) as review_count,
+                AVG(rev.rating) as avg_rating
             FROM resources r
-            LEFT JOIN bookings b ON r.resource_id = b.resource_id
-            WHERE r.status = 'published'
-            GROUP BY r.resource_id, r.title
-            ORDER BY booking_count DESC
+            LEFT JOIN bookings b ON r.resource_id = b.resource_id AND b.status = 'approved'
+            LEFT JOIN reviews rev ON r.resource_id = rev.resource_id
+            WHERE {where_clause}
+            GROUP BY r.resource_id, r.title, r.category, r.location, r.capacity, r.featured
+            ORDER BY {sort_by} {sort_direction}, booking_count DESC
             LIMIT 10
+        """
+        cursor.execute(query, filter_values)
+        popular_resources_raw = cursor.fetchall()
+        
+        # Process popular resources
+        popular_resources = []
+        for row in popular_resources_raw:
+            resource = dict(row)
+            # Handle rating
+            if resource.get('avg_rating'):
+                resource['avg_rating'] = float(resource['avg_rating'])
+            else:
+                resource['avg_rating'] = None
+            popular_resources.append(resource)
+        
+        # Get unique categories and locations for filter dropdowns
+        cursor.execute("""
+            SELECT DISTINCT category 
+            FROM resources 
+            WHERE status = 'published'
+            ORDER BY category
         """)
-        popular_resources = [dict(row) for row in cursor.fetchall()]
+        available_categories = [row['category'] for row in cursor.fetchall()]
+        
+        cursor.execute("""
+            SELECT DISTINCT location 
+            FROM resources 
+            WHERE status = 'published'
+            ORDER BY location
+        """)
+        available_locations = [row['location'] for row in cursor.fetchall()]
     
     return {
         'success': True,
@@ -87,7 +154,9 @@ def get_statistics():
             'total_bookings': total_bookings,
             'total_reviews': total_reviews,
             'active_users_30_days': active_users,
-            'popular_resources': popular_resources
+            'popular_resources': popular_resources,
+            'available_categories': available_categories,
+            'available_locations': available_locations
         }
     }
 
@@ -239,6 +308,139 @@ def delete_user(user_id, admin_id):
             INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
             VALUES (?, 'delete_user', 'users', ?, 'User deleted with cascade effects')
         """, (admin_id, user_id))
+    
+    return {'success': True, 'data': {'user_id': user_id}}
+
+def get_user(user_id):
+    """Get a single user by ID."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT user_id, name, email, role, department, profile_image, 
+                   created_at, suspended, suspended_reason, suspended_at
+            FROM users
+            WHERE user_id = ?
+        """, (user_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            return {'success': False, 'error': 'User not found'}
+        
+        return {'success': True, 'data': dict(row)}
+
+def update_user(user_id, admin_id, name=None, email=None, password=None, role=None, 
+                department=None, profile_image=None, suspended=None, suspended_reason=None):
+    """Update user information. Admin can update any field."""
+    import bcrypt
+    from src.services.auth_service import validate_email, validate_password, validate_name
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Check if user exists
+        cursor.execute("SELECT user_id, email FROM users WHERE user_id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+        
+        current_email = user['email']
+        changes = []
+        
+        # Build update query dynamically
+        updates = []
+        values = []
+        
+        if name is not None:
+            name_valid, name_msg = validate_name(name)
+            if not name_valid:
+                return {'success': False, 'error': name_msg}
+            updates.append("name = ?")
+            values.append(name)
+            changes.append(f"name: {name}")
+        
+        if email is not None and email != current_email:
+            if not validate_email(email):
+                return {'success': False, 'error': 'Invalid email format'}
+            # Check if new email already exists
+            cursor.execute("SELECT user_id FROM users WHERE email = ? AND user_id != ?", 
+                         (email.lower(), user_id))
+            if cursor.fetchone():
+                return {'success': False, 'error': 'Email already registered'}
+            updates.append("email = ?")
+            values.append(email.lower())
+            changes.append(f"email: {email.lower()}")
+        
+        if password is not None and password.strip():
+            password_valid, password_msg = validate_password(password)
+            if not password_valid:
+                return {'success': False, 'error': password_msg}
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
+            updates.append("password_hash = ?")
+            values.append(password_hash)
+            changes.append("password: [updated]")
+        elif password is not None and not password.strip():
+            # Empty password string means don't change password
+            pass
+        
+        if role is not None:
+            if role not in ['student', 'staff', 'admin']:
+                return {'success': False, 'error': 'Invalid role'}
+            # Prevent self-demotion
+            if user_id == admin_id and role != 'admin':
+                return {'success': False, 'error': 'Cannot remove your own admin role'}
+            updates.append("role = ?")
+            values.append(role)
+            changes.append(f"role: {role}")
+        
+        if department is not None:
+            # Allow empty string to clear department
+            if len(department) > 100:
+                return {'success': False, 'error': 'Department name too long (max 100 characters)'}
+            updates.append("department = ?")
+            values.append(department.strip() if department.strip() else None)
+            changes.append(f"department: {department or 'cleared'}")
+        
+        if profile_image is not None:
+            updates.append("profile_image = ?")
+            values.append(profile_image.strip() if profile_image.strip() else None)
+            changes.append(f"profile_image: {profile_image or 'cleared'}")
+        
+        if suspended is not None:
+            updates.append("suspended = ?")
+            values.append(1 if suspended else 0)
+            if suspended:
+                updates.append("suspended_at = CURRENT_TIMESTAMP")
+                if suspended_reason:
+                    updates.append("suspended_reason = ?")
+                    values.append(suspended_reason)
+                    changes.append(f"suspended: True (reason: {suspended_reason[:50]})")
+                else:
+                    changes.append("suspended: True")
+            else:
+                updates.append("suspended_reason = NULL")
+                updates.append("suspended_at = NULL")
+                changes.append("suspended: False")
+        
+        if not updates:
+            return {'success': False, 'error': 'No changes provided'}
+        
+        # Add user_id for WHERE clause
+        values.append(user_id)
+        
+        # Execute update
+        query = f"UPDATE users SET {', '.join(updates)} WHERE user_id = ?"
+        cursor.execute(query, values)
+        
+        if cursor.rowcount == 0:
+            return {'success': False, 'error': 'Failed to update user'}
+        
+        # Log action
+        details = f"Updated user fields: {', '.join(changes)}"
+        cursor.execute("""
+            INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+            VALUES (?, 'update_user', 'users', ?, ?)
+        """, (admin_id, user_id, details))
+        conn.commit()
     
     return {'success': True, 'data': {'user_id': user_id}}
 

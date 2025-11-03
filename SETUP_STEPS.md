@@ -56,8 +56,10 @@ The application is fully functional with all core features implemented:
    ```
    
    **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly. The default admin account credentials are:
-   - Email: `admin@example.com`
+   - Email: `admin@iu.edu`
    - Password: `Admin123!`
+   
+   Additional sample users may be included in the database with various email addresses. Check the User Management page after logging in to see all available accounts.
 
 ### 2. Test Basic Functionality
 1. **Run the application:**
@@ -103,7 +105,8 @@ The application includes the following implemented features:
    - Interactive month-view calendar for date selection
    - Day-view with drag-and-select time slot selection (8 AM - 10 PM)
    - Current time indicator on the current day
-   - Automatic approval for available slots (no conflicts)
+   - Automatic approval for available slots (no conflicts) - bookings are automatically approved when created
+   - Simplified booking workflow: bookings are either 'approved', 'cancelled', or 'completed' (no pending/rejected statuses)
    - Conflict detection prevents double-booking
    - Calendar export to Google Calendar, Outlook, and iCal formats
    - Admin booking management with override capabilities (modify/cancel any booking)
@@ -122,10 +125,19 @@ The application includes the following implemented features:
    - Calendar export (Google Calendar, Outlook, iCal)
 
 4. **Admin Features:**
-   - User management (suspend, change roles)
+   - **User Management**:
+     - Full user editing (edit name, email, password, role, department, profile image, suspension status)
+     - Suspend/unsuspend users with reason
+     - Change user roles (with self-demotion prevention)
+     - Delete users (with cascade effects)
+     - Streamlined dropdown menu interface for all user actions
    - Resource management and archiving
    - Booking management and override
-   - Statistics dashboard
+   - **Statistics Dashboard**:
+     - Resource Statistics section with detailed analytics (bookings, reviews, ratings)
+     - Filtering options (category, location, featured status)
+     - Sorting options (by bookings, reviews, rating, title, category, location)
+     - Table format display for easy comparison
    - Admin action logging
 
 5. **AI Concierge:**
@@ -163,10 +175,12 @@ The application includes the following implemented features:
    - Verify unread message count appears in navbar badge
 
 4. **Test admin features:**
+   - Edit users (change name, email, password, role, department, profile image, suspension status)
    - Suspend/unsuspend users
    - Change user roles
    - Archive/unarchive resources
    - View booking management
+   - Explore Resource Statistics with filtering and sorting
 
 ### 6. Testing Checklist
 
@@ -180,7 +194,7 @@ The application includes the following implemented features:
 - [x] Booking creation with month/day calendar view
 - [x] Drag-and-select time slot selection
 - [x] Booking conflict detection and prevention
-- [x] Automatic booking approval for available slots
+- [x] Automatic booking approval for available slots (simplified workflow - no pending/rejected statuses)
 - [x] Booking calendar export (Google Calendar, Outlook, iCal)
 - [x] Admin booking management and override
 - [x] Review submission (multiple reviews per user per resource)
@@ -225,9 +239,11 @@ The application includes the following implemented features:
 ## 🎯 Quick Reference
 
 ### Default Admin Account
-- **Email:** admin@example.com
+- **Email:** admin@iu.edu
 - **Password:** Admin123!
 - **⚠️ CHANGE THIS IN PRODUCTION!**
+
+**Note:** Additional sample users may be included in the database with various email addresses. You can view all users in the Admin Dashboard > User Management section.
 
 ### Key Files to Review/Edit
 - `app.py` - Main Flask application
@@ -266,6 +282,9 @@ The application includes the following implemented features:
 - ✅ AI Concierge uses Google Gemini API (with fallback to search-based responses)
 - ✅ Thread-based messaging with resource-specific threading
 - ✅ Read/unread message tracking with navbar notifications
+- ✅ Admin user editing functionality (full user profile management)
+- ✅ Simplified booking workflow (automatic approval, no pending/rejected statuses)
+- ✅ Enhanced Resource Statistics section with filtering and sorting
 
 ## 🧪 Testing
 

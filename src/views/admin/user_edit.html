@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Edit User - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Edit User</h1>
+                    <p class="text-muted mb-0">View and modify user details</p>
+                </div>
+                <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary px-4 py-2" style="font-weight: 500;">
+                    <i class="bi bi-arrow-left me-2"></i> Back to Users
+                </a>
+            </div>
+        </div>
+
+        <!-- User Details Card -->
+        <div class="card bg-cream border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('admin.edit_user', user_id=user.user_id) }}">
+                    <!-- User ID -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">User ID</label>
+                        <p class="mb-0" style="color: #333; font-size: 1rem;">#{{ user.user_id }}</p>
+                    </div>
+
+                    <!-- Name -->
+                    <div class="mb-4">
+                        <label for="name" class="form-label fw-semibold" style="color: #333;">
+                            Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               value="{{ user.name }}" 
+                               required
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ user.name }}</small>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-4">
+                        <label for="email" class="form-label fw-semibold" style="color: #333;">
+                            Email <span class="text-danger">*</span>
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email" 
+                               value="{{ user.email }}" 
+                               required
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ user.email }}</small>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-semibold" style="color: #333;">
+                            Password
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               placeholder="Leave empty to keep current password"
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Leave empty to keep current password. Must be at least 8 characters with uppercase, lowercase, number, and special character.</small>
+                    </div>
+
+                    <!-- Role -->
+                    <div class="mb-4">
+                        <label for="role" class="form-label fw-semibold" style="color: #333;">
+                            Role <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="role" name="role" required style="border-radius: 8px;">
+                            <option value="student" {% if user.role == 'student' %}selected{% endif %}>Student</option>
+                            <option value="staff" {% if user.role == 'staff' %}selected{% endif %}>Staff</option>
+                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                        </select>
+                        <small class="text-muted">Current: {{ user.role|title }}</small>
+                    </div>
+
+                    <!-- Department -->
+                    <div class="mb-4">
+                        <label for="department" class="form-label fw-semibold" style="color: #333;">
+                            Department
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="department" 
+                               name="department" 
+                               value="{{ user.department or '' }}" 
+                               placeholder="e.g., Computer Science, Engineering"
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ user.department or 'Not set' }}</small>
+                    </div>
+
+                    <!-- Profile Image -->
+                    <div class="mb-4">
+                        <label for="profile_image" class="form-label fw-semibold" style="color: #333;">
+                            Profile Image URL
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="profile_image" 
+                               name="profile_image" 
+                               value="{{ user.profile_image or '' }}" 
+                               placeholder="https://example.com/image.jpg"
+                               style="border-radius: 8px;">
+                        <small class="text-muted">Current: {{ user.profile_image or 'Not set' }}</small>
+                    </div>
+
+                    <!-- Suspended Status -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" style="color: #333;">Account Status</label>
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="radio" 
+                                   name="suspended" 
+                                   id="suspended_active" 
+                                   value="0" 
+                                   {% if not user.suspended %}checked{% endif %}>
+                            <label class="form-check-label" for="suspended_active">
+                                <span class="badge bg-success rounded-pill me-2">Active</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="radio" 
+                                   name="suspended" 
+                                   id="suspended_suspended" 
+                                   value="1" 
+                                   {% if user.suspended %}checked{% endif %}>
+                            <label class="form-check-label" for="suspended_suspended">
+                                <span class="badge bg-danger rounded-pill me-2">Suspended</span>
+                            </label>
+                        </div>
+                        <small class="text-muted">Current: {% if user.suspended %}Suspended{% else %}Active{% endif %}</small>
+                    </div>
+
+                    <!-- Suspension Reason -->
+                    <div class="mb-4" id="suspended_reason_wrapper" style="display: {% if user.suspended %}block{% else %}none{% endif %};">
+                        <label for="suspended_reason" class="form-label fw-semibold" style="color: #333;">
+                            Suspension Reason
+                        </label>
+                        <textarea class="form-control" 
+                                  id="suspended_reason" 
+                                  name="suspended_reason" 
+                                  rows="3" 
+                                  placeholder="Enter reason for suspension..."
+                                  style="border-radius: 8px;">{{ user.suspended_reason or '' }}</textarea>
+                        <small class="text-muted">Current: {{ user.suspended_reason or 'Not set' }}</small>
+                    </div>
+
+                    <!-- Created At (Read-only) -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Account Created</label>
+                        <p class="mb-0" style="color: #333; font-size: 1rem;">{{ user.created_at or 'Unknown' }}</p>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-crimson px-4 py-2" style="font-weight: 500;">
+                            <i class="bi bi-check-circle me-2"></i> Update User
+                        </button>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary px-4 py-2" style="font-weight: 500;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show/hide suspension reason field based on suspended status
+document.addEventListener('DOMContentLoaded', function() {
+    const suspendedActive = document.getElementById('suspended_active');
+    const suspendedSuspended = document.getElementById('suspended_suspended');
+    const suspendedReasonWrapper = document.getElementById('suspended_reason_wrapper');
+    
+    function toggleSuspendedReason() {
+        if (suspendedSuspended.checked) {
+            suspendedReasonWrapper.style.display = 'block';
+        } else {
+            suspendedReasonWrapper.style.display = 'none';
+        }
+    }
+    
+    suspendedActive.addEventListener('change', toggleSuspendedReason);
+    suspendedSuspended.addEventListener('change', toggleSuspendedReason);
+});
+</script>
+{% endblock %}
+

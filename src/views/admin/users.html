@@ -73,7 +73,7 @@
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Role</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Department</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Status</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 200px;">Actions</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 80px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -105,29 +105,58 @@
                                     {% endif %}
                                 </td>
                                 <td style="padding: 1rem; vertical-align: middle;">
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        {% if user.suspended %}
-                                        <form method="POST" action="{{ url_for('admin.unsuspend', user_id=user.user_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-success px-3">
-                                                <i class="bi bi-check-circle me-1"></i> Unsuspend
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <button type="button" class="btn btn-sm btn-outline-warning px-3" 
-                                                data-bs-toggle="modal" data-bs-target="#suspendModal{{ user.user_id }}">
-                                            <i class="bi bi-pause-circle me-1"></i> Suspend
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                id="actionsDropdown{{ user.user_id }}" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false"
+                                                style="border-radius: 8px;">
+                                            <i class="bi bi-three-dots-vertical"></i>
                                         </button>
-                                        {% endif %}
-                                        <button type="button" class="btn btn-sm btn-outline-primary px-3" 
-                                                data-bs-toggle="modal" data-bs-target="#roleModal{{ user.user_id }}">
-                                            <i class="bi bi-person-badge me-1"></i> Role
-                                        </button>
-                                        <form method="POST" action="{{ url_for('admin.delete', user_id=user.user_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger px-3" 
-                                                    onclick="return confirm('Are you sure? This will delete the user and cascade effects.')">
-                                                <i class="bi bi-trash me-1"></i> Delete
-                                            </button>
-                                        </form>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" 
+                                            aria-labelledby="actionsDropdown{{ user.user_id }}"
+                                            style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                            <li>
+                                                <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-pencil me-2 text-crimson"></i> Edit User
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            {% if user.suspended %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.unsuspend', user_id=user.user_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-check-circle me-2 text-success"></i> Unsuspend
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% else %}
+                                            <li>
+                                                <button type="button" class="dropdown-item" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#suspendModal{{ user.user_id }}">
+                                                    <i class="bi bi-pause-circle me-2 text-warning"></i> Suspend
+                                                </button>
+                                            </li>
+                                            {% endif %}
+                                            <li>
+                                                <button type="button" class="dropdown-item" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#roleModal{{ user.user_id }}">
+                                                    <i class="bi bi-person-badge me-2 text-primary"></i> Change Role
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete', user_id=user.user_id) }}" class="d-inline w-100">
+                                                    <button type="submit" class="dropdown-item text-danger" 
+                                                            onclick="return confirm('Are you sure? This will delete the user and cascade effects.')">
+                                                        <i class="bi bi-trash me-2"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </td>
                             </tr>

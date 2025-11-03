@@ -32,10 +32,11 @@ def check_conflicts(resource_id, start_datetime, end_datetime, exclude_booking_i
         end_dt = end_datetime
     
     # Standard overlap check: (existing_start < new_end AND existing_end > new_start)
+    # Only check approved bookings since bookings are auto-approved on creation
     query = """
         SELECT * FROM bookings
         WHERE resource_id = ?
-        AND status IN ('pending', 'approved')
+        AND status = 'approved'
         AND start_datetime < ? AND end_datetime > ?
     """
     params = [resource_id, end_dt.isoformat(), start_dt.isoformat()]
@@ -181,28 +182,17 @@ def get_booking(booking_id):
         return {'success': False, 'error': 'Booking not found'}
 
 def update_booking_status(booking_id, status, rejection_reason=None):
-    """Update booking status."""
-    if status not in ['pending', 'approved', 'rejected', 'cancelled', 'completed']:
+    """Update booking status. Valid statuses: approved, cancelled, completed."""
+    if status not in ['approved', 'cancelled', 'completed']:
         return {'success': False, 'error': 'Invalid status'}
-    
-    if status == 'rejected' and not rejection_reason:
-        return {'success': False, 'error': 'Rejection reason required'}
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        
-        if status == 'rejected':
-            cursor.execute("""
-                UPDATE bookings
-                SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE booking_id = ?
-            """, (status, rejection_reason, booking_id))
-        else:
-            cursor.execute("""
-                UPDATE bookings
-                SET status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE booking_id = ?
-            """, (status, booking_id))
+        cursor.execute("""
+            UPDATE bookings
+            SET status = ?, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE booking_id = ?
+        """, (status, booking_id))
         
         if cursor.rowcount == 0:
             return {'success': False, 'error': 'Booking not found'}
@@ -232,30 +222,18 @@ def update_booking(booking_id, start_datetime=None, end_datetime=None, status=No
         new_end = end_dt.isoformat()
     
     # Validate status
-    if new_status not in ['pending', 'approved', 'rejected', 'cancelled', 'completed']:
+    if new_status not in ['approved', 'cancelled', 'completed']:
         return {'success': False, 'error': 'Invalid status'}
-    
-    if new_status == 'rejected' and not rejection_reason:
-        return {'success': False, 'error': 'Rejection reason required'}
     
     # Update booking
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        
-        if new_status == 'rejected':
-            cursor.execute("""
-                UPDATE bookings
-                SET start_datetime = ?, end_datetime = ?, status = ?, 
-                    rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE booking_id = ?
-            """, (new_start, new_end, new_status, rejection_reason, booking_id))
-        else:
-            cursor.execute("""
-                UPDATE bookings
-                SET start_datetime = ?, end_datetime = ?, status = ?, 
-                    rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE booking_id = ?
-            """, (new_start, new_end, new_status, booking_id))
+        cursor.execute("""
+            UPDATE bookings
+            SET start_datetime = ?, end_datetime = ?, status = ?, 
+                rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE booking_id = ?
+        """, (new_start, new_end, new_status, booking_id))
         
         if cursor.rowcount == 0:
             return {'success': False, 'error': 'Booking not found'}

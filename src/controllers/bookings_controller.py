@@ -88,13 +88,7 @@ def create():
     result = create_booking(resource_id, current_user.user_id, start_datetime, end_datetime)
     
     if result['success']:
-        # Check if booking was auto-approved (status will be 'approved')
-        from src.services.booking_service import get_booking
-        booking_result = get_booking(result['data']['booking_id'])
-        if booking_result['success'] and booking_result['data']['status'] == 'approved':
-            flash('Booking approved automatically! The time slot is confirmed.', 'success')
-        else:
-            flash('Booking request submitted successfully.', 'success')
+        flash('Booking created successfully! The time slot is confirmed.', 'success')
         return redirect(url_for('bookings.detail', booking_id=result['data']['booking_id']))
     else:
         flash(result['error'], 'error')
@@ -131,91 +125,6 @@ def detail(booking_id):
     
     return render_template('bookings/detail.html', booking=booking, resource=resource)
 
-@bookings_bp.route('/<int:booking_id>/approve', methods=['POST'])
-@login_required
-def approve(booking_id):
-    """Approve a booking."""
-    result = get_booking(booking_id)
-    
-    if not result['success']:
-        flash(result['error'], 'error')
-        return redirect(url_for('bookings.index'))
-    
-    booking = result['data']
-    
-    # Permission check
-    resource_result = get_resource(booking['resource_id'])
-    if not resource_result['success']:
-        flash('Resource not found.', 'error')
-        return redirect(url_for('bookings.index'))
-    
-    resource = resource_result['data']
-    
-    if resource['owner_id'] != current_user.user_id and not current_user.is_staff():
-        flash('Unauthorized.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    if booking['status'] != 'pending':
-        flash('Only pending bookings can be approved.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    # Re-check conflicts
-    conflicts = check_conflicts(booking['resource_id'], booking['start_datetime'], booking['end_datetime'], booking_id)
-    if conflicts:
-        flash('Booking conflicts with existing bookings. Please review.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    result = update_booking_status(booking_id, 'approved')
-    
-    if result['success']:
-        flash('Booking approved successfully.', 'success')
-    else:
-        flash(result['error'], 'error')
-    
-    return redirect(url_for('bookings.detail', booking_id=booking_id))
-
-@bookings_bp.route('/<int:booking_id>/reject', methods=['POST'])
-@login_required
-def reject(booking_id):
-    """Reject a booking."""
-    result = get_booking(booking_id)
-    
-    if not result['success']:
-        flash(result['error'], 'error')
-        return redirect(url_for('bookings.index'))
-    
-    booking = result['data']
-    
-    # Permission check
-    resource_result = get_resource(booking['resource_id'])
-    if not resource_result['success']:
-        flash('Resource not found.', 'error')
-        return redirect(url_for('bookings.index'))
-    
-    resource = resource_result['data']
-    
-    if resource['owner_id'] != current_user.user_id and not current_user.is_staff():
-        flash('Unauthorized.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    if booking['status'] != 'pending':
-        flash('Only pending bookings can be rejected.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    rejection_reason = request.form.get('rejection_reason', '').strip()
-    if not rejection_reason:
-        flash('Rejection reason is required.', 'error')
-        return redirect(url_for('bookings.detail', booking_id=booking_id))
-    
-    result = update_booking_status(booking_id, 'rejected', rejection_reason)
-    
-    if result['success']:
-        flash('Booking rejected.', 'info')
-    else:
-        flash(result['error'], 'error')
-    
-    return redirect(url_for('bookings.detail', booking_id=booking_id))
-
 @bookings_bp.route('/<int:booking_id>/cancel', methods=['POST'])
 @login_required
 def cancel(booking_id):
@@ -233,8 +142,8 @@ def cancel(booking_id):
         flash('Unauthorized.', 'error')
         return redirect(url_for('bookings.detail', booking_id=booking_id))
     
-    if booking['status'] not in ['pending', 'approved']:
-        flash('Only pending or approved bookings can be cancelled.', 'error')
+    if booking['status'] != 'approved':
+        flash('Only approved bookings can be cancelled.', 'error')
         return redirect(url_for('bookings.detail', booking_id=booking_id))
     
     result = update_booking_status(booking_id, 'cancelled')

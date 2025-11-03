@@ -114,15 +114,12 @@ def detail(resource_id):
                 'minutes_from_8am': current_time_minutes - (8 * 60)
             }
     
-    # Get all bookings for the selected month (or day if selected)
+    # Fetch approved bookings for the resource schedule (bookings are auto-approved on creation)
     approved_bookings_result = list_bookings(resource_id=resource_id, status='approved', limit=500, offset=0)
-    pending_bookings_result = list_bookings(resource_id=resource_id, status='pending', limit=500, offset=0)
     
     all_bookings_raw = []
     if approved_bookings_result['success']:
         all_bookings_raw.extend(approved_bookings_result['data']['bookings'])
-    if pending_bookings_result['success']:
-        all_bookings_raw.extend(pending_bookings_result['data']['bookings'])
     
     # Process bookings for calendar display
     approved_bookings = []
@@ -384,7 +381,7 @@ def create():
 @resources_bp.route('/<int:resource_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(resource_id):
-    """Edit a resource."""
+    """Edit a resource. Owners can edit their own resources, admins can edit any resource."""
     result = get_resource(resource_id)
     
     if not result['success']:
@@ -393,7 +390,7 @@ def edit(resource_id):
     
     resource = result['data']
     
-    # Permission check
+    # Permission check: Owners can edit their own resources, admins can edit any resource
     if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
         flash('Unauthorized.', 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
@@ -490,7 +487,7 @@ def edit(resource_id):
 @resources_bp.route('/<int:resource_id>/publish', methods=['POST'])
 @login_required
 def publish(resource_id):
-    """Publish a draft resource."""
+    """Publish a draft resource. Owners can publish their own resources, admins can publish any resource."""
     result = get_resource(resource_id)
     
     if not result['success']:
@@ -499,7 +496,7 @@ def publish(resource_id):
     
     resource = result['data']
     
-    # Permission check
+    # Permission check: Owners can publish their own resources, admins can publish any resource
     if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
         flash('Unauthorized.', 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
