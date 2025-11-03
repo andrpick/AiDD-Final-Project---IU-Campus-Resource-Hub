@@ -199,6 +199,10 @@ a:hover {
     min-height: 120px;
 }
 
+.featured-resources-react-container[data-react-mounted="true"] [data-static-render] {
+    display: none;
+}
+
 .featured-resources-toolbar {
     background: #fff;
     border-radius: 0.75rem;

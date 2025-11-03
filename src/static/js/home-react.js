@@ -5,6 +5,8 @@
             return;
         }
 
+        const staticFallback = rootElement.querySelector('[data-static-render]');
+
         if (!(window.React && window.ReactDOM)) {
             console.warn('React is not available; skipping featured resources enhancement.');
             return;
@@ -371,6 +373,25 @@
             : null;
         const app = e(FeaturedResourcesApp, { resources, browseUrl });
 
+        const markMounted = () => {
+            rootElement.setAttribute('data-react-mounted', 'true');
+        };
+
+        if (root) {
+            root.render(app);
+            if (staticFallback) {
+                (window.requestAnimationFrame || window.setTimeout)(markMounted);
+            } else {
+                markMounted();
+            }
+        } else if (ReactDOM.render) {
+            ReactDOM.render(app, rootElement, () => {
+                if (staticFallback) {
+                    markMounted();
+                } else {
+                    markMounted();
+                }
+            });
         if (root) {
             root.render(app);
         } else if (ReactDOM.render) {
