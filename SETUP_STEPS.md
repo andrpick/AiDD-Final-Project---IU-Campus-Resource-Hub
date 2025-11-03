@@ -6,7 +6,7 @@ This document provides a simple checklist of steps to set up and use the applica
 
 The application is fully functional with all core features implemented:
 - ✅ Project folder structure
-- ✅ Database schema and initialization script
+- ✅ Database with sample/starter data included
 - ✅ All service layer files (business logic)
 - ✅ All controller files (Flask blueprints)
 - ✅ All template files (HTML views)
@@ -26,25 +26,38 @@ The application is fully functional with all core features implemented:
 ## 📋 Steps to Complete
 
 ### 1. Initial Setup
-1. **Install Python dependencies:**
+
+1. **Create a virtual environment:**
+   ```bash
+   # Windows PowerShell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   
+   # Windows Command Prompt
+   python -m venv .venv
+   .venv\Scripts\activate.bat
+   
+   # Linux/Mac
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+2. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Initialize the database:**
-   ```bash
-   python init_db.py
+3. **Create a `.env` file** in the project root:
    ```
-   This creates all tables and a default admin account:
-   - Email: `admin@example.com`
-   - Password: `Admin123!`
-
-3. **Create a `.env` file** (copy from `.env.example`):
-   ```bash
    SECRET_KEY=your-secret-key-change-this
    DATABASE_PATH=campus_resource_hub.db
    UPLOAD_FOLDER=uploads/
+   GOOGLE_GEMINI_API_KEY=your-api-key-here (optional, for AI Concierge)
    ```
+   
+   **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly. The default admin account credentials are:
+   - Email: `admin@example.com`
+   - Password: `Admin123!`
 
 ### 2. Test Basic Functionality
 1. **Run the application:**
@@ -54,32 +67,26 @@ The application is fully functional with all core features implemented:
 
 2. **Access the application:**
    - Open `http://localhost:5000` in your browser
-   - Try logging in with the admin account
+   - Try logging in with the admin account (included in sample data)
    - Register a new user account
+   - Explore the sample resources and bookings
    - Create a test resource
    - Make a test booking
 
 ### 3. Environment Setup
 
-#### A. Environment Variables
-Create a `.env` file in the project root:
-```
-SECRET_KEY=your-secret-key-change-this-in-production
-DATABASE_PATH=campus_resource_hub.db
-UPLOAD_FOLDER=uploads/
-GOOGLE_GEMINI_API_KEY=your-api-key-here (optional, for AI Concierge)
-```
-
-#### B. AI Concierge Setup (Optional)
+#### A. AI Concierge Setup (Optional)
 The AI Concierge uses Google Gemini for natural language resource queries:
 1. Get a Google Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Add it to your `.env` file as `GOOGLE_GEMINI_API_KEY`
 3. The chatbot will use a fallback search-based response if no API key is provided
 
-#### C. Database Migration Notes
+#### B. Database Notes
+- The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data
+- The database includes sample resources, users, bookings, and other data to help you get started
 - All database migrations have been completed
 - Migration scripts are archived in the `archive/` folder for reference
-- The `init_db.py` script creates the database with the current schema
+- The `init_db.py` script is available if you need to recreate the database from scratch
 
 ### 4. Key Features Overview
 
@@ -232,13 +239,16 @@ The application includes the following implemented features:
 ### Common Issues & Solutions
 
 **Issue:** Database errors on first run
-- **Solution:** Run `python init_db.py` first
+- **Solution:** Ensure the `campus_resource_hub.db` file exists in the project root. If it's missing, you can recreate it by running `python init_db.py`
+
+**Issue:** Virtual environment not activating
+- **Solution:** On Windows, you may need to run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` in PowerShell before activating the virtual environment
 
 **Issue:** Images not displaying
-- **Solution:** Add image upload functionality (see step 3A)
+- **Solution:** Ensure the `uploads/` folder exists and has proper permissions
 
 **Issue:** Admin modals not working
-- **Solution:** Implement individual modals (see step 3B)
+- **Solution:** Ensure Bootstrap JavaScript is loaded correctly
 
 **Issue:** Booking conflicts not detected
 - **Solution:** Check `src/services/booking_service.py` conflict detection logic
@@ -249,6 +259,7 @@ The application includes the following implemented features:
 - ✅ All 52 tests passing (100% pass rate)
 - ✅ Templates use Bootstrap 5 with Indiana University colors (crimson #990000, cream #EEEDEB)
 - ✅ Database uses SQLite (easy to switch to PostgreSQL later)
+- ✅ Database is included with sample/starter data - no initialization needed
 - ✅ All validation and business logic is complete
 - ✅ Migration scripts and outdated documentation archived in `archive/` folder
 - ✅ Calendar export supports Google Calendar, Outlook, and iCal formats
@@ -318,7 +329,7 @@ The `archive/` folder contains migration scripts and outdated documentation:
   - `tests/FAILING_TESTS_ANALYSIS.md` - Historical test analysis (all tests now pass)
   - `ARCHIVE_REVIEW.md` - Archive review document
 
-These files are kept for reference but are no longer needed as `init_db.py` creates the database with the current schema and all features are complete.
+These files are kept for reference but are no longer needed as the database is included with the project. The `init_db.py` script is available if you need to recreate the database from scratch.
 
 ---
 
