@@ -392,6 +392,10 @@
                     markMounted();
                 }
             });
+        if (root) {
+            root.render(app);
+        } else if (ReactDOM.render) {
+            ReactDOM.render(app, rootElement);
         }
     }
 
