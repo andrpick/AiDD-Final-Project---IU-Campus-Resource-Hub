@@ -34,11 +34,13 @@ def main():
         pytest_args.extend([
             '--cov=src',
             '--cov-report=term-missing',
-            '--cov-report=html:htmlcov',
+            '--cov-report=html:htmlcov',  # Coverage reports will be generated in htmlcov/ (gitignored)
         ])
         print("Running tests with coverage...")
+        print("Note: Coverage reports will be generated in htmlcov/ directory (gitignored)")
     except ImportError:
         print("Running tests (coverage not available)...")
+        print("Install pytest-cov to enable coverage reporting: pip install pytest-cov")
     
     # Run pytest
     print(f"Running tests from: {tests_dir}")

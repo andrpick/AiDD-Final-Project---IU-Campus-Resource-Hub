@@ -113,7 +113,7 @@
 
             const card = e(
                 'div',
-                { className: `card bg-cream h-100${view === 'list' ? ' flex-row' : ''}` },
+                { className: `card bg-white h-100${view === 'list' ? ' flex-row' : ''}` },
                 [
                     e('div', { className: wrapperClasses }, imageElement),
                     e(
@@ -147,7 +147,7 @@
                         unique.add(resource.category);
                     }
                 });
-                return Array.from(unique).sort((a, b) => formatCategory(a).localeCompare(formatCategory(b));
+                return Array.from(unique).sort((a, b) => formatCategory(a).localeCompare(formatCategory(b)));
             }, [resources]);
 
             const filteredResources = React.useMemo(() => {
@@ -392,10 +392,6 @@
                     markMounted();
                 }
             });
-        if (root) {
-            root.render(app);
-        } else if (ReactDOM.render) {
-            ReactDOM.render(app, rootElement);
         }
     }
 

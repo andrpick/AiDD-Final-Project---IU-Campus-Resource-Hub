@@ -56,12 +56,14 @@ The database includes sample/starter data with a default admin account:
   - `json_utils.py` - JSON parsing utilities
   - `html_utils.py` - HTML sanitization utilities
   - `decorators.py` - Common decorators
+  - `controller_helpers.py` - Reusable controller helper functions (permission checks, image handling)
+  - `query_builder.py` - Fluent SQL query builder for dynamic queries
 - `src/views/` - Jinja2 templates
 - `src/static/` - Static files (CSS, JS, images)
-- `tests/` - Test suite (52 tests, 100% passing)
+- `tests/` - Test suite (139 tests, 100% passing)
 - `uploads/` - User-uploaded files
 - `logs/` - Application logs (auto-generated)
-- `archive/` - Archived migration scripts and outdated documentation
+- `archive/` - Archived migration scripts, outdated documentation, and generated artifacts
 
 ## Features
 
@@ -107,12 +109,12 @@ The database includes sample/starter data with a default admin account:
   - Custom utility modules for datetime, JSON, HTML processing
 - **Configuration**: Environment variable-based configuration system
 - **Logging**: Structured logging with file rotation
-- **Styling**: Custom CSS with Indiana University branding (Crimson #990000, Cream #EEEDEB)
+- **Styling**: Custom CSS with Indiana University branding (Crimson #990000, White)
 
 ## Testing
 
-The application includes a comprehensive test suite with 52 tests covering:
-- Unit tests for booking logic and data access
+The application includes a comprehensive test suite with 139 tests covering:
+- Unit tests for booking logic, data access layer, controller helpers, and query builder
 - Integration tests for authentication and booking flows
 - End-to-end tests for complete user workflows
 - Security tests for SQL injection and XSS prevention
@@ -132,7 +134,18 @@ python -m pytest tests/test_booking_service.py -v
 python -m pytest tests/ --cov=src --cov-report=html
 ```
 
-**Current Status:** ✅ All 52 tests passing (100% pass rate)
+**Current Status:** ✅ All 139 tests passing (100% pass rate)
+
+## Code Quality & Refactoring
+
+The codebase has been refactored to improve maintainability and reduce duplication:
+
+- **Controller Helpers** (`src/utils/controller_helpers.py`): Centralized functions for permission checking, image upload handling, and service result processing
+- **Query Builder** (`src/utils/query_builder.py`): Fluent API for building dynamic SQL queries programmatically
+- **Reduced Code Duplication**: Image upload logic consolidated from ~50 duplicated lines to reusable functions
+- **Standardized Patterns**: Consistent permission checks and error handling across controllers
+
+For detailed migration guides and examples, see the refactoring documentation in `archive/REFACTORING_SUMMARY.md`.
 
 ## Environment Variables
 

@@ -1,8 +1,7 @@
 /* Indiana University Color Scheme */
 :root {
     --crimson: #990000;
-    --cream: #EEEDEB;
-    --cream-alt: #F0EAD6;
+    --white: #FFFFFF;
 }
 
 /* Global Font Family - Matching Navbar */
@@ -32,8 +31,8 @@ label, .nav-link, .navbar-brand, .card-title, .card-text,
     color: var(--crimson) !important;
 }
 
-.bg-cream {
-    background-color: var(--cream) !important;
+.bg-white {
+    background-color: var(--white) !important;
 }
 
 /* Resource Image Display */
@@ -132,7 +131,51 @@ header .navbar {
 /* Card Styling */
 .card {
     border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+/* Management Card Style - For action-oriented cards with icons */
+.management-card {
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.management-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.management-card-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    background-color: var(--crimson);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.management-card-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.management-card-text {
+    color: #6c757d;
+}
+
+.management-card-button {
+    font-weight: 500;
+    border-radius: 8px;
 }
 
 /* Form Styling */
@@ -182,16 +225,6 @@ a:hover {
 
 .input-group-lg .btn {
     border-radius: 0 8px 8px 0;
-}
-
-/* Card improvements */
-.card {
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* Chatbot Widget Styles */
@@ -288,12 +321,12 @@ a:hover {
 .resource-card {
     background-color: white;
     border: 1px solid #dee2e6;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .resource-card:hover {
     transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     border-color: var(--crimson);
 }
 

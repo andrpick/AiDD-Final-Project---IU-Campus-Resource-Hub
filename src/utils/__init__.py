@@ -31,6 +31,16 @@ from .exceptions import (
     AuthenticationError
 )
 from .decorators import admin_required, owner_or_admin_required
+from .controller_helpers import (
+    check_resource_permission,
+    handle_service_result,
+    allowed_image_file,
+    save_uploaded_images,
+    delete_image_file,
+    parse_existing_images,
+    combine_images
+)
+from .query_builder import QueryBuilder
 
 __all__ = [
     # Datetime utilities
@@ -64,5 +74,15 @@ __all__ = [
     # Decorators
     'admin_required',
     'owner_or_admin_required',
+    # Controller helpers
+    'check_resource_permission',
+    'handle_service_result',
+    'allowed_image_file',
+    'save_uploaded_images',
+    'delete_image_file',
+    'parse_existing_images',
+    'combine_images',
+    # Query builder
+    'QueryBuilder',
 ]
 

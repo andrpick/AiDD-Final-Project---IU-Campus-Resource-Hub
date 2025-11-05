@@ -303,8 +303,8 @@ The application includes the following implemented features:
 ## 📝 Notes
 
 - ✅ All core functionality is fully implemented
-- ✅ All 52 tests passing (100% pass rate)
-- ✅ Templates use Bootstrap 5 with Indiana University colors (crimson #990000, cream #EEEDEB)
+- ✅ All 139 tests passing (100% pass rate)
+- ✅ Templates use Bootstrap 5 with Indiana University colors (crimson #990000, white)
 - ✅ Database uses SQLite (easy to switch to PostgreSQL later)
 - ✅ Database is included with sample/starter data - no initialization needed
 - ✅ All validation and business logic is complete
@@ -324,8 +324,8 @@ The application includes the following implemented features:
 The application includes a comprehensive test suite:
 
 **Test Coverage:**
-- ✅ 52 tests total (100% passing)
-- ✅ Unit tests: Booking logic, data access layer, validation
+- ✅ 139 tests total (100% passing)
+- ✅ Unit tests: Booking logic, data access layer, controller helpers, query builder, validation
 - ✅ Integration tests: Authentication flows, booking workflows
 - ✅ End-to-end tests: Complete user journeys (search → book → verify)
 - ✅ Security tests: SQL injection prevention, XSS protection, input sanitization
@@ -357,13 +357,15 @@ python -m pytest tests/ --cov=src --cov-report=html
 - `tests/test_auth_integration.py` - Authentication integration tests (8 tests)
 - `tests/test_app_integration.py` - Application integration tests (2 tests)
 - `tests/test_security.py` - Security tests (8 tests)
+- `tests/test_controller_helpers.py` - Controller helper utilities tests (37 tests)
+- `tests/test_query_builder.py` - Query builder utility tests (50 tests)
 - `tests/ai_eval/test_ai_concierge.py` - AI Concierge tests (2 tests)
 
-**Current Status:** ✅ All 52 tests passing
+**Current Status:** ✅ All 139 tests passing
 
 ## 🔧 Archive Folder
 
-The `archive/` folder contains migration scripts and outdated documentation:
+The `archive/` folder contains migration scripts, outdated documentation, and generated artifacts:
 - **Migration scripts** (6 files):
   - `migrate_remove_capacity_limit.py` - Removed 500 capacity limit
   - `migrate_add_featured.py` - Added featured column to resources
@@ -379,9 +381,15 @@ The `archive/` folder contains migration scripts and outdated documentation:
 - **Outdated documentation:**
   - `MISSING_COMPONENTS.md` - Outdated component tracking
   - `tests/FAILING_TESTS_ANALYSIS.md` - Historical test analysis (all tests now pass)
-  - `ARCHIVE_REVIEW.md` - Archive review document
+  - `CODEBASE_REVIEW_COMPLETE.md` - Historical refactoring summary (archived - see README.md and SETUP_STEPS.md for current info)
+  - `REFACTORING_SUMMARY.md` - Refactoring summary (archived - see README.md Code Quality section for current info)
+  - `ERROR_HANDLING_REFACTORING.md` - Error handling implementation reference
+  - `ENVIRONMENT_VARIABLES_IMPLEMENTATION.md` - Environment variables reference
+- **Generated artifacts:**
+  - `htmlcov/` - Test coverage reports (31 files, can be regenerated)
+  - `docs_context_backup/` - Empty directory structure (unused)
 
-These files are kept for reference but are no longer needed as the database is included with the project. The `init_db.py` script is available if you need to recreate the database from scratch.
+See `archive/ARCHIVE_REVIEW.md` for complete documentation of archived items. These files are kept for reference but are no longer needed as the database is included with the project. The `init_db.py` script is available if you need to recreate the database from scratch.
 
 ## 🆕 Recent Improvements
 
@@ -391,6 +399,10 @@ These files are kept for reference but are no longer needed as the database is i
 - ✅ **Configuration System**: Environment variable-based configuration with validation (`src/utils/config.py`)
 - ✅ **Calendar Service**: Extracted calendar processing logic into dedicated service (`src/services/calendar_service.py`)
 - ✅ **Logging**: Production-ready logging with file rotation and error tracking (`src/utils/logging_config.py`)
+- ✅ **Controller Helpers** (`src/utils/controller_helpers.py`): Reusable functions for permission checks, image upload handling, and service result processing
+- ✅ **Query Builder** (`src/utils/query_builder.py`): Fluent API for building dynamic SQL queries programmatically
+- ✅ **Reduced Code Duplication**: Image upload logic consolidated from ~50 duplicated lines to reusable functions
+- ✅ **Standardized Patterns**: Consistent permission checks and error handling across controllers
 
 ### New Features Added
 - ✅ **Centralized Configuration**: `src/utils/config.py` for all environment variables
@@ -403,8 +415,9 @@ These files are kept for reference but are no longer needed as the database is i
 ### Documentation Updates
 - ✅ **Environment Variables**: See `.env.example` and README.md Environment Variables section
 - ✅ **Error Handling**: See `archive/ERROR_HANDLING_REFACTORING.md` (reference documentation)
-- ✅ **Refactoring Summary**: See `archive/CODEBASE_REVIEW_COMPLETE.md` (reference documentation)
-- ✅ **README**: Updated with comprehensive environment variable documentation
+- ✅ **Refactoring Summary**: See README.md Code Quality & Refactoring section and `archive/REFACTORING_SUMMARY.md` (reference documentation)
+- ✅ **README**: Updated with comprehensive environment variable documentation and code quality improvements
+- ✅ **Archive Review**: See `archive/ARCHIVE_REVIEW.md` for complete list of archived files and directories
 
 ---
 

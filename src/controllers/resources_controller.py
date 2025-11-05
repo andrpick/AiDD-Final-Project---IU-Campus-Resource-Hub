@@ -7,19 +7,19 @@ from src.services.resource_service import create_resource, get_resource, update_
 from src.services.review_service import get_resource_reviews
 from src.services.booking_service import list_bookings
 from src.services.calendar_service import prepare_calendar_data
-from werkzeug.utils import secure_filename
+from src.utils.controller_helpers import (
+    check_resource_permission,
+    handle_service_result,
+    save_uploaded_images,
+    delete_image_file,
+    parse_existing_images,
+    combine_images
+)
 from datetime import datetime
 import os
-import uuid
 import json
 
 resources_bp = Blueprint('resources', __name__, url_prefix='/resources')
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-def allowed_file(filename):
-    """Check if file extension is allowed."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @resources_bp.route('/')
 def index():
@@ -125,26 +125,9 @@ def create():
         status = request.form.get('status', 'draft').strip()
         
         # Handle multiple image uploads
-        images = []
-        # Get all files with name 'image' (support multiple)
         uploaded_files = request.files.getlist('image')
         upload_folder = current_app.config['UPLOAD_FOLDER']
-        resource_uploads = os.path.join(upload_folder, 'resources')
-        os.makedirs(resource_uploads, exist_ok=True)
-        
-        for file in uploaded_files:
-            if file and file.filename != '' and allowed_file(file.filename):
-                # Generate unique filename
-                filename = secure_filename(file.filename)
-                ext = filename.rsplit('.', 1)[1].lower()
-                unique_filename = f"{uuid.uuid4().hex}.{ext}"
-                
-                # Save file
-                file_path = os.path.join(resource_uploads, unique_filename)
-                file.save(file_path)
-                
-                # Store relative path for database
-                images.append(f"resources/{unique_filename}")
+        images = save_uploaded_images(uploaded_files, upload_folder, subfolder='resources')
         
         # Handle availability_rules (placeholder)
         availability_rules = request.form.get('availability_rules')
@@ -182,9 +165,12 @@ def edit(resource_id):
     resource = result['data']
     
     # Permission check: Owners can edit their own resources, admins can edit any resource
-    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
-        flash('Unauthorized.', 'error')
-        return redirect(url_for('resources.detail', resource_id=resource_id))
+    has_permission, error_response = check_resource_permission(
+        resource['owner_id'],
+        'Unauthorized.'
+    )
+    if not has_permission:
+        return error_response or redirect(url_for('resources.detail', resource_id=resource_id))
     
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -196,9 +182,13 @@ def edit(resource_id):
         status = request.form.get('status', '').strip()
         
         # Owners can archive their own resources, admins can archive any resource
-        if status == 'archived' and resource['owner_id'] != current_user.user_id and not current_user.is_admin():
-            flash('Only resource owners and administrators can archive resources.', 'error')
-            return redirect(url_for('resources.edit', resource_id=resource_id))
+        if status == 'archived':
+            has_permission, error_response = check_resource_permission(
+                resource['owner_id'],
+                'Only resource owners and administrators can archive resources.'
+            )
+            if not has_permission:
+                return error_response or redirect(url_for('resources.edit', resource_id=resource_id))
         
         updates = {
             'title': title,
@@ -210,60 +200,27 @@ def edit(resource_id):
         }
         
         # Handle multiple image uploads and removals
-        existing_images = resource.get('images', [])
-        if not isinstance(existing_images, list):
-            try:
-                existing_images = json.loads(existing_images) if existing_images else []
-            except:
-                existing_images = []
+        existing_images = parse_existing_images(resource.get('images'))
         
         # Handle image removal (admin only)
-        images_removed = False
+        removed_images = []
         if current_user.is_admin():
             remove_images = request.form.getlist('remove_images')
             if remove_images:
-                images_removed = True
-                # Filter out images to be removed
-                existing_images = [img for img in existing_images if img not in remove_images]
-                
+                removed_images = remove_images
                 # Delete the actual image files from the server
                 upload_folder = current_app.config['UPLOAD_FOLDER']
                 for image_path in remove_images:
-                    try:
-                        full_path = os.path.join(upload_folder, image_path)
-                        if os.path.exists(full_path):
-                            os.remove(full_path)
-                    except Exception as e:
-                        # Log error but continue
-                        print(f"Error deleting image {image_path}: {e}")
+                    delete_image_file(image_path, upload_folder)
         
         # Get all new uploaded files
         uploaded_files = request.files.getlist('image')
         upload_folder = current_app.config['UPLOAD_FOLDER']
-        resource_uploads = os.path.join(upload_folder, 'resources')
-        os.makedirs(resource_uploads, exist_ok=True)
-        
-        new_images = []
-        for file in uploaded_files:
-            if file and file.filename != '' and allowed_file(file.filename):
-                # Generate unique filename
-                filename = secure_filename(file.filename)
-                ext = filename.rsplit('.', 1)[1].lower()
-                unique_filename = f"{uuid.uuid4().hex}.{ext}"
-                
-                # Save file
-                file_path = os.path.join(resource_uploads, unique_filename)
-                file.save(file_path)
-                
-                # Add to images list
-                new_images.append(f"resources/{unique_filename}")
+        new_images = save_uploaded_images(uploaded_files, upload_folder, subfolder='resources')
         
         # Combine existing (after removal) and new images
-        if new_images:
-            updates['images'] = existing_images + new_images
-        elif images_removed:
-            # Update images list even if no new images, to reflect removals
-            updates['images'] = existing_images
+        if new_images or removed_images:
+            updates['images'] = combine_images(existing_images, new_images, removed_images)
         
         result = update_resource(resource_id, **updates)
         
@@ -288,9 +245,12 @@ def publish(resource_id):
     resource = result['data']
     
     # Permission check: Owners can publish their own resources, admins can publish any resource
-    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
-        flash('Unauthorized.', 'error')
-        return redirect(url_for('resources.detail', resource_id=resource_id))
+    has_permission, error_response = check_resource_permission(
+        resource['owner_id'],
+        'Only resource owners and administrators can publish resources.'
+    )
+    if not has_permission:
+        return error_response or redirect(url_for('resources.detail', resource_id=resource_id))
     
     # Check if resource is already published
     if resource['status'] == 'published':
@@ -319,9 +279,12 @@ def archive(resource_id):
     resource = result['data']
     
     # Permission check: Owners can archive their own resources, admins can archive any resource
-    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
-        flash('Only resource owners and administrators can archive resources.', 'error')
-        return redirect(url_for('resources.detail', resource_id=resource_id))
+    has_permission, error_response = check_resource_permission(
+        resource['owner_id'],
+        'Only resource owners and administrators can archive resources.'
+    )
+    if not has_permission:
+        return error_response or redirect(url_for('resources.detail', resource_id=resource_id))
     
     result = delete_resource(resource_id)
     
@@ -345,9 +308,12 @@ def unarchive(resource_id):
     resource = result['data']
     
     # Permission check: Owners can unarchive their own resources, admins can unarchive any resource
-    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
-        flash('Only resource owners and administrators can unarchive resources.', 'error')
-        return redirect(url_for('resources.detail', resource_id=resource_id))
+    has_permission, error_response = check_resource_permission(
+        resource['owner_id'],
+        'Only resource owners and administrators can unarchive resources.'
+    )
+    if not has_permission:
+        return error_response or redirect(url_for('resources.detail', resource_id=resource_id))
     
     if resource['status'] != 'archived':
         flash('Resource is not archived.', 'error')

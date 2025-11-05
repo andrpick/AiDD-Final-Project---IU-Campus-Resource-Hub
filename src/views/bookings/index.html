@@ -232,12 +232,19 @@
 
         {% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}
         <!-- No Bookings Message -->
-        <div class="bg-white p-5 rounded-3 text-center" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            {% if section_filter %}
-            <p class="mb-0 text-muted" style="font-size: 1.1rem;">No {{ section_filter|title }} bookings found.</p>
-            {% else %}
-            <p class="mb-0 text-muted" style="font-size: 1.1rem;">You have no bookings yet.</p>
-            {% endif %}
+        <div class="card bg-white border-0 shadow-sm">
+            <div class="card-body p-5 text-center d-flex flex-column align-items-center">
+                <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
+                     style="width: 50px; height: 50px; font-size: 1.5rem;">
+                    <i class="bi bi-calendar-x"></i>
+                </div>
+                {% if section_filter %}
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No {{ section_filter|title }} bookings found</h5>
+                {% else %}
+                <h5 class="mb-2 fw-semibold" style="color: #333;">You have no bookings yet</h5>
+                {% endif %}
+                <p class="text-muted mb-0">Start exploring and booking resources!</p>
+            </div>
         </div>
         {% endif %}
     </div>
