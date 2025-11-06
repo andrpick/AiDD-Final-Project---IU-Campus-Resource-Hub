@@ -134,8 +134,15 @@ The database includes sample/starter data with default accounts:
 - **Logging**: Structured logging with file rotation
 - **Styling**: Custom CSS with Indiana University branding (Crimson #990000, White)
   - Clean, modern design with Bootstrap 5 framework
-  - Light backgrounds with subtle shadows and hover effects
-  - Responsive design with modern UX patterns
+  - **Standardized Shadow Utility Classes**: Consistent shadow effects across all pages
+    - `.shadow-standard`: `0 4px 12px rgba(0,0,0,0.15)` - Used for cards and general elements
+    - `.shadow-table`: `0 4px 12px rgba(0,0,0,0.15)` - Used for tables
+    - `.shadow-inner`: `0 1px 3px rgba(0,0,0,0.1)` - Used for inner elements (dashboard stat boxes)
+  - **Responsive Design**: Mobile-first approach with comprehensive breakpoints
+    - Mobile (max-width: 767.98px): Time picker, message thread, chatbot widget, tables, filter/sort boxes
+    - Tablet (max-width: 991.98px): Weekly calendar, time picker, tables
+    - Desktop (min-width: 992px): Container max-width settings
+  - **Standardized Button Hover Effects**: All buttons have consistent 0.2s transitions for background-color, border-color, and color
   - **UI Standardization**: Consistent filter/sort boxes, form inputs, buttons, and labels across all pages for a cohesive user experience
 
 ## Testing

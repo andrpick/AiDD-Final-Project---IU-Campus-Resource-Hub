@@ -542,7 +542,7 @@ def get_resource_context():
             for cat, count in stats['resources_by_category'].items():
                 stats_text += f"  * {cat.replace('_', ' ').title()}: {count}\n"
     
-    context = f"""You are an AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
+    context = f"""You are Crimson, an AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
 
 STRICT TOPIC RESTRICTIONS:
 - You MUST ONLY discuss topics related to the Indiana University Campus Resource Hub
@@ -1339,7 +1339,7 @@ Featured resources: {stats.get('featured_resources', 0)}"""
                 for cat, count in stats['resources_by_category'].items():
                     stats_text += f"\n- {cat.replace('_', ' ').title()}: {count}"
             stats_context = stats_text
-        response = f"""Hello! I'm your AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
+        response = f"""Hello! I'm Crimson, your AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
 
 IMPORTANT: I can ONLY help with topics related to the campus resource hub. I cannot discuss unrelated topics.
 

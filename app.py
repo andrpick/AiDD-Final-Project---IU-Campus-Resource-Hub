@@ -99,6 +99,12 @@ def format_datetime_local_filter(value):
     """Format datetime for HTML datetime-local input (YYYY-MM-DDTHH:mm)."""
     return format_datetime_local(value)
 
+@app.template_filter('booking_display_status')
+def booking_display_status_filter(booking):
+    """Get the display status for a booking, including computed 'in_progress' status."""
+    from src.utils.controller_helpers import get_booking_display_status
+    return get_booking_display_status(booking)
+
 # Import and register blueprints
 from src.controllers.auth_controller import auth_bp
 from src.controllers.resources_controller import resources_bp

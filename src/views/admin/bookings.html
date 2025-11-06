@@ -42,6 +42,15 @@
         right: 0;
         left: auto;
     }
+    @media (max-width: 767.98px) {
+        .bookings-table {
+            table-layout: auto;
+        }
+        .bookings-table th,
+        .bookings-table td {
+            width: auto !important;
+        }
+    }
 </style>
 
 <div class="row">
@@ -79,7 +88,7 @@
         </div>
 
         <!-- Admin Filters -->
-        <div class="card bg-white border-0 shadow-sm mb-4">
+        <div class="card bg-white border-0 mb-4">
             <div class="card-body p-4">
                 <form method="GET" action="{{ url_for('admin.bookings') }}" id="bookingFiltersForm">
                     <input type="hidden" name="section" value="{{ section_filter or '' }}">
@@ -137,7 +146,7 @@
                 <i class="bi bi-calendar-check me-2 text-success"></i>Upcoming Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -177,8 +186,14 @@
                                 {{ booking.end_datetime|format_datetime_est('short') }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="badge px-3 py-2 rounded-pill fw-semibold bg-success" style="font-size: 0.875rem;">
-                                    {{ booking.status|title }}
+                                <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.875rem;">
+                                    {{ display_status|title|replace('_', ' ') }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
@@ -190,7 +205,7 @@
                                             style="border-radius: 8px;">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
-                                    <ul class="dropdown-menu shadow-sm" 
+                                    <ul class="dropdown-menu shadow-standard" 
                                         aria-labelledby="actionsDropdown{{ booking.booking_id }}"
                                         style="border-radius: 8px; border: 1px solid #dee2e6;">
                                         <li>
@@ -223,7 +238,7 @@
                 <i class="bi bi-clock-history me-2 text-info"></i>Previous Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -264,11 +279,13 @@
                             </td>
                             <td class="px-4 py-3">
                                 <span class="badge px-3 py-2 rounded-pill fw-semibold 
-                                    {% if booking.status == 'approved' %}bg-success
-                                    {% elif booking.status == 'completed' %}bg-info
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
                                     {% else %}bg-secondary{% endif %}" 
                                     style="font-size: 0.875rem;">
-                                    {{ booking.status|title }}
+                                    {{ display_status|title|replace('_', ' ') }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
@@ -280,7 +297,7 @@
                                             style="border-radius: 8px;">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
-                                    <ul class="dropdown-menu shadow-sm" 
+                                    <ul class="dropdown-menu shadow-standard" 
                                         aria-labelledby="actionsDropdown{{ booking.booking_id }}"
                                         style="border-radius: 8px; border: 1px solid #dee2e6;">
                                         <li>
@@ -313,7 +330,7 @@
                 <i class="bi bi-x-circle me-2 text-secondary"></i>Canceled Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -366,7 +383,7 @@
                                             style="border-radius: 8px;">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
-                                    <ul class="dropdown-menu shadow-sm" 
+                                    <ul class="dropdown-menu shadow-standard" 
                                         aria-labelledby="actionsDropdown{{ booking.booking_id }}"
                                         style="border-radius: 8px; border: 1px solid #dee2e6;">
                                         <li>
@@ -394,7 +411,7 @@
 
         {% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}
         <!-- Empty State -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body text-center py-5 d-flex flex-column align-items-center">
                 <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
                      style="width: 50px; height: 50px; font-size: 1.5rem;">

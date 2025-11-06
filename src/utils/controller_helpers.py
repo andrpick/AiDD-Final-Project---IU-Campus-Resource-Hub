@@ -229,39 +229,78 @@ def save_profile_image(uploaded_file: Optional[FileStorage], upload_folder: str)
         return None
 
 
-def categorize_bookings(bookings: List[Dict], section_filter: Optional[str] = None) -> Dict[str, List[Dict]]:
+def get_booking_display_status(booking: Dict) -> str:
     """
-    Categorize bookings into upcoming, previous, and canceled groups.
+    Get the display status for a booking, including computed "in_progress" status.
+    
+    A booking is "in_progress" when:
+    - Status is 'approved' AND
+    - Current time is between start_datetime and end_datetime
     
     Args:
-        bookings: List of booking dictionaries with 'start_datetime' and 'status' fields
-        section_filter: Optional filter to return only one section ('upcoming', 'previous', 'canceled')
+        booking: Dictionary with booking data (must have 'status', 'start_datetime', 'end_datetime')
+    
+    Returns:
+        String status: 'in_progress', 'approved', 'cancelled', or 'completed'
+    """
+    status = booking.get('status', 'approved')
+    
+    # Only compute "in_progress" for approved bookings
+    if status == 'approved':
+        try:
+            now = datetime.now(tzutc())
+            start_dt = parse_datetime_aware(booking.get('start_datetime', ''))
+            end_dt = parse_datetime_aware(booking.get('end_datetime', ''))
+            
+            # Check if current time is between start and end
+            if start_dt <= now <= end_dt:
+                return 'in_progress'
+        except Exception:
+            # If parsing fails, return original status
+            pass
+    
+    return status
+
+def categorize_bookings(bookings: List[Dict], section_filter: Optional[str] = None) -> Dict[str, List[Dict]]:
+    """
+    Categorize bookings into upcoming, in_progress, previous, and canceled groups.
+    
+    Args:
+        bookings: List of booking dictionaries with 'start_datetime', 'end_datetime', and 'status' fields
+        section_filter: Optional filter to return only one section ('upcoming', 'in_progress', 'previous', 'canceled')
         
     Returns:
-        Dictionary with keys: 'upcoming', 'previous', 'canceled', each containing a list of bookings
+        Dictionary with keys: 'upcoming', 'in_progress', 'previous', 'canceled', each containing a list of bookings
     """
     # Get current time in UTC
     now = datetime.now(tzutc())
     
-    # Separate bookings into three categories
+    # Separate bookings into four categories
     upcoming_bookings = []  # Approved bookings that haven't started yet
-    previous_bookings = []  # Approved bookings that have passed OR completed bookings
+    in_progress_bookings = []  # Approved bookings that are currently active
+    previous_bookings = []  # Approved bookings that have ended OR completed bookings
     canceled_bookings = []  # Canceled bookings regardless of date
     
     for booking in bookings:
         try:
-            # Parse booking start datetime
+            # Parse booking datetimes
             start_dt = parse_datetime_aware(booking['start_datetime'])
+            end_dt = parse_datetime_aware(booking['end_datetime'])
             
             if booking['status'] == 'cancelled':
                 # Canceled bookings go to canceled section
                 canceled_bookings.append(booking)
-            elif booking['status'] == 'approved' and start_dt >= now:
-                # Upcoming approved bookings
-                upcoming_bookings.append(booking)
-            elif booking['status'] == 'approved' and start_dt < now:
-                # Previous approved bookings (past their start time)
-                previous_bookings.append(booking)
+            elif booking['status'] == 'approved':
+                # Check if booking is currently in progress
+                if start_dt <= now <= end_dt:
+                    # Currently active booking
+                    in_progress_bookings.append(booking)
+                elif start_dt > now:
+                    # Upcoming approved bookings (haven't started yet)
+                    upcoming_bookings.append(booking)
+                else:
+                    # Previous approved bookings (have ended)
+                    previous_bookings.append(booking)
             elif booking['status'] == 'completed':
                 # Completed bookings go to previous section
                 previous_bookings.append(booking)
@@ -278,6 +317,9 @@ def categorize_bookings(bookings: List[Dict], section_filter: Optional[str] = No
     # Sort upcoming by start_datetime ASC (soonest first)
     upcoming_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']))
     
+    # Sort in_progress by start_datetime ASC (started earliest first)
+    in_progress_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']))
+    
     # Sort previous by start_datetime DESC (most recent first)
     previous_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
     
@@ -286,18 +328,26 @@ def categorize_bookings(bookings: List[Dict], section_filter: Optional[str] = No
     
     # Apply section filter if specified
     if section_filter == 'upcoming':
+        in_progress_bookings = []
+        previous_bookings = []
+        canceled_bookings = []
+    elif section_filter == 'in_progress':
+        upcoming_bookings = []
         previous_bookings = []
         canceled_bookings = []
     elif section_filter == 'previous':
         upcoming_bookings = []
+        in_progress_bookings = []
         canceled_bookings = []
     elif section_filter == 'canceled':
         upcoming_bookings = []
+        in_progress_bookings = []
         previous_bookings = []
     # If section_filter is None or 'all', show all sections
     
     return {
         'upcoming': upcoming_bookings,
+        'in_progress': in_progress_bookings,
         'previous': previous_bookings,
         'canceled': canceled_bookings
     }

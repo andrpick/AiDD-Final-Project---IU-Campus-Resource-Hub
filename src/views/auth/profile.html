@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <h1 class="mb-4 fw-bold" style="font-size: 2.5rem; color: #333; line-height: 1.2;">{{ user.name }}</h1>
         
         <!-- Profile Card -->
-        <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div class="bg-white p-5 rounded-3 mb-4 shadow-standard">
             <!-- Profile Image -->
             {% if user.profile_image and user.profile_image.startswith('profiles/') %}
             <div class="mb-4 text-center">
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         <!-- Profile Image Upload Card -->
         {% if user.user_id == current_user.user_id or current_user.is_admin() %}
-        <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div class="bg-white p-5 rounded-3 mb-4 shadow-standard">
             <h3 class="mb-4 fw-semibold" style="color: #333;">Update Profile Picture</h3>
             
             <form method="POST" action="{{ url_for('auth.update_profile', user_id=user.user_id) }}" enctype="multipart/form-data" id="profileImageForm">

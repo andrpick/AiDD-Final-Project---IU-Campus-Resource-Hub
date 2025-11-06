@@ -32,17 +32,19 @@ def index():
         # Categorize bookings
         categorized = categorize_bookings(all_bookings, section_filter)
         upcoming_bookings = categorized['upcoming']
+        in_progress_bookings = categorized['in_progress']
         previous_bookings = categorized['previous']
         canceled_bookings = categorized['canceled']
         
         # Enrich with resource info
-        for booking in upcoming_bookings + previous_bookings + canceled_bookings:
+        for booking in upcoming_bookings + in_progress_bookings + previous_bookings + canceled_bookings:
             resource_result = get_resource(booking['resource_id'])
             if resource_result['success']:
                 booking['resource'] = resource_result['data']
         
         return render_template('bookings/index.html',
                              upcoming_bookings=upcoming_bookings,
+                             in_progress_bookings=in_progress_bookings,
                              previous_bookings=previous_bookings,
                              canceled_bookings=canceled_bookings,
                              page=1,
@@ -53,6 +55,7 @@ def index():
     else:
         return render_template('bookings/index.html', 
                              upcoming_bookings=[],
+                             in_progress_bookings=[],
                              previous_bookings=[],
                              canceled_bookings=[],
                              page=1, 

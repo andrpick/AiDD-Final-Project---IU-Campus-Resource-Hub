@@ -21,7 +21,7 @@
         <div class="row g-3">
             {% for thread in threads %}
             <div class="col-12">
-                <div class="card bg-white border-0 shadow-sm hover-card position-relative" style="transition: all 0.2s ease; {% if thread.is_unread %}border-left: 4px solid var(--crimson) !important;{% endif %}">
+                <div class="card bg-white border-0 hover-card position-relative" style="{% if thread.is_unread %}border-left: 4px solid var(--crimson) !important;{% endif %}">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-start">
                             <!-- Avatar/Profile Image -->
@@ -97,7 +97,7 @@
         </div>
         {% else %}
         <!-- Empty State -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body text-center py-5 d-flex flex-column align-items-center">
                 <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
                      style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -115,11 +115,6 @@
 </div>
 
 <style>
-.hover-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
-}
-
 .thread-action-form {
     position: relative;
     z-index: 20;

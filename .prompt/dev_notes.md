@@ -2487,3 +2487,262 @@ Update documentation files to reflect the current state of the application (@REA
 - All documentation files updated to match current application state
 - No linting errors introduced
 - Documentation now provides complete reference for UI standardization work
+
+### Interaction #103
+**User Prompt:**
+```
+Log all interactions in @dev_notes.md. Lets add booking status for "In Progress". If a booking is currently active, it should display "In Progress".
+```
+
+**Agent Actions:**
+- Created `get_booking_display_status()` helper function in `src/utils/controller_helpers.py`:
+  - Computes display status for bookings, including "in_progress" when booking is currently active
+  - A booking is "in_progress" when: status is 'approved' AND current time is between start_datetime and end_datetime
+  - Returns 'in_progress', 'approved', 'cancelled', or 'completed' based on booking state
+- Added Jinja2 template filter `booking_display_status` in `app.py`:
+  - Filter uses `get_booking_display_status()` to compute display status
+  - Available in all templates for consistent status display
+- Updated all booking status displays across templates:
+  - `src/views/bookings/index.html`: Updated both upcoming and previous booking sections to use display status filter
+  - `src/views/bookings/detail.html`: Updated status badge to show "In Progress" for active bookings
+  - `src/views/admin/bookings.html`: Updated all booking status displays (3 locations) to use display status filter
+  - `src/views/admin/logs.html`: Updated booking status display in admin logs to show "In Progress"
+- Status badge styling:
+  - "In Progress" uses `bg-primary` (blue) badge color
+  - "Approved" uses `bg-success` (green) badge color
+  - "Completed" uses `bg-info` (cyan) badge color
+  - "Cancelled" uses `bg-secondary` (gray) badge color
+- Display format: Status text uses `title|replace('_', ' ')` to show "In Progress" instead of "In_Progress"
+- "In Progress" is a computed status (not stored in database):
+  - Database still stores 'approved', 'cancelled', or 'completed'
+  - Display status is computed dynamically based on current time
+  - Bookings automatically show "In Progress" when current time is between start and end times
+- No linting errors introduced
+- All booking status displays now show "In Progress" for currently active bookings
+
+### Interaction #104
+**User Prompt:**
+```
+Add a filter option similar to "Canceled", "Previous", etc. for "In Progress".
+```
+
+**Agent Actions:**
+- Updated `categorize_bookings()` function in `src/utils/controller_helpers.py`:
+  - Added `in_progress` category to booking categorization
+  - Separated bookings into four categories: upcoming, in_progress, previous, canceled
+  - In Progress bookings: status is 'approved' AND current time is between start_datetime and end_datetime
+  - Updated logic: upcoming = approved bookings that haven't started (start_dt > now), in_progress = approved bookings currently active (start_dt <= now <= end_dt), previous = approved bookings that have ended (end_dt < now) OR completed bookings
+  - Added support for `section_filter == 'in_progress'` to filter to only in-progress bookings
+  - Updated return dictionary to include 'in_progress' key
+- Updated `src/controllers/bookings_controller.py`:
+  - Added `in_progress_bookings` extraction from categorized results
+  - Updated resource enrichment loop to include in_progress_bookings
+  - Passed `in_progress_bookings` to template in both success and error cases
+- Updated `src/views/bookings/index.html`:
+  - Added "In Progress" filter button in filter tabs section:
+    - Positioned between "Upcoming" and "Previous" buttons
+    - Uses `bi-play-circle` icon with primary color
+    - Links to `bookings.index` with `section='in_progress'` parameter
+    - Styled consistently with other filter buttons
+  - Added "In Progress Bookings" section:
+    - Displays table of in-progress bookings with same structure as other sections
+    - Shows Resource, Start Time, End Time, Status, and Actions columns
+    - Status badge displays "In Progress" with primary (blue) color
+    - Section header uses play-circle icon with primary color
+    - Positioned between "Upcoming Bookings" and "Previous Bookings" sections
+- Filter functionality:
+  - Users can click "In Progress" filter button to see only currently active bookings
+  - Filter works with other filters (All, Upcoming, Previous, Canceled)
+  - In Progress bookings are automatically categorized based on current time
+- No linting errors introduced
+- "In Progress" filter option now available alongside other booking filters
+
+### Interaction #105
+**User Prompt:**
+```
+There is a booking inprogess yet it still shows "No In_progress bookings found". It should not appear if there is a booking in progress and it should say "No Bookings In Progress".
+```
+
+**Agent Actions:**
+- Fixed empty state condition in `src/views/bookings/index.html`:
+  - Updated condition from `{% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}` to include `in_progress_bookings`
+  - Changed to: `{% if not upcoming_bookings and not in_progress_bookings and not previous_bookings and not canceled_bookings %}`
+  - Empty state message now only appears when ALL booking categories are empty (including in_progress)
+- Updated empty state message text:
+  - Added specific check for `section_filter == 'in_progress'` to display "No Bookings In Progress"
+  - Changed from generic "No {{ section_filter|title }} bookings found" (which showed "No In_progress bookings found") to "No Bookings In Progress"
+  - Message now properly formatted and only shows when there are no in-progress bookings
+- Fixed bug where empty state message appeared even when in-progress bookings existed
+- No linting errors introduced
+- Empty state message now correctly hidden when bookings exist and displays proper text when no bookings found
+
+### Interaction #106
+**User Prompt:**
+```
+Lets give a name to the AI Assistant and call it "Crimson".
+```
+
+**Agent Actions:**
+- Renamed AI Assistant to "Crimson" across all user-facing references:
+  - Updated `src/views/base.html`:
+    - Changed chatbot header from "AI Assistant" to "Crimson"
+    - Chatbot widget now displays "Crimson" as the assistant name
+  - Updated `src/static/js/chatbot.js`:
+    - Changed greeting message from "I'm your AI assistant" to "I'm Crimson, your AI assistant"
+    - Updated both the displayed message and conversation history to use "Crimson"
+  - Updated `src/services/ai_concierge.py`:
+    - Changed system context from "You are an AI assistant" to "You are Crimson, an AI assistant"
+    - Updated fallback greeting message from "I'm your AI assistant" to "I'm Crimson, your AI assistant"
+    - AI assistant now identifies itself as "Crimson" in all responses
+  - Updated `src/controllers/ai_concierge_controller.py`:
+    - Updated comment to reference "Crimson (the AI assistant)" instead of "The AI assistant"
+- All user-facing references now use "Crimson" as the AI assistant name
+- Name aligns with Indiana University's crimson branding
+- No linting errors introduced
+- AI assistant now consistently identifies as "Crimson" throughout the application
+
+### Interaction #107
+**User Prompt:**
+```
+Remove the translate y hover effect for this element all other elements within this web app.
+```
+
+**Agent Actions:**
+- Removed all translateY hover effects from cards and other elements across the web app:
+  - Updated `src/static/css/main.css`:
+    - Removed `transform: translateY(-2px);` from `.card:hover` (line 139)
+    - Removed `transform: translateY(-2px);` from `.management-card:hover` (line 151)
+    - Removed `transform: translateX(4px);` from `.resource-card:hover` (line 328) for consistency
+    - Updated `.card` transition from `transform 0.2s, box-shadow 0.2s` to `box-shadow 0.2s`
+    - Updated `.management-card` transition from `transform 0.2s, box-shadow 0.2s` to `box-shadow 0.2s`
+    - Updated `.resource-card` transition from `transform 0.2s, box-shadow 0.2s, border-color 0.2s` to `box-shadow 0.2s, border-color 0.2s`
+  - Updated HTML templates with inline styles:
+    - `src/views/admin/statistics.html`: Removed `transform: translateY(-2px);` from `.hover-card:hover`, updated transition from `all 0.2s ease` to `box-shadow 0.2s ease`
+    - `src/views/messages/new.html`: Removed `transform: translateY(-2px);` from `.hover-card:hover`, updated inline transition from `all 0.2s ease` to `box-shadow 0.2s ease`
+    - `src/views/messages/index.html`: Removed `transform: translateY(-2px);` from `.hover-card:hover`, updated inline transition from `all 0.2s ease` to `box-shadow 0.2s ease`
+    - `src/views/admin/dashboard.html`: Removed `transform: translateY(-2px);` from `.hover-card:hover`, updated transition from `all 0.2s ease` to `box-shadow 0.2s ease`
+- All cards now only have box-shadow hover effects (no vertical or horizontal movement)
+- Transitions updated to only animate box-shadow property, improving performance
+- No linting errors introduced
+- All translate hover effects removed from the web app
+
+### Interaction #108
+**User Prompt:**
+```
+Do the same thing you just did but for the shadow, the only hover effects I want are for buttons. However, increase the intensity of the static shadow effect increase contrast.
+```
+
+**Agent Actions:**
+- Removed all box-shadow hover effects from cards across the web app:
+  - Updated `src/static/css/main.css`:
+    - Removed `.card:hover` rule entirely (no hover shadow effect)
+    - Removed `.management-card:hover` rule entirely (no hover shadow effect)
+    - Removed `box-shadow` from `.resource-card:hover` (kept border-color change)
+    - Removed `transition: box-shadow 0.2s;` from `.card` (no transition needed)
+    - Removed `transition: box-shadow 0.2s;` from `.management-card` (no transition needed)
+    - Updated `.resource-card` transition to only `border-color 0.2s` (removed box-shadow from transition)
+  - Updated HTML templates:
+    - `src/views/admin/statistics.html`: Removed `.hover-card:hover` box-shadow rule, removed transition property
+    - `src/views/messages/new.html`: Removed `.hover-card:hover` box-shadow rule, removed inline transition from hover-card element
+    - `src/views/messages/index.html`: Removed `.hover-card:hover` box-shadow rule, removed inline transition from hover-card element
+    - `src/views/admin/dashboard.html`: Removed `.hover-card:hover` box-shadow rule, removed transition property
+- Increased static shadow intensity and contrast:
+  - `.card` base shadow: Changed from `0 4px 12px rgba(0,0,0,0.2)` to `0 6px 16px rgba(0,0,0,0.35)` (increased blur from 12px to 16px, spread from 4px to 6px, opacity from 0.2 to 0.35)
+  - `.management-card` base shadow: Changed from `0 4px 12px rgba(0,0,0,0.2)` to `0 6px 16px rgba(0,0,0,0.35)`
+  - `.resource-card` base shadow: Added `box-shadow: 0 6px 16px rgba(0,0,0,0.35);` to base state (previously had no base shadow)
+- Button hover effects preserved:
+  - All button hover effects remain unchanged (`.btn-crimson:hover`, `.btn-outline-crimson:hover`, `.btn-outline-light:hover`, `.chatbot-toggle-btn:hover`)
+  - Buttons use color changes and scale effects, not shadow changes
+- Cards now have stronger static shadows with no hover shadow changes
+- Improved visual contrast with darker, more prominent shadows
+- No linting errors introduced
+- All card shadow hover effects removed, only buttons retain hover effects
+
+### Interaction #109
+**User Prompt:**
+```
+I want to standardize the UI/UX across pages for this web app. Things like the static shadow effect, button hover effect, etc. should be the same across pages. Also review logic for when the window of the webpage changes. Some of the content on some pages does not display correctly when the page window is changed.
+```
+
+**Agent Actions:**
+- Created comprehensive plan to standardize UI/UX and fix responsive design issues
+- Created standardized shadow utility classes in `src/static/css/main.css`:
+  - `.shadow-standard`: `0 6px 16px rgba(0,0,0,0.35)` for cards
+  - `.shadow-table`: `0 6px 16px rgba(0,0,0,0.35)` for tables
+  - `.shadow-inner`: `0 1px 3px rgba(0,0,0,0.1)` for inner elements
+- Replaced all `shadow-sm` Bootstrap classes with standardized shadow classes across 17 template files:
+  - Removed `shadow-sm` from all card elements (cards already have shadow from `.card` class)
+  - Replaced `shadow-sm` with `shadow-standard` for dropdown menus and non-card elements
+- Replaced all inline `box-shadow` styles with standardized shadow classes:
+  - Tables: Replaced `0 2px 8px rgba(0,0,0,0.1)` with `.shadow-table` class
+  - Dashboard stat boxes: Replaced `0 1px 3px rgba(0,0,0,0.1)` with `.shadow-inner` class
+  - Profile/detail pages: Replaced `0 2px 8px rgba(0,0,0,0.1)` with `.shadow-standard` class
+  - Time picker: Replaced `0 4px 12px rgba(0,0,0,0.15)` with `.shadow-standard` class
+- Standardized button hover effects in `src/static/css/main.css`:
+  - Added consistent transitions to `.btn-crimson`, `.btn-outline-crimson`, and `.btn-outline-light`
+  - All buttons now have smooth 0.2s transitions for background-color, border-color, and color
+- Added comprehensive responsive media queries to `src/static/css/main.css`:
+  - Mobile breakpoint (max-width: 767.98px): Time picker, message thread, chatbot widget, tables, filter/sort boxes
+  - Tablet breakpoint (max-width: 991.98px): Weekly calendar, time picker, tables
+  - Desktop breakpoint (min-width: 992px): Container max-width settings
+- Fixed table responsive issues:
+  - Added media queries to override `table-layout: fixed` on mobile for bookings, admin bookings, and logs tables
+  - Made column widths auto on mobile to prevent overflow
+  - Ensured `table-responsive` wrapper works correctly
+- Fixed fixed-width elements for responsive design:
+  - Time picker: Made responsive with `min-width: 100%` and `max-width: 100vw` on mobile
+  - Message thread: Added responsive max-width (85% on mobile)
+  - Chatbot widget: Made full-width on mobile with proper margins
+- Updated filter/sort box layouts for mobile responsiveness via media queries
+- All shadow effects now standardized across all pages
+- All button hover effects now consistent with smooth transitions
+- Responsive design issues fixed for mobile, tablet, and desktop breakpoints
+- No linting errors introduced
+- UI/UX now standardized across the entire web application
+
+### Interaction #110
+**User Prompt:**
+```
+Adjust the shadow-standard and shadow-table to be less intense but noticeable. Overall it looks much better though.
+```
+
+**Agent Actions:**
+- Adjusted shadow intensity for `.shadow-standard` and `.shadow-table` classes in `src/static/css/main.css`:
+  - Changed from `0 6px 16px rgba(0,0,0,0.35)` to `0 4px 12px rgba(0,0,0,0.15)`
+  - Reduced blur radius: 16px → 12px
+  - Reduced vertical offset: 6px → 4px
+  - Reduced opacity: 0.35 → 0.15
+- Shadows are now more subtle while still providing noticeable depth
+- User also manually adjusted `.card` and `.management-card` base shadows to match: `0 4px 12px rgba(0,0,0,0.35)` (keeping opacity at 0.35 for base card shadows)
+- No linting errors introduced
+- Shadow effects now balanced between subtlety and visibility
+
+### Interaction #111
+**User Prompt:**
+```
+Update documentation files or any files to reflect the current state of the application.
+```
+
+**Agent Actions:**
+- Created comprehensive plan to update documentation files to reflect recent UI/UX standardization work
+- Updated `README.md` styling section (lines 135-146):
+  - Added standardized shadow utility classes documentation:
+    - `.shadow-standard`: `0 4px 12px rgba(0,0,0,0.15)` - Used for cards and general elements
+    - `.shadow-table`: `0 4px 12px rgba(0,0,0,0.15)` - Used for tables
+    - `.shadow-inner`: `0 1px 3px rgba(0,0,0,0.1)` - Used for inner elements (dashboard stat boxes)
+  - Added responsive design breakpoints documentation:
+    - Mobile (max-width: 767.98px): Time picker, message thread, chatbot widget, tables, filter/sort boxes
+    - Tablet (max-width: 991.98px): Weekly calendar, time picker, tables
+    - Desktop (min-width: 992px): Container max-width settings
+  - Added standardized button hover effects documentation: All buttons have consistent 0.2s transitions for background-color, border-color, and color
+- Updated `docs/context/PRD_COMPLETE.md` section 10.8 Design Requirements (lines 1507-1541):
+  - Added standardized shadow utility classes documentation with specific values and usage
+  - Added standardized button hover effects documentation with transition details
+  - Expanded responsive design section with specific breakpoint details:
+    - Mobile breakpoint: Detailed specifications for time picker, message thread, chatbot widget, tables, and filter/sort boxes
+    - Tablet breakpoint: Specifications for weekly calendar, time picker, and tables
+    - Desktop breakpoint: Container max-width settings
+  - Updated card styling description to reference standardized shadows (`.shadow-standard`)
+- All documentation now accurately reflects the current state of the application
+- No linting errors introduced
+- Documentation updated to match recent UI/UX standardization work completed in Interactions #109 and #110

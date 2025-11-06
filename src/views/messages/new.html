@@ -16,13 +16,13 @@
             </a>
         </div>
 
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body p-4">
                 {% if receiver %}
                     <!-- Direct message to specific user -->
                     <div class="mb-4 pb-4 border-bottom">
                         <h5 class="mb-3 fw-semibold" style="color: #333;">Recipient:</h5>
-                        <div class="d-flex align-items-center p-3 bg-white rounded-3 shadow-sm">
+                        <div class="d-flex align-items-center p-3 bg-white rounded-3 shadow-standard">
                             {% if receiver.profile_image and receiver.profile_image.startswith('profiles/') %}
                                 <img src="{{ url_for('auth.uploaded_file', filename=receiver.profile_image.split('/')[-1]) }}?t={{ receiver.profile_image.split('/')[-1].split('.')[0] }}" 
                                      alt="{{ receiver.name }}'s profile picture"
@@ -112,7 +112,7 @@
                             {% for user in users %}
                             <div class="col-12">
                                 <a href="{{ url_for('messages.new', receiver_id=user.user_id) }}" class="text-decoration-none">
-                                    <div class="card bg-white border-0 shadow-sm hover-card" style="transition: all 0.2s ease; cursor: pointer;">
+                                    <div class="card bg-white border-0 hover-card" style="cursor: pointer;">
                                         <div class="card-body p-3">
                                             <div class="d-flex align-items-center">
                                                 {% if user.profile_image and user.profile_image.startswith('profiles/') %}
@@ -164,10 +164,6 @@
 </div>
 
 <style>
-.hover-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
-}
 </style>
 {% endblock %}
 

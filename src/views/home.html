@@ -18,7 +18,7 @@
             <form action="{{ url_for('search.index') }}" method="GET" class="mt-4">
                 <div class="row justify-content-center">
                     <div class="col-12 col-md-10 col-lg-9 col-xl-8">
-                        <div class="input-group input-group-lg shadow-sm">
+                        <div class="input-group input-group-lg shadow-standard">
                             <input type="text" name="keyword" class="form-control form-control-lg" placeholder="Search for resources..." aria-label="Search" style="border-radius: 8px 0 0 8px; border: 2px solid #dee2e6; padding: 0.75rem 1.25rem;">
                             <button class="btn btn-crimson btn-lg" type="submit" style="border-radius: 0 8px 8px 0; padding: 0.75rem 2rem; font-weight: 500;">
                                 <i class="bi bi-search me-2"></i>Search
@@ -61,7 +61,7 @@
             <div class="row g-4 justify-content-center">
                 {% for resource in featured_resources %}
                 <div class="col-md-6 col-lg-4 col-xl-3">
-                    <div class="card bg-white h-100 shadow-sm" style="border-radius: 8px; overflow: hidden;">
+                    <div class="card bg-white h-100" style="border-radius: 8px; overflow: hidden;">
                         {% if resource.images and resource.images|length > 0 %}
                         <div class="card-image-wrapper">
                             <img src="{{ url_for('resources.uploaded_file', filename=resource.images[0]) }}"
@@ -102,7 +102,7 @@
 
         <!-- Call to Action -->
         {% if not current_user.is_authenticated %}
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body p-5 d-flex flex-column">
                 <div class="d-flex align-items-center mb-3">
                     <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 

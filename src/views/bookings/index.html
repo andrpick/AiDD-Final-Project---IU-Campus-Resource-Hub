@@ -28,6 +28,15 @@
     .bookings-table td:nth-child(5) {
         width: 15%;
     }
+    @media (max-width: 767.98px) {
+        .bookings-table {
+            table-layout: auto;
+        }
+        .bookings-table th,
+        .bookings-table td {
+            width: auto !important;
+        }
+    }
 </style>
 
 <div class="row">
@@ -47,6 +56,11 @@
                    class="btn px-4 py-2 {% if section_filter == 'upcoming' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
                    style="border-radius: 8px; font-weight: {% if section_filter == 'upcoming' %}600{% else %}500{% endif %};">
                     <i class="bi bi-calendar-check me-2"></i>Upcoming
+                </a>
+                <a href="{{ url_for('bookings.index', section='in_progress') }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'in_progress' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'in_progress' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-play-circle me-2"></i>In Progress
                 </a>
                 <a href="{{ url_for('bookings.index', section='previous') }}" 
                    class="btn px-4 py-2 {% if section_filter == 'previous' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
@@ -68,7 +82,7 @@
                 <i class="bi bi-calendar-check me-2 text-success"></i>Upcoming Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px; overflow: hidden;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -97,8 +111,75 @@
                                 {{ booking.end_datetime|format_datetime_est('short') }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="badge px-3 py-2 rounded-pill fw-semibold bg-success" style="font-size: 0.875rem;">
-                                    {{ booking.status|title }}
+                                <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.875rem;">
+                                    {{ display_status|title|replace('_', ' ') }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" 
+                                   class="btn btn-crimson px-3 py-2" 
+                                   style="border-radius: 8px; font-weight: 500; font-size: 0.875rem;">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if in_progress_bookings %}
+        <!-- In Progress Bookings Section -->
+        <div class="mb-5">
+            <h2 class="mb-3 fw-bold" style="font-size: 1.75rem; color: #333;">
+                <i class="bi bi-play-circle me-2 text-primary"></i>In Progress Bookings
+            </h2>
+            <div class="table-responsive">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px; overflow: hidden;">
+                    <thead style="background-color: #f8f9fa;">
+                        <tr>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Start Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">End Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Status</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in in_progress_bookings %}
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td class="px-4 py-3">
+                                {% if booking.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" class="text-crimson fw-semibold" style="text-decoration: none;">
+                                    {{ booking.resource.title }}
+                                </a>
+                                {% else %}
+                                <span style="color: #333;">Resource #{{ booking.resource_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.start_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.end_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.875rem;">
+                                    {{ display_status|title|replace('_', ' ') }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
@@ -123,7 +204,7 @@
                 <i class="bi bi-clock-history me-2 text-info"></i>Previous Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px; overflow: hidden;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -153,11 +234,13 @@
                             </td>
                             <td class="px-4 py-3">
                                 <span class="badge px-3 py-2 rounded-pill fw-semibold 
-                                    {% if booking.status == 'approved' %}bg-success
-                                    {% elif booking.status == 'completed' %}bg-info
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
                                     {% else %}bg-secondary{% endif %}" 
                                     style="font-size: 0.875rem;">
-                                    {{ booking.status|title }}
+                                    {{ display_status|title|replace('_', ' ') }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
@@ -182,7 +265,7 @@
                 <i class="bi bi-x-circle me-2 text-secondary"></i>Canceled Bookings
             </h2>
             <div class="table-responsive">
-                <table class="table bg-white bookings-table" style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px; overflow: hidden;">
                     <thead style="background-color: #f8f9fa;">
                         <tr>
                             <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
@@ -230,15 +313,17 @@
         </div>
         {% endif %}
 
-        {% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}
+        {% if not upcoming_bookings and not in_progress_bookings and not previous_bookings and not canceled_bookings %}
         <!-- No Bookings Message -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body p-5 text-center d-flex flex-column align-items-center">
                 <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
                      style="width: 50px; height: 50px; font-size: 1.5rem;">
                     <i class="bi bi-calendar-x"></i>
                 </div>
-                {% if section_filter %}
+                {% if section_filter == 'in_progress' %}
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No Bookings In Progress</h5>
+                {% elif section_filter %}
                 <h5 class="mb-2 fw-semibold" style="color: #333;">No {{ section_filter|title }} bookings found</h5>
                 {% else %}
                 <h5 class="mb-2 fw-semibold" style="color: #333;">You have no bookings yet</h5>

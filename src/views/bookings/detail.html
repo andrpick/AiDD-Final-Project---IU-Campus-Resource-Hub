@@ -9,7 +9,7 @@
         <h1 class="mb-4 fw-bold" style="font-size: 2.5rem; color: #333; line-height: 1.2;">Booking Details</h1>
         
         <!-- Booking Details Card -->
-        <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div class="bg-white p-5 rounded-3 mb-4 shadow-standard">
             <!-- Resource -->
             <div class="mb-4">
                 <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Resource</label>
@@ -44,12 +44,14 @@
             <div class="mb-4">
                 <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</label>
                 <span class="badge px-3 py-2 rounded-pill fw-semibold 
-                    {% if booking.status == 'approved' %}bg-success
-                    {% elif booking.status == 'completed' %}bg-info
-                    {% elif booking.status == 'cancelled' %}bg-secondary
+                    {% set display_status = booking|booking_display_status %}
+                    {% if display_status == 'in_progress' %}bg-primary
+                    {% elif display_status == 'approved' %}bg-success
+                    {% elif display_status == 'completed' %}bg-info
+                    {% elif display_status == 'cancelled' %}bg-secondary
                     {% else %}bg-secondary{% endif %}" 
                     style="font-size: 1rem;">
-                    {{ booking.status|title }}
+                    {{ display_status|title|replace('_', ' ') }}
                 </span>
             </div>
 
@@ -73,7 +75,7 @@
                             data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-calendar-plus me-2"></i>Add to Calendar
                     </button>
-                    <ul class="dropdown-menu" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <ul class="dropdown-menu shadow-standard" style="border-radius: 8px;">
                         <li>
                             <a class="dropdown-item" href="{{ url_for('bookings.export_calendar', booking_id=booking.booking_id, calendar_type='google') }}" 
                                target="_blank" style="padding: 0.75rem 1rem;">

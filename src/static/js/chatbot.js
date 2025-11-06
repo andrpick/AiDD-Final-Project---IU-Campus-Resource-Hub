@@ -219,8 +219,8 @@
         function displayHistory() {
             chatBody.innerHTML = '';
             if (conversationHistory.length === 0) {
-                addMessage('Hello! I\'m your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?', 'assistant');
-                conversationHistory.push({ role: 'assistant', content: 'Hello! I\'m your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?' });
+                addMessage('Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?', 'assistant');
+                conversationHistory.push({ role: 'assistant', content: 'Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?' });
             } else {
                 conversationHistory.forEach(msg => {
                     addMessage(msg.content, msg.role);

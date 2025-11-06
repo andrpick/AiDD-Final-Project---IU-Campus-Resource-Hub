@@ -48,6 +48,19 @@
         font-weight: 500;
     }
     .action-user { background-color: #4a90e2 !important; }
+    @media (max-width: 767.98px) {
+        .logs-table {
+            table-layout: auto;
+        }
+        .logs-table th,
+        .logs-table td {
+            width: auto !important;
+        }
+        .logs-table th[style*="width: 80px"],
+        .logs-table td[style*="width: 80px"] {
+            width: auto !important;
+        }
+    }
     .action-resource { background-color: #50c878 !important; }
     .action-booking { background-color: #ff6b6b !important; }
     .action-system { background-color: #9b59b6 !important; }
@@ -79,7 +92,7 @@
         </div>
 
         <!-- Filters -->
-        <div class="card bg-white border-0 shadow-sm mb-4">
+        <div class="card bg-white border-0 mb-4">
             <div class="card-body p-4">
                 <form method="GET" action="{{ url_for('admin.logs') }}" id="logsFiltersForm">
                     <div class="row g-3 align-items-end">
@@ -133,7 +146,7 @@
 
         {% if logs %}
         <!-- Logs Table -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table logs-table mb-0">
@@ -234,7 +247,7 @@
                                                 style="border-radius: 8px;">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" 
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-standard" 
                                             aria-labelledby="actionsDropdown{{ log.log_id }}"
                                             style="border-radius: 8px; border: 1px solid #dee2e6;">
                                             <li>
@@ -357,8 +370,14 @@
                                     </p>
                                     <p class="mb-0" style="color: #333;">
                                         <strong>Status:</strong> 
-                                        <span class="badge {% if log.target_booking_info.status == 'approved' %}bg-success{% elif log.target_booking_info.status == 'completed' %}bg-info{% elif log.target_booking_info.status == 'cancelled' %}bg-secondary{% else %}bg-secondary{% endif %}">
-                                            {{ log.target_booking_info.status|title }}
+                                        <span class="badge 
+                                            {% set display_status = log.target_booking_info|booking_display_status %}
+                                            {% if display_status == 'in_progress' %}bg-primary
+                                            {% elif display_status == 'approved' %}bg-success
+                                            {% elif display_status == 'completed' %}bg-info
+                                            {% elif display_status == 'cancelled' %}bg-secondary
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ display_status|title|replace('_', ' ') }}
                                         </span>
                                     </p>
                                 </div>
@@ -435,7 +454,7 @@
         {% endif %}
         {% else %}
         <!-- Empty State -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body text-center py-5 d-flex flex-column align-items-center">
                 <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
                      style="width: 50px; height: 50px; font-size: 1.5rem;">

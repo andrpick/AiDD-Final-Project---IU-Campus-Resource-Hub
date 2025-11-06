@@ -7,7 +7,7 @@ from src.services.ai_concierge import query_concierge
 ai_concierge_bp = Blueprint('ai_concierge', __name__, url_prefix='/ai')
 
 # Note: Legacy /ai/concierge route was removed.
-# The AI assistant is now available as a floating chatbot widget on every page via /ai/chat endpoint.
+# Crimson (the AI assistant) is now available as a floating chatbot widget on every page via /ai/chat endpoint.
 
 @ai_concierge_bp.route('/chat', methods=['POST'])
 def chat():

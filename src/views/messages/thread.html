@@ -40,14 +40,14 @@
         </div>
 
         <!-- Messages Container -->
-        <div class="card bg-white border-0 shadow-sm mb-3" style="height: 600px; display: flex; flex-direction: column;">
+        <div class="card bg-white border-0 mb-3" style="height: 600px; display: flex; flex-direction: column;">
             <!-- Messages Body -->
             <div class="card-body p-4" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column;">
                 {% if messages %}
                     <div class="d-flex flex-column">
                         {% for message in messages %}
                         <div class="mb-3 d-flex {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
-                            <div style="max-width: 70%; position: relative;">
+                            <div class="message-container" style="max-width: 70%; position: relative;">
                                 <div class="d-flex align-items-center mb-1 {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
                                     {% if message.sender_id != current_user.user_id %}
                                         <small class="text-muted me-2" style="font-size: 0.75rem;">
@@ -105,7 +105,7 @@
 
 <style>
 .message-bubble {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Shadow handled by shadow-inner class */
 }
 
 .message-sent {
@@ -124,6 +124,13 @@
 /* Custom Scrollbar */
 .card-body::-webkit-scrollbar {
     width: 8px;
+}
+
+/* Responsive Message Container */
+@media (max-width: 767.98px) {
+    .message-container {
+        max-width: 85% !important;
+    }
 }
 
 .card-body::-webkit-scrollbar-track {

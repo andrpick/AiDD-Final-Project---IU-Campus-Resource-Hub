@@ -1504,7 +1504,12 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
   - Used for backgrounds, text contrast, card backgrounds
 - **Background:** Light theme with white and light gray backgrounds (#f8f9fa)
 - **UI Theme:** Clean, modern design with Bootstrap 5 framework
-  - Subtle shadows and hover effects on cards and buttons
+  - **Standardized Shadow Utility Classes**: Consistent shadow effects across all pages
+    - `.shadow-standard`: `0 4px 12px rgba(0,0,0,0.15)` - Used for cards and general elements
+    - `.shadow-table`: `0 4px 12px rgba(0,0,0,0.15)` - Used for tables
+    - `.shadow-inner`: `0 1px 3px rgba(0,0,0,0.1)` - Used for inner elements (dashboard stat boxes)
+  - **Standardized Button Hover Effects**: All buttons have consistent 0.2s transitions for background-color, border-color, and color
+    - Standardized across `.btn-crimson`, `.btn-outline-crimson`, and `.btn-outline-light`
   - System font stack for consistent typography
   - Responsive design with modern UX patterns
 - **Color Usage:**
@@ -1515,12 +1520,24 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - **Brand Consistency:**
   - Header/navigation uses crimson background with white text
   - Primary CTA buttons use crimson
-  - Cards and content areas use white backgrounds with subtle shadows
+  - Cards and content areas use white backgrounds with standardized shadows (`.shadow-standard`)
   - Consistent spacing and typography throughout
 
 **Responsive Design:**
 - Mobile-first approach
-- Breakpoints: Mobile (< 768px), Tablet (768px - 992px), Desktop (> 992px)
+- **Breakpoints:**
+  - **Mobile (max-width: 767.98px):** Time picker, message thread, chatbot widget, tables, filter/sort boxes
+    - Time picker: Full-width with `min-width: 100%` and `max-width: 100vw`
+    - Message thread: Max-width 85% for message bubbles
+    - Chatbot widget: Full-width with proper margins (`calc(100vw - 20px)`)
+    - Tables: Auto table-layout with responsive column widths
+    - Filter/sort boxes: Stacked layout with proper spacing
+  - **Tablet (max-width: 991.98px):** Weekly calendar, time picker, tables
+    - Weekly calendar: Horizontal scroll enabled
+    - Time picker: Full-width
+    - Tables: Responsive overflow handling
+  - **Desktop (min-width: 992px):** Container max-width settings
+    - Container max-width: 1140px
 - Bootstrap 5 grid system
 
 **Accessibility:**

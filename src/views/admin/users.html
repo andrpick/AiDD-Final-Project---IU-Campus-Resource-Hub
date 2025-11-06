@@ -12,7 +12,7 @@
         </div>
 
         <!-- Filters -->
-        <div class="card bg-white border-0 shadow-sm mb-4">
+        <div class="card bg-white border-0 mb-4">
             <div class="card-body p-4">
                 <form method="GET" action="{{ url_for('admin.users') }}">
                     <div class="row g-3 align-items-end">
@@ -73,7 +73,7 @@
 
         {% if users %}
         <!-- Users Table -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -84,7 +84,7 @@
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Role</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Department</th>
                                 <th style="font-weight: 600; color: #333; padding: 1rem;">Status</th>
-                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 80px;">Actions</th>
+                                <th class="actions-column" style="font-weight: 600; color: #333; padding: 1rem; width: 80px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -126,7 +126,7 @@
                                                 style="border-radius: 8px;">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" 
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-standard" 
                                             aria-labelledby="actionsDropdown{{ user.user_id }}"
                                             style="border-radius: 8px; border: 1px solid #dee2e6;">
                                             {% if user.deleted %}
@@ -194,7 +194,7 @@
         </div>
         {% else %}
         <!-- Empty State -->
-        <div class="card bg-white border-0 shadow-sm">
+        <div class="card bg-white border-0">
             <div class="card-body text-center py-5 d-flex flex-column align-items-center">
                 <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
                      style="width: 50px; height: 50px; font-size: 1.5rem;">
