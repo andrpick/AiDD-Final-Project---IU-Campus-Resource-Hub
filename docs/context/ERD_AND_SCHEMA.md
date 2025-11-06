@@ -28,6 +28,9 @@ erDiagram
         BOOLEAN suspended
         TEXT suspended_reason
         DATETIME suspended_at
+        BOOLEAN deleted
+        DATETIME deleted_at
+        INTEGER deleted_by FK
     }
 
     resources {
@@ -40,6 +43,9 @@ erDiagram
         INTEGER capacity
         TEXT images
         TEXT availability_rules
+        INTEGER operating_hours_start
+        INTEGER operating_hours_end
+        BOOLEAN is_24_hours
         TEXT status
         BOOLEAN featured
         DATETIME created_at
@@ -112,7 +118,7 @@ erDiagram
 |------------|-----------|-------------|-------------|
 | user_id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier for each user |
 | name | TEXT | NOT NULL | User's full name |
-| email | TEXT | NOT NULL, UNIQUE | User's email address (unique, used for login) |
+| email | TEXT | UNIQUE | User's email address (unique, used for login; can be NULL for soft-deleted users) |
 | password_hash | TEXT | NOT NULL | Bcrypt-hashed password |
 | role | TEXT | NOT NULL, CHECK | User role: 'student', 'staff', or 'admin' |
 | department | TEXT | NULL | User's department (optional) |
@@ -121,9 +127,13 @@ erDiagram
 | suspended | BOOLEAN | DEFAULT 0 | Account suspension status |
 | suspended_reason | TEXT | NULL | Reason for account suspension |
 | suspended_at | DATETIME | NULL | Timestamp when account was suspended |
+| deleted | BOOLEAN | DEFAULT 0 | Soft delete flag for user accounts |
+| deleted_at | DATETIME | NULL | Timestamp when account was soft-deleted |
+| deleted_by | INTEGER | NULL, FOREIGN KEY | Reference to users.user_id (admin who deleted the account) |
 
 **Indexes:**
 - `idx_users_email` on `email` (for fast login lookups)
+- `idx_users_deleted` on `deleted` (for filtering active users)
 
 **Relationships:**
 - One-to-Many with `resources` (owner_id)
@@ -152,6 +162,9 @@ erDiagram
 | capacity | INTEGER | CHECK (capacity IS NULL OR capacity > 0) | Maximum capacity (optional, NULL allowed) |
 | images | TEXT | NULL | JSON array of image file paths |
 | availability_rules | TEXT | NULL | JSON blob describing recurring availability rules |
+| operating_hours_start | INTEGER | NOT NULL DEFAULT 8, CHECK | Start hour (0-23) for resource availability |
+| operating_hours_end | INTEGER | NOT NULL DEFAULT 22, CHECK | End hour (0-23) for resource availability |
+| is_24_hours | BOOLEAN | DEFAULT 0 | Whether resource operates 24 hours a day |
 | status | TEXT | DEFAULT 'draft', CHECK | Status: 'draft', 'published', or 'archived' |
 | featured | BOOLEAN | DEFAULT 0 | Whether resource is featured/promoted |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Resource creation timestamp |
@@ -353,13 +366,19 @@ erDiagram
 - **resources.category**: Must be one of: 'study_room', 'lab_equipment', 'av_equipment', 'event_space', 'tutoring', 'other'
 - **resources.status**: Must be one of: 'draft', 'published', 'archived'
 - **resources.capacity**: Must be NULL or greater than 0
+- **resources.operating_hours_start**: Must be between 0 and 23 (inclusive)
+- **resources.operating_hours_end**: Must be between 0 and 23 (inclusive)
 - **bookings.status**: Must be one of: 'approved', 'cancelled', 'completed'
 - **reviews.rating**: Must be between 1 and 5 (inclusive)
 
 ### Default Values
 
 - **users.suspended**: Defaults to 0 (false)
+- **users.deleted**: Defaults to 0 (false)
 - **resources.status**: Defaults to 'draft'
+- **resources.operating_hours_start**: Defaults to 8 (8 AM)
+- **resources.operating_hours_end**: Defaults to 22 (10 PM)
+- **resources.is_24_hours**: Defaults to 0 (false)
 - **resources.featured**: Defaults to 0 (false)
 - **bookings.status**: Defaults to 'approved'
 - **messages.read**: Defaults to 0 (false)
@@ -378,6 +397,7 @@ All tables with timestamps use `DATETIME DEFAULT CURRENT_TIMESTAMP` for automati
 
 1. **users**
    - `idx_users_email` on `email` - Fast login lookups
+   - `idx_users_deleted` on `deleted` - Filter active users
 
 2. **resources**
    - `idx_resources_owner` on `owner_id` - Filter resources by owner
@@ -420,4 +440,8 @@ All tables with timestamps use `DATETIME DEFAULT CURRENT_TIMESTAMP` for automati
 5. **Capacity Field**: The `resources.capacity` field allows NULL values to support resources that don't have capacity limits (e.g., some equipment).
 
 6. **Suspension Tracking**: User suspension is tracked with `suspended`, `suspended_reason`, and `suspended_at` fields for audit purposes.
+
+7. **Soft Delete**: User accounts use soft delete (`deleted`, `deleted_at`, `deleted_by`) to preserve data integrity. Deleted users have anonymized PII (email set to NULL, name set to '[Deleted User]') but records remain in database for referential integrity.
+
+8. **Operating Hours**: Resources have configurable operating hours (`operating_hours_start`, `operating_hours_end`) in 24-hour format (0-23). Resources can be marked as 24-hour operation (`is_24_hours`), which overrides operating hours constraints. Operating hours are required fields set by resource owners/admins.
 

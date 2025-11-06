@@ -58,10 +58,10 @@ def register_user(name, email, password, role='student', department=None):
     if role not in ['student', 'staff', 'admin']:
         return {'success': False, 'error': 'Invalid role'}
     
-    # Check if email already exists
+    # Check if email already exists (excluding deleted users)
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT user_id FROM users WHERE email = ?", (email.lower(),))
+        cursor.execute("SELECT user_id FROM users WHERE email = ? AND (deleted = 0 OR deleted IS NULL)", (email.lower(),))
         if cursor.fetchone():
             return {'success': False, 'error': 'Email already registered'}
         
@@ -84,6 +84,10 @@ def authenticate_user(email, password):
     
     if not user:
         return {'success': False, 'error': 'Invalid email or password'}
+    
+    # Check if user is deleted
+    if user.deleted:
+        return {'success': False, 'error': 'Account has been deleted'}
     
     if user.suspended:
         return {'success': False, 'error': 'Account is suspended'}

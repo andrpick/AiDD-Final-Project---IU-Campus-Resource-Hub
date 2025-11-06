@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Reassign Resource Ownership - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <a href="{{ url_for('admin.resources') }}" class="btn btn-link text-crimson p-0 mb-3">
+                <i class="bi bi-arrow-left me-2"></i> Back to Resources
+            </a>
+            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Reassign Resource Ownership</h1>
+            <p class="text-muted mb-0">Transfer ownership of this resource to another user</p>
+        </div>
+
+        <!-- Resource Info Card -->
+        <div class="card bg-white border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-semibold" style="color: #333;">Resource Information</h5>
+                <div class="mb-2">
+                    <strong>Title:</strong> {{ resource.title }}
+                </div>
+                <div class="mb-2">
+                    <strong>Category:</strong> <span class="badge bg-secondary">{{ resource.category|format_category }}</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Location:</strong> {{ resource.location }}
+                </div>
+                <div class="mb-2">
+                    <strong>Status:</strong> 
+                    <span class="badge {% if resource.status == 'published' %}bg-success{% elif resource.status == 'draft' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                        {{ resource.status|title }}
+                    </span>
+                </div>
+                <div class="mb-2">
+                    <strong>Current Owner:</strong> 
+                    {% if current_owner %}
+                        {{ current_owner.name }} {% if current_owner.email != '[Deleted]' %}({{ current_owner.email }}){% endif %}
+                        {% if current_owner.deleted %}
+                            <span class="badge bg-warning text-dark ms-2">Deleted</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">Unknown</span>
+                    {% endif %}
+                </div>
+                {% if owner_is_deleted %}
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Current owner is deleted:</strong> This resource is owned by a deleted user and should be reassigned.
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Current owner:</strong> This resource can be reassigned to another user at any time.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Reassignment Form -->
+        <div class="card bg-white border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-semibold" style="color: #333;">Select New Owner</h5>
+                
+                <form method="POST" action="{{ url_for('admin.reassign_resource', resource_id=resource.resource_id) }}">
+                    <div class="mb-3">
+                        <label for="new_owner_id" class="form-label fw-semibold" style="color: #333;">New Owner</label>
+                        <select class="form-select" id="new_owner_id" name="new_owner_id" required style="border-radius: 8px;">
+                            <option value="">-- Select a user --</option>
+                            {% for user in users %}
+                            <option value="{{ user.user_id }}" {% if user.user_id == current_user.user_id %}selected{% endif %}>
+                                {{ user.name }} ({{ user.email }}){% if user.user_id == current_user.user_id %} - You{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Select the user who will become the new owner of this resource.</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>What happens after reassignment:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>The new owner will see this resource in their "My Resources" page</li>
+                            <li>The new owner will have full owner privileges (edit, publish, archive, etc.)</li>
+                            <li>The resource will remain in its current status ({{ resource.status|title }})</li>
+                            <li>This action will be logged in admin logs</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-crimson" onclick="return confirm('Are you sure you want to reassign ownership of this resource?')">
+                            <i class="bi bi-person-check me-2"></i> Reassign Ownership
+                        </button>
+                        <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

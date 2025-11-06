@@ -19,7 +19,7 @@ def init_database():
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
+            email TEXT UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL CHECK(role IN ('student', 'staff', 'admin')),
             department TEXT,
@@ -27,7 +27,10 @@ def init_database():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             suspended BOOLEAN DEFAULT 0,
             suspended_reason TEXT,
-            suspended_at DATETIME
+            suspended_at DATETIME,
+            deleted BOOLEAN DEFAULT 0,
+            deleted_at DATETIME,
+            deleted_by INTEGER
         )
     """)
     
@@ -43,6 +46,9 @@ def init_database():
             capacity INTEGER CHECK(capacity IS NULL OR capacity > 0),
             images TEXT,
             availability_rules TEXT,
+            operating_hours_start INTEGER NOT NULL DEFAULT 8 CHECK(operating_hours_start >= 0 AND operating_hours_start <= 23),
+            operating_hours_end INTEGER NOT NULL DEFAULT 22 CHECK(operating_hours_end >= 0 AND operating_hours_end <= 23),
+            is_24_hours BOOLEAN DEFAULT 0,
             status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published', 'archived')),
             featured BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -134,6 +140,7 @@ def init_database():
     # Create indexes
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+        "CREATE INDEX IF NOT EXISTS idx_users_deleted ON users(deleted)",
         "CREATE INDEX IF NOT EXISTS idx_resources_owner ON resources(owner_id)",
         "CREATE INDEX IF NOT EXISTS idx_resources_status ON resources(status)",
         "CREATE INDEX IF NOT EXISTS idx_resources_category ON resources(category)",

@@ -263,7 +263,7 @@ def test_view_my_bookings(client):
 
 
 def test_booking_validation_min_duration(client):
-    """Test that bookings shorter than 30 minutes are rejected."""
+    """Test that bookings shorter than 29 minutes are rejected."""
     client_obj, resource_id, student_id = client
     
     # Use EST/EDT time (controller expects EST/EDT)
@@ -285,7 +285,7 @@ def test_booking_validation_min_duration(client):
     
     # Should fail validation
     assert response.status_code == 200
-    assert b'30' in response.data or b'minimum' in response.data.lower() or b'error' in response.data.lower()
+    assert b'29' in response.data or b'minimum' in response.data.lower() or b'error' in response.data.lower()
 
 
 def test_booking_validation_advance_booking(client):

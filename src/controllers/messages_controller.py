@@ -4,9 +4,11 @@ Messages controller (Flask blueprint).
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from src.services.messaging_service import (send_message, get_thread_messages, list_threads, 
-                                           delete_message, search_users_for_messaging, get_existing_thread_id,
-                                           mark_thread_read, mark_thread_unread)
+                                           search_users_for_messaging, get_existing_thread_id,
+                                           mark_thread_read, mark_thread_unread, 
+                                           delete_thread as delete_thread_service, restore_thread)
 from src.models.user import User
+from src.utils.decorators import admin_required
 
 messages_bp = Blueprint('messages', __name__, url_prefix='/messages')
 
@@ -52,6 +54,20 @@ def thread(thread_id):
         resource_id = request.args.get('resource_id', type=int) or None
     
     other_user = User.get(other_user_id) if other_user_id else None
+    # Handle deleted users - show name even if user is deleted
+    if other_user and other_user.deleted:
+        # User exists but is deleted - template will show "[Deleted User]" from name
+        pass
+    elif other_user_id and not other_user:
+        # User doesn't exist - create a placeholder
+        other_user = User(
+            user_id=other_user_id,
+            name='[Deleted User]',
+            email='[Deleted]',
+            password_hash='',
+            role='student',
+            deleted=True
+        )
     
     # Get resource info if resource_id exists
     resource = None
@@ -139,14 +155,43 @@ def new_to_user(receiver_id):
 @messages_bp.route('/<int:message_id>/delete', methods=['POST'])
 @login_required
 def delete(message_id):
-    """Delete a message."""
-    result = delete_message(message_id, current_user.user_id)
+    """Delete a message (deprecated - use delete_thread instead)."""
+    flash('Individual message deletion is no longer supported. Please delete the entire thread.', 'info')
+    return redirect(request.referrer or url_for('messages.index'))
+
+@messages_bp.route('/thread/<int:thread_id>/delete', methods=['POST'])
+@login_required
+def delete_thread_route(thread_id):
+    """Delete an entire thread (soft delete all messages in thread)."""
+    result = delete_thread_service(thread_id, current_user.user_id)
     
     if result['success']:
-        flash('Message deleted.', 'info')
+        flash(f'Thread deleted ({result["data"]["deleted_count"]} messages deleted).', 'success')
+        return redirect(url_for('messages.index'))
+    else:
+        flash(result['error'], 'error')
+        return redirect(request.referrer or url_for('messages.index'))
+
+@messages_bp.route('/thread/<int:thread_id>/restore', methods=['POST'])
+@login_required
+@admin_required
+def restore_thread_route(thread_id):
+    """Restore a deleted thread (admin only)."""
+    result = restore_thread(thread_id, current_user.user_id)
+    
+    if result['success']:
+        flash(f'Thread restored ({result["data"]["restored_count"]} messages restored).', 'success')
     else:
         flash(result['error'], 'error')
     
+    return redirect(request.referrer or url_for('messages.index'))
+
+@messages_bp.route('/<int:message_id>/restore', methods=['POST'])
+@login_required
+@admin_required
+def restore(message_id):
+    """Restore a deleted message (deprecated - use restore_thread instead, admin only)."""
+    flash('Individual message restoration is no longer supported. Please restore the entire thread.', 'info')
     return redirect(request.referrer or url_for('messages.index'))
 
 @messages_bp.route('/thread/<int:thread_id>/read', methods=['POST'])

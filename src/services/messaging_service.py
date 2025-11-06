@@ -264,13 +264,18 @@ def list_threads(user_id):
         # Convert to list and enrich with user/resource info
         threads = []
         for thread_key, thread in consolidated_threads.items():
-            # Get other user info
+            # Get other user info (handle deleted users)
             other_user_id = thread['other_user_id']
-            cursor.execute("SELECT name, email FROM users WHERE user_id = ?", (other_user_id,))
+            cursor.execute("SELECT name, email, profile_image FROM users WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL)", (other_user_id,))
             other_user = cursor.fetchone()
             if other_user:
-                thread['other_user_name'] = other_user['name']
-                thread['other_user_email'] = other_user['email']
+                thread['other_user_name'] = other_user['name'] or '[Deleted User]'
+                thread['other_user_email'] = other_user['email'] or '[Deleted]'
+                thread['other_user_profile_image'] = other_user['profile_image']
+            else:
+                thread['other_user_name'] = '[Deleted User]'
+                thread['other_user_email'] = '[Deleted]'
+                thread['other_user_profile_image'] = None
             
             # Get resource info if resource_id exists
             if thread.get('resource_id'):
@@ -302,12 +307,262 @@ def delete_message(message_id, user_id):
             return {'success': False, 'error': 'Unauthorized'}
         
         cursor.execute("UPDATE messages SET deleted = 1 WHERE message_id = ?", (message_id,))
+        conn.commit()
+    
+    return {'success': True, 'data': {'message_id': message_id}}
+
+def delete_thread(thread_id, user_id):
+    """Soft delete all messages in a thread for a user."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # First, get one message to determine other_user_id and resource_id
+        cursor.execute("""
+            SELECT sender_id, receiver_id, resource_id
+            FROM messages
+            WHERE thread_id = ?
+            AND (sender_id = ? OR receiver_id = ?)
+            AND deleted = 0
+            LIMIT 1
+        """, (thread_id, user_id, user_id))
+        
+        first_message = cursor.fetchone()
+        if not first_message:
+            return {'success': False, 'error': 'Thread not found or access denied'}
+        
+        # Determine other_user_id and resource_id
+        if first_message['sender_id'] == user_id:
+            other_user_id = first_message['receiver_id']
+        else:
+            other_user_id = first_message['sender_id']
+        resource_id = first_message['resource_id']
+        
+        # Soft delete all messages for this (other_user_id, resource_id) combination
+        # This matches the thread consolidation logic in get_thread_messages
+        cursor.execute("""
+            UPDATE messages 
+            SET deleted = 1 
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND (sender_id = ? OR receiver_id = ?)
+            AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+            AND deleted = 0
+        """, (user_id, user_id, other_user_id, other_user_id, resource_id, resource_id))
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+    
+    return {'success': True, 'data': {'thread_id': thread_id, 'deleted_count': deleted_count}}
+
+def get_deleted_threads(admin_user_id, limit=100, offset=0):
+    """Get all deleted threads for an admin user. Admin only."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Verify user is admin
+        cursor.execute("SELECT role FROM users WHERE user_id = ?", (admin_user_id,))
+        user = cursor.fetchone()
+        if not user or user['role'] != 'admin':
+            return {'success': False, 'error': 'Admin access required'}
+        
+        # Find all unique (user1_id, user2_id, resource_id) combinations that have deleted messages
+        # This represents deleted threads
+        cursor.execute("""
+            SELECT DISTINCT
+                CASE 
+                    WHEN m1.sender_id < m1.receiver_id THEN m1.sender_id
+                    ELSE m1.receiver_id
+                END as user1_id,
+                CASE 
+                    WHEN m1.sender_id < m1.receiver_id THEN m1.receiver_id
+                    ELSE m1.sender_id
+                END as user2_id,
+                m1.resource_id,
+                MAX(m1.timestamp) as last_message_time
+            FROM messages m1
+            WHERE m1.deleted = 1
+            GROUP BY 
+                CASE 
+                    WHEN m1.sender_id < m1.receiver_id THEN m1.sender_id
+                    ELSE m1.receiver_id
+                END,
+                CASE 
+                    WHEN m1.sender_id < m1.receiver_id THEN m1.receiver_id
+                    ELSE m1.sender_id
+                END,
+                m1.resource_id
+            ORDER BY last_message_time DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        
+        thread_keys = cursor.fetchall()
+        threads = []
+        
+        for row in thread_keys:
+            user1_id = row['user1_id']
+            user2_id = row['user2_id']
+            resource_id = row['resource_id']
+            last_message_time = row['last_message_time']
+            
+            # Get one message to determine thread_id
+            cursor.execute("""
+                SELECT thread_id, content, sender_id, receiver_id
+                FROM messages
+                WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+                AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+                AND deleted = 1
+                ORDER BY timestamp DESC
+                LIMIT 1
+            """, (user1_id, user2_id, user2_id, user1_id, resource_id, resource_id))
+            
+            message = cursor.fetchone()
+            if not message:
+                continue
+            
+            thread_id = message['thread_id']
+            last_message = message['content']
+            
+            # Get user names
+            cursor.execute("SELECT name, email FROM users WHERE user_id = ?", (user1_id,))
+            user1 = cursor.fetchone()
+            cursor.execute("SELECT name, email FROM users WHERE user_id = ?", (user2_id,))
+            user2 = cursor.fetchone()
+            
+            user1_name = user1['name'] if user1 else '[Deleted User]'
+            user2_name = user2['name'] if user2 else '[Deleted User]'
+            
+            # Get resource title if applicable
+            resource_title = None
+            if resource_id:
+                cursor.execute("SELECT title FROM resources WHERE resource_id = ?", (resource_id,))
+                resource = cursor.fetchone()
+                if resource:
+                    resource_title = resource['title']
+            
+            # Count deleted messages in this thread
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM messages
+                WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+                AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+                AND deleted = 1
+            """, (user1_id, user2_id, user2_id, user1_id, resource_id, resource_id))
+            
+            deleted_count = cursor.fetchone()['count']
+            
+            threads.append({
+                'thread_id': thread_id,
+                'user1_id': user1_id,
+                'user2_id': user2_id,
+                'user1_name': user1_name,
+                'user2_name': user2_name,
+                'resource_id': resource_id,
+                'resource_title': resource_title,
+                'last_message': last_message,
+                'last_message_time': last_message_time,
+                'deleted_count': deleted_count
+            })
+        
+        # Get total count
+        cursor.execute("""
+            SELECT COUNT(DISTINCT 
+                CASE 
+                    WHEN sender_id < receiver_id THEN sender_id || '-' || receiver_id || '-' || COALESCE(CAST(resource_id AS TEXT), 'NULL')
+                    ELSE receiver_id || '-' || sender_id || '-' || COALESCE(CAST(resource_id AS TEXT), 'NULL')
+                END
+            ) as count
+            FROM messages
+            WHERE deleted = 1
+        """)
+        total = cursor.fetchone()['count']
+    
+    return {'success': True, 'data': {'threads': threads, 'total': total}}
+
+def restore_thread(thread_id, user_id):
+    """Restore all messages in a soft-deleted thread for a user. Admin only."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Verify user is admin
+        cursor.execute("SELECT role FROM users WHERE user_id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user or user['role'] != 'admin':
+            return {'success': False, 'error': 'Admin access required'}
+        
+        # First, get one message to determine other_user_id and resource_id
+        cursor.execute("""
+            SELECT sender_id, receiver_id, resource_id
+            FROM messages
+            WHERE thread_id = ?
+            AND (sender_id = ? OR receiver_id = ?)
+            LIMIT 1
+        """, (thread_id, user_id, user_id))
+        
+        first_message = cursor.fetchone()
+        if not first_message:
+            return {'success': False, 'error': 'Thread not found or access denied'}
+        
+        # Determine other_user_id and resource_id
+        if first_message['sender_id'] == user_id:
+            other_user_id = first_message['receiver_id']
+        else:
+            other_user_id = first_message['sender_id']
+        resource_id = first_message['resource_id']
+        
+        # Check if there are any deleted messages to restore
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM messages
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND (sender_id = ? OR receiver_id = ?)
+            AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+            AND deleted = 1
+        """, (user_id, user_id, other_user_id, other_user_id, resource_id, resource_id))
+        
+        result = cursor.fetchone()
+        if not result or result['count'] == 0:
+            return {'success': False, 'error': 'No deleted messages found in this thread'}
+        
+        # Restore all messages for this thread
+        cursor.execute("""
+            UPDATE messages 
+            SET deleted = 0 
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND (sender_id = ? OR receiver_id = ?)
+            AND (resource_id = ? OR (? IS NULL AND resource_id IS NULL))
+            AND deleted = 1
+        """, (user_id, user_id, other_user_id, other_user_id, resource_id, resource_id))
+        
+        restored_count = cursor.rowcount
+        conn.commit()
+    
+    return {'success': True, 'data': {'thread_id': thread_id, 'restored_count': restored_count}}
+
+def restore_message(message_id, user_id):
+    """Restore a soft-deleted message."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Verify user owns the message
+        cursor.execute("SELECT sender_id, receiver_id, deleted FROM messages WHERE message_id = ?", (message_id,))
+        message = cursor.fetchone()
+        
+        if not message:
+            return {'success': False, 'error': 'Message not found'}
+        
+        if message['sender_id'] != user_id and message['receiver_id'] != user_id:
+            return {'success': False, 'error': 'Unauthorized'}
+        
+        if not message['deleted']:
+            return {'success': False, 'error': 'Message is not deleted'}
+        
+        cursor.execute("UPDATE messages SET deleted = 0 WHERE message_id = ?", (message_id,))
+        conn.commit()
     
     return {'success': True, 'data': {'message_id': message_id}}
 
 def search_users_for_messaging(current_user_id, search=None, limit=50):
-    """Search for users that can be messaged (excluding suspended users and current user)."""
-    conditions = ["suspended = 0", "user_id != ?"]
+    """Search for users that can be messaged (excluding suspended and deleted users, and current user)."""
+    conditions = ["(suspended = 0 OR suspended IS NULL)", "(deleted = 0 OR deleted IS NULL)", "user_id != ?"]
     values = [current_user_id]
     
     if search:

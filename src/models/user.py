@@ -9,7 +9,8 @@ class User(UserMixin):
     
     def __init__(self, user_id, name, email, password_hash, role,
                  department=None, profile_image=None, created_at=None,
-                 suspended=False, suspended_reason=None, suspended_at=None):
+                 suspended=False, suspended_reason=None, suspended_at=None,
+                 deleted=False, deleted_at=None, deleted_by=None):
         self.id = user_id  # Required by Flask-Login
         self.user_id = user_id
         self.name = name
@@ -22,6 +23,9 @@ class User(UserMixin):
         self.suspended = suspended
         self.suspended_reason = suspended_reason
         self.suspended_at = suspended_at
+        self.deleted = deleted
+        self.deleted_at = deleted_at
+        self.deleted_by = deleted_by
     
     @staticmethod
     def get(user_id):
@@ -37,10 +41,10 @@ class User(UserMixin):
     
     @staticmethod
     def get_by_email(email):
-        """Retrieve user by email from database."""
+        """Retrieve user by email from database (excluding deleted users)."""
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE email = ?", (email.lower(),))
+            cursor.execute("SELECT * FROM users WHERE email = ? AND (deleted = 0 OR deleted IS NULL)", (email.lower(),))
             row = cursor.fetchone()
             
             if row:
@@ -67,6 +71,9 @@ class User(UserMixin):
         suspended = bool(row['suspended']) if 'suspended' in row_keys else False
         suspended_reason = row['suspended_reason'] if 'suspended_reason' in row_keys else None
         suspended_at = row['suspended_at'] if 'suspended_at' in row_keys else None
+        deleted = bool(row['deleted']) if 'deleted' in row_keys else False
+        deleted_at = row['deleted_at'] if 'deleted_at' in row_keys else None
+        deleted_by = row['deleted_by'] if 'deleted_by' in row_keys else None
         
         return User(
             user_id=user_id,
@@ -79,7 +86,10 @@ class User(UserMixin):
             created_at=created_at,
             suspended=suspended,
             suspended_reason=suspended_reason,
-            suspended_at=suspended_at
+            suspended_at=suspended_at,
+            deleted=deleted,
+            deleted_at=deleted_at,
+            deleted_by=deleted_by
         )
     
     def check_password(self, password):
@@ -94,8 +104,8 @@ class User(UserMixin):
             return False
     
     def is_active(self):
-        """Check if user account is active (not suspended)."""
-        return not self.suspended
+        """Check if user account is active (not suspended and not deleted)."""
+        return not self.suspended and not self.deleted
     
     def is_admin(self):
         """Check if user has admin role."""

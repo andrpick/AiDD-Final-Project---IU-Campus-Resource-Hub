@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from src.services.booking_service import create_booking, get_booking, update_booking_status, list_bookings, check_conflicts
 from src.services.resource_service import get_resource
 from src.utils.datetime_utils import parse_datetime_aware
+from src.utils.controller_helpers import categorize_bookings
 from datetime import datetime
 import urllib.parse
 
@@ -15,8 +16,6 @@ bookings_bp = Blueprint('bookings', __name__, url_prefix='/bookings')
 @login_required
 def index():
     """List user's bookings."""
-    from dateutil.tz import tzutc
-    
     status = request.args.get('status')
     section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
     page = request.args.get('page', 1, type=int)
@@ -30,61 +29,11 @@ def index():
         all_bookings = result['data']['bookings']
         total = result['data']['total']
         
-        # Get current time in UTC
-        now = datetime.now(tzutc())
-        
-        # Separate bookings into three categories
-        upcoming_bookings = []  # Approved bookings that haven't started yet
-        previous_bookings = []  # Approved bookings that have passed OR completed bookings
-        canceled_bookings = []  # Canceled bookings regardless of date
-        
-        for booking in all_bookings:
-            try:
-                # Parse booking start datetime
-                start_dt = parse_datetime_aware(booking['start_datetime'])
-                
-                if booking['status'] == 'cancelled':
-                    # Canceled bookings go to canceled section
-                    canceled_bookings.append(booking)
-                elif booking['status'] == 'approved' and start_dt >= now:
-                    # Upcoming approved bookings
-                    upcoming_bookings.append(booking)
-                elif booking['status'] == 'approved' and start_dt < now:
-                    # Previous approved bookings (past their start time)
-                    previous_bookings.append(booking)
-                elif booking['status'] == 'completed':
-                    # Completed bookings go to previous section
-                    previous_bookings.append(booking)
-                else:
-                    # Any other status goes to previous section
-                    previous_bookings.append(booking)
-            except Exception:
-                # If parsing fails, treat as previous booking
-                if booking['status'] == 'cancelled':
-                    canceled_bookings.append(booking)
-                else:
-                    previous_bookings.append(booking)
-        
-        # Sort upcoming by start_datetime ASC (soonest first)
-        upcoming_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']))
-        
-        # Sort previous by start_datetime DESC (most recent first)
-        previous_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
-        
-        # Sort canceled by start_datetime DESC (most recent first)
-        canceled_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
-        
-        # Apply section filter if specified
-        if section_filter == 'upcoming':
-            previous_bookings = []
-            canceled_bookings = []
-        elif section_filter == 'previous':
-            upcoming_bookings = []
-            canceled_bookings = []
-        elif section_filter == 'canceled':
-            upcoming_bookings = []
-            previous_bookings = []
-        # If section_filter is None or 'all', show all sections
+        # Categorize bookings
+        categorized = categorize_bookings(all_bookings, section_filter)
+        upcoming_bookings = categorized['upcoming']
+        previous_bookings = categorized['previous']
+        canceled_bookings = categorized['canceled']
         
         # Enrich with resource info
         for booking in upcoming_bookings + previous_bookings + canceled_bookings:

@@ -3,7 +3,7 @@ Resources controller (Flask blueprint).
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, current_app
 from flask_login import login_required, current_user
-from src.services.resource_service import create_resource, get_resource, update_resource, delete_resource, list_resources
+from src.services.resource_service import create_resource, get_resource, update_resource, delete_resource, list_resources, convert_12_to_24_hour, convert_24_to_12_hour
 from src.services.review_service import get_resource_reviews
 from src.services.booking_service import list_bookings
 from src.services.calendar_service import prepare_calendar_data
@@ -15,16 +15,13 @@ from src.utils.controller_helpers import (
     parse_existing_images,
     combine_images
 )
-from datetime import datetime
-import os
-import json
+from datetime import date
 
 resources_bp = Blueprint('resources', __name__, url_prefix='/resources')
 
 @resources_bp.route('/')
 def index():
     """Redirect to search page (resources browsing is now handled by search)."""
-    from flask import redirect, url_for
     return redirect(url_for('search.index'))
 
 @resources_bp.route('/<int:resource_id>')
@@ -124,6 +121,22 @@ def create():
         capacity = request.form.get('capacity', type=int) if has_capacity else None
         status = request.form.get('status', 'draft').strip()
         
+        # Operating hours - handle 12-hour format and 24-hour checkbox
+        is_24_hours = request.form.get('is_24_hours') == 'on'
+        operating_hours_start = None
+        operating_hours_end = None
+        
+        if not is_24_hours:
+            # Convert 12-hour format to 24-hour format
+            start_hour = request.form.get('operating_hours_start_hour', type=int)
+            start_am_pm = request.form.get('operating_hours_start_am_pm', '').strip()
+            end_hour = request.form.get('operating_hours_end_hour', type=int)
+            end_am_pm = request.form.get('operating_hours_end_am_pm', '').strip()
+            
+            if start_hour and start_am_pm and end_hour and end_am_pm:
+                operating_hours_start = convert_12_to_24_hour(start_hour, start_am_pm)
+                operating_hours_end = convert_12_to_24_hour(end_hour, end_am_pm)
+        
         # Handle multiple image uploads
         uploaded_files = request.files.getlist('image')
         upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -141,7 +154,10 @@ def create():
             capacity=capacity,
             images=images if images else None,
             availability_rules=availability_rules,
-            status=status
+            status=status,
+            operating_hours_start=operating_hours_start,
+            operating_hours_end=operating_hours_end,
+            is_24_hours=is_24_hours
         )
         
         if result['success']:
@@ -181,6 +197,22 @@ def edit(resource_id):
         capacity = request.form.get('capacity', type=int) if has_capacity else None
         status = request.form.get('status', '').strip()
         
+        # Operating hours - handle 12-hour format and 24-hour checkbox
+        is_24_hours = request.form.get('is_24_hours') == 'on'
+        operating_hours_start = None
+        operating_hours_end = None
+        
+        if not is_24_hours:
+            # Convert 12-hour format to 24-hour format
+            start_hour = request.form.get('operating_hours_start_hour', type=int)
+            start_am_pm = request.form.get('operating_hours_start_am_pm', '').strip()
+            end_hour = request.form.get('operating_hours_end_hour', type=int)
+            end_am_pm = request.form.get('operating_hours_end_am_pm', '').strip()
+            
+            if start_hour and start_am_pm and end_hour and end_am_pm:
+                operating_hours_start = convert_12_to_24_hour(start_hour, start_am_pm)
+                operating_hours_end = convert_12_to_24_hour(end_hour, end_am_pm)
+        
         # Owners can archive their own resources, admins can archive any resource
         if status == 'archived':
             has_permission, error_response = check_resource_permission(
@@ -196,7 +228,10 @@ def edit(resource_id):
             'category': category,
             'location': location,
             'capacity': capacity,
-            'status': status
+            'status': status,
+            'operating_hours_start': operating_hours_start,
+            'operating_hours_end': operating_hours_end,
+            'is_24_hours': is_24_hours
         }
         
         # Handle multiple image uploads and removals
@@ -230,7 +265,8 @@ def edit(resource_id):
         else:
             flash(result['error'], 'error')
     
-    return render_template('resources/edit.html', resource=resource)
+    return render_template('resources/edit.html', resource=resource, 
+                         convert_24_to_12_hour=convert_24_to_12_hour)
 
 @resources_bp.route('/<int:resource_id>/publish', methods=['POST'])
 @login_required

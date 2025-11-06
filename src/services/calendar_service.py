@@ -7,6 +7,7 @@ from dateutil.tz import gettz, tzutc
 from src.utils.datetime_utils import parse_datetime_aware, convert_to_est
 from src.utils.logging_config import get_logger
 from src.utils.config import Config
+from src.data_access.database import get_db_connection
 
 logger = get_logger(__name__)
 
@@ -25,6 +26,30 @@ def prepare_calendar_data(resource_id, approved_bookings_raw, selected_year, sel
     Returns:
         Dictionary with calendar_data, day_data, booked_slots, and navigation info
     """
+    # Fetch resource-specific operating hours
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT operating_hours_start, operating_hours_end, is_24_hours
+            FROM resources 
+            WHERE resource_id = ?
+        """, (resource_id,))
+        result = cursor.fetchone()
+        if result:
+            operating_hours_start = result['operating_hours_start']
+            operating_hours_end = result['operating_hours_end']
+            is_24_hours = bool(result['is_24_hours']) if result['is_24_hours'] is not None else False
+            if is_24_hours:
+                # For 24-hour operation, show all hours
+                operating_hours_start = 0
+                operating_hours_end = 23
+        else:
+            # Fallback to global config if resource not found
+            logger.warning(f"Resource {resource_id} not found, using global operating hours")
+            operating_hours_start = Config.BOOKING_OPERATING_HOURS_START
+            operating_hours_end = Config.BOOKING_OPERATING_HOURS_END
+            is_24_hours = False
+    
     now = datetime.now()
     today = now.date()
     
@@ -68,15 +93,13 @@ def prepare_calendar_data(resource_id, approved_bookings_raw, selected_year, sel
         current_minute = now.minute
         current_time_minutes = current_hour * 60 + current_minute
         
-        # Only show if within operating hours
-        operating_start = Config.BOOKING_OPERATING_HOURS_START
-        operating_end = Config.BOOKING_OPERATING_HOURS_END
-        if operating_start * 60 <= current_time_minutes < operating_end * 60:
+        # Only show if within resource-specific operating hours
+        if operating_hours_start * 60 <= current_time_minutes < operating_hours_end * 60:
             current_time_info = {
                 'hour': current_hour,
                 'minute': current_minute,
                 'minutes_from_midnight': current_time_minutes,
-                'minutes_from_8am': current_time_minutes - (operating_start * 60)
+                'minutes_from_start': current_time_minutes - (operating_hours_start * 60)
             }
     
     # Process bookings for calendar display
@@ -157,22 +180,39 @@ def prepare_calendar_data(resource_id, approved_bookings_raw, selected_year, sel
         day_bookings = [b for b in approved_bookings if b['date'] == date_key]
         booked_times = booked_slots.get(date_key, [])
         
-        # Generate time slots from operating hours start to end in 30-minute increments
+        # Generate time slots from 12 AM (00:00) to 11:59 PM (23:59) for all resources
+        # Slots outside operating hours will be marked as unavailable
         day_time_slots = []
-        operating_hours_start = Config.BOOKING_OPERATING_HOURS_START
-        operating_hours_end = Config.BOOKING_OPERATING_HOURS_END
         
-        for hour in range(operating_hours_start, operating_hours_end):
+        # Always show all hours from 0 (12 AM) to 23 (11 PM)
+        for hour in range(0, 24):  # 0 to 23 (12 AM to 11 PM)
             for minute in [0, 30]:
                 slot_start_minutes = hour * 60 + minute
                 slot_end_minutes = slot_start_minutes + 30
                 
                 # Check if slot is available
                 is_available = True
+                
+                # Check for booking conflicts
                 for booked in booked_times:
                     if slot_start_minutes < booked['end_minutes'] and slot_end_minutes > booked['start_minutes']:
                         is_available = False
                         break
+                
+                # For non-24-hour resources, mark slots outside operating hours as unavailable
+                if not is_24_hours:
+                    # Slot must start at or after operating hours start
+                    if slot_start_minutes < (operating_hours_start * 60):
+                        is_available = False
+                    
+                    # Slot must end at or before operating hours end
+                    # If end time is 22:00 (10 PM), slot ending at 22:30 is not allowed
+                    if slot_end_minutes > (operating_hours_end * 60):
+                        is_available = False
+                    
+                    # Also check if slot starts at or after the closing time
+                    if slot_start_minutes >= (operating_hours_end * 60):
+                        is_available = False
                 
                 # Only show slots at least configured advance hours in the future from now
                 min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
@@ -180,12 +220,19 @@ def prepare_calendar_data(resource_id, approved_bookings_raw, selected_year, sel
                 if slot_datetime < now + timedelta(hours=min_advance_hours):
                     is_available = False
                 
+                # For the last slot of the day (23:30), end time should be 23:59 instead of 00:00 (next day)
+                display_end_hour = slot_end_minutes // 60
+                display_end_minute = slot_end_minutes % 60
+                if slot_end_minutes >= 1440:  # If it would roll over to next day
+                    display_end_hour = 23
+                    display_end_minute = 59
+                
                 day_time_slots.append({
                     'hour': hour,
                     'minute': minute,
                     'time_minutes': slot_start_minutes,
                     'start_time': f"{hour:02d}:{minute:02d}",
-                    'end_time': f"{(slot_end_minutes // 60):02d}:{(slot_end_minutes % 60):02d}",
+                    'end_time': f"{display_end_hour:02d}:{display_end_minute:02d}",
                     'is_available': is_available,
                     'is_booked': not is_available
                 })

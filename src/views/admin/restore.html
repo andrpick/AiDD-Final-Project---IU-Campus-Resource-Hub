@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Data Restore - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Data Restore</h1>
+            <p class="text-muted mb-0">Restore deleted users and message threads</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card bg-white border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
+                                 style="width: 60px; height: 60px; font-size: 1.75rem;">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 fw-semibold" style="color: #333;">Deleted Users</h5>
+                                <h2 class="mb-0 fw-bold" style="color: var(--crimson); font-size: 2rem;">{{ deleted_users_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-white border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
+                                 style="width: 60px; height: 60px; font-size: 1.75rem;">
+                                <i class="bi bi-chat-dots"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 fw-semibold" style="color: #333;">Deleted Threads</h5>
+                                <h2 class="mb-0 fw-bold" style="color: var(--crimson); font-size: 2rem;">{{ deleted_threads_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deleted Users Section -->
+        <div class="card bg-white border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h4 class="mb-0 fw-semibold" style="color: #333;">
+                    <i class="bi bi-people-fill text-crimson me-2"></i> Deleted Users
+                </h4>
+            </div>
+            {% if deleted_users %}
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Name</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Email</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Role</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Department</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Deleted At</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Deleted By</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in deleted_users %}
+                            <tr>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="fw-semibold" style="color: #333;">{{ user.name }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="text-muted">{{ user.email or '[Deleted]' }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge bg-secondary">{{ user.role|title }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="text-muted">{{ user.department or '-' }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    {% if user.deleted_at %}
+                                    <small class="text-muted">{{ user.deleted_at|format_datetime_est('short') }}</small>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    {% if user.deleted_by_name %}
+                                    <small class="text-muted">{{ user.deleted_by_name }}</small>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <form method="POST" action="{{ url_for('admin.restore_user_route', user_id=user.user_id) }}" 
+                                          class="d-inline"
+                                          onsubmit="return confirm('Restore this user? Note: Email, name, and password were anonymized and will need to be manually restored.');">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="card-body text-center py-5">
+                <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
+                     style="width: 50px; height: 50px; font-size: 1.5rem;">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No deleted users</h5>
+                <p class="text-muted mb-0">All users are active.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Deleted Threads Section -->
+        <div class="card bg-white border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h4 class="mb-0 fw-semibold" style="color: #333;">
+                    <i class="bi bi-chat-dots-fill text-crimson me-2"></i> Deleted Threads
+                </h4>
+            </div>
+            {% if deleted_threads %}
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Participants</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Resource</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Last Message</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Deleted At</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Messages</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for thread in deleted_threads %}
+                            <tr>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="fw-semibold" style="color: #333;">
+                                        {{ thread.user1_name }} ↔ {{ thread.user2_name }}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    {% if thread.resource_title %}
+                                    <span class="badge bg-secondary">{{ thread.resource_title }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <small class="text-muted" style="max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        {{ thread.last_message }}
+                                    </small>
+                                    <small class="text-muted d-block mt-1">
+                                        {{ thread.last_message_time|format_datetime_est('short') }}
+                                    </small>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <small class="text-muted">{{ thread.last_message_time|format_datetime_est('short') }}</small>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge bg-secondary">{{ thread.deleted_count }} message{{ 's' if thread.deleted_count != 1 else '' }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <form method="POST" action="{{ url_for('admin.restore_thread_admin', thread_id=thread.thread_id) }}" 
+                                          class="d-inline"
+                                          onsubmit="return confirm('Restore this thread? This will restore {{ thread.deleted_count }} message{{ 's' if thread.deleted_count != 1 else '' }}.');">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="card-body text-center py-5">
+                <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
+                     style="width: 50px; height: 50px; font-size: 1.5rem;">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No deleted threads</h5>
+                <p class="text-muted mb-0">All message threads are active.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

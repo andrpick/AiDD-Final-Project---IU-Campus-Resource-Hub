@@ -45,6 +45,58 @@
                         </div>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Operating Hours *</label>
+                        <div class="mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_24_hours" name="is_24_hours">
+                                <label class="form-check-label" for="is_24_hours">
+                                    This resource operates 24 hours a day
+                                </label>
+                            </div>
+                        </div>
+                        <div id="operating_hours_wrapper">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="operating_hours_start_hour" class="form-label">Start Time</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <select class="form-select" id="operating_hours_start_hour" name="operating_hours_start_hour" required>
+                                                {% for hour in range(1, 13) %}
+                                                <option value="{{ hour }}" {% if hour == 8 %}selected{% endif %}>{{ hour }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <select class="form-select" id="operating_hours_start_am_pm" name="operating_hours_start_am_pm" required>
+                                                <option value="AM" selected>AM</option>
+                                                <option value="PM">PM</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="operating_hours_end_hour" class="form-label">End Time</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <select class="form-select" id="operating_hours_end_hour" name="operating_hours_end_hour" required>
+                                                {% for hour in range(1, 13) %}
+                                                <option value="{{ hour }}" {% if hour == 10 %}selected{% endif %}>{{ hour }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <select class="form-select" id="operating_hours_end_am_pm" name="operating_hours_end_am_pm" required>
+                                                <option value="AM">AM</option>
+                                                <option value="PM" selected>PM</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Select the hours when this resource is available for booking. Times outside these hours will be blocked.</small>
+                    </div>
+                    <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
                             <option value="draft">Draft</option>
@@ -85,6 +137,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize on page load
     toggleCapacityInput();
+    
+    // Operating hours 24-hour checkbox handling
+    const is24HoursCheckbox = document.getElementById('is_24_hours');
+    const operatingHoursWrapper = document.getElementById('operating_hours_wrapper');
+    const startHourSelect = document.getElementById('operating_hours_start_hour');
+    const startAmPmSelect = document.getElementById('operating_hours_start_am_pm');
+    const endHourSelect = document.getElementById('operating_hours_end_hour');
+    const endAmPmSelect = document.getElementById('operating_hours_end_am_pm');
+    
+    function toggleOperatingHours() {
+        if (is24HoursCheckbox.checked) {
+            operatingHoursWrapper.style.display = 'none';
+            startHourSelect.removeAttribute('required');
+            startAmPmSelect.removeAttribute('required');
+            endHourSelect.removeAttribute('required');
+            endAmPmSelect.removeAttribute('required');
+        } else {
+            operatingHoursWrapper.style.display = 'block';
+            startHourSelect.setAttribute('required', 'required');
+            startAmPmSelect.setAttribute('required', 'required');
+            endHourSelect.setAttribute('required', 'required');
+            endAmPmSelect.setAttribute('required', 'required');
+        }
+    }
+    
+    is24HoursCheckbox.addEventListener('change', toggleOperatingHours);
+    toggleOperatingHours();
 });
 </script>
 {% endblock %}

@@ -3,7 +3,6 @@ Flask application entry point for Indiana University Campus Resource Hub.
 """
 from flask import Flask, render_template
 from flask_login import LoginManager
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -141,6 +140,7 @@ def home():
 
 # Create uploads directory on startup
 if __name__ == '__main__':
+    import os
     from src.utils.logging_config import get_logger
     logger = get_logger(__name__)
     

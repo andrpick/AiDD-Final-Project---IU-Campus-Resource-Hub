@@ -5,10 +5,13 @@ from flask import flash, redirect, url_for
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
-from typing import List, Optional, Tuple, Callable, Any
+from typing import List, Optional, Tuple, Callable, Any, Dict
 import os
 import uuid
+from datetime import datetime
+from dateutil.tz import tzutc
 from src.utils.logging_config import get_logger
+from src.utils.datetime_utils import parse_datetime_aware
 
 logger = get_logger(__name__)
 
@@ -185,3 +188,193 @@ def combine_images(existing_images: List[str], new_images: List[str],
     # Combine existing and new images
     return existing_images + new_images
 
+
+def save_profile_image(uploaded_file: Optional[FileStorage], upload_folder: str) -> Optional[str]:
+    """
+    Save a single profile image and return relative path.
+    
+    Args:
+        uploaded_file: Single uploaded file object (or None)
+        upload_folder: Base upload folder path
+        
+    Returns:
+        Relative path to saved image (e.g., 'profiles/uuid.jpg') or None if no file
+    """
+    if not uploaded_file or not uploaded_file.filename or uploaded_file.filename == '':
+        return None
+    
+    if not allowed_image_file(uploaded_file.filename):
+        logger.warning(f"Invalid file type for profile image: {uploaded_file.filename}")
+        return None
+    
+    try:
+        profile_uploads = os.path.join(upload_folder, 'profiles')
+        os.makedirs(profile_uploads, exist_ok=True)
+        
+        # Generate unique filename
+        filename = secure_filename(uploaded_file.filename)
+        ext = filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        
+        # Save file
+        file_path = os.path.join(profile_uploads, unique_filename)
+        uploaded_file.save(file_path)
+        
+        # Return relative path for database
+        relative_path = f"profiles/{unique_filename}"
+        logger.debug(f"Saved profile image: {relative_path}")
+        return relative_path
+    except Exception as e:
+        logger.error(f"Error saving profile image {uploaded_file.filename}: {e}", exc_info=True)
+        return None
+
+
+def categorize_bookings(bookings: List[Dict], section_filter: Optional[str] = None) -> Dict[str, List[Dict]]:
+    """
+    Categorize bookings into upcoming, previous, and canceled groups.
+    
+    Args:
+        bookings: List of booking dictionaries with 'start_datetime' and 'status' fields
+        section_filter: Optional filter to return only one section ('upcoming', 'previous', 'canceled')
+        
+    Returns:
+        Dictionary with keys: 'upcoming', 'previous', 'canceled', each containing a list of bookings
+    """
+    # Get current time in UTC
+    now = datetime.now(tzutc())
+    
+    # Separate bookings into three categories
+    upcoming_bookings = []  # Approved bookings that haven't started yet
+    previous_bookings = []  # Approved bookings that have passed OR completed bookings
+    canceled_bookings = []  # Canceled bookings regardless of date
+    
+    for booking in bookings:
+        try:
+            # Parse booking start datetime
+            start_dt = parse_datetime_aware(booking['start_datetime'])
+            
+            if booking['status'] == 'cancelled':
+                # Canceled bookings go to canceled section
+                canceled_bookings.append(booking)
+            elif booking['status'] == 'approved' and start_dt >= now:
+                # Upcoming approved bookings
+                upcoming_bookings.append(booking)
+            elif booking['status'] == 'approved' and start_dt < now:
+                # Previous approved bookings (past their start time)
+                previous_bookings.append(booking)
+            elif booking['status'] == 'completed':
+                # Completed bookings go to previous section
+                previous_bookings.append(booking)
+            else:
+                # Any other status goes to previous section
+                previous_bookings.append(booking)
+        except Exception:
+            # If parsing fails, treat as previous booking
+            if booking['status'] == 'cancelled':
+                canceled_bookings.append(booking)
+            else:
+                previous_bookings.append(booking)
+    
+    # Sort upcoming by start_datetime ASC (soonest first)
+    upcoming_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']))
+    
+    # Sort previous by start_datetime DESC (most recent first)
+    previous_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
+    
+    # Sort canceled by start_datetime DESC (most recent first)
+    canceled_bookings.sort(key=lambda b: parse_datetime_aware(b['start_datetime']), reverse=True)
+    
+    # Apply section filter if specified
+    if section_filter == 'upcoming':
+        previous_bookings = []
+        canceled_bookings = []
+    elif section_filter == 'previous':
+        upcoming_bookings = []
+        canceled_bookings = []
+    elif section_filter == 'canceled':
+        upcoming_bookings = []
+        previous_bookings = []
+    # If section_filter is None or 'all', show all sections
+    
+    return {
+        'upcoming': upcoming_bookings,
+        'previous': previous_bookings,
+        'canceled': canceled_bookings
+    }
+
+
+def handle_service_error(result: dict, error_redirect: Optional[Callable] = None, 
+                        default_error_message: Optional[str] = None) -> Any:
+    """
+    Handle service error result and return appropriate redirect response.
+    
+    Args:
+        result: Service result dictionary with 'success' and 'error' keys
+        error_redirect: Optional function to call for redirect on error (takes no args)
+        default_error_message: Optional default error message if result['error'] is empty
+        
+    Returns:
+        Flask redirect response or None if result is successful
+        
+    Note:
+        Call this function only when result['success'] is False.
+        If result is successful, this function returns None.
+    """
+    if result.get('success'):
+        return None
+    
+    error_message = result.get('error') or default_error_message or 'An error occurred.'
+    flash(error_message, 'error')
+    
+    if error_redirect:
+        return error_redirect()
+    
+    return redirect(url_for('home'))
+
+
+def log_admin_action(admin_id: int, action: str, target_table: str, target_id: int, 
+                    details: Optional[str] = None) -> None:
+    """
+    Log an admin action to the admin_logs table.
+    
+    Args:
+        admin_id: ID of the admin user performing the action
+        action: Action name (e.g., 'feature_resource', 'archive_resource')
+        target_table: Table name being affected (e.g., 'resources', 'bookings')
+        target_id: ID of the target record
+        details: Optional details about the action
+    """
+    from src.data_access.database import get_db_connection
+    
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
+                VALUES (?, ?, ?, ?, ?)
+            """, (admin_id, action, target_table, target_id, details))
+            conn.commit()
+            logger.debug(f"Logged admin action: {action} on {target_table}:{target_id} by admin:{admin_id}")
+    except Exception as e:
+        logger.error(f"Error logging admin action: {e}", exc_info=True)
+        # Don't raise exception - logging failure shouldn't break the main operation
+
+
+def parse_bool_filter(filter_value: str) -> Optional[bool]:
+    """
+    Parse a boolean filter parameter from request args.
+    
+    Args:
+        filter_value: String value from request args (e.g., '1', '0', '' or None)
+        
+    Returns:
+        True if filter_value is '1', False if '0', None otherwise
+    """
+    if not filter_value:
+        return None
+    filter_value = filter_value.strip()
+    if filter_value == '1':
+        return True
+    elif filter_value == '0':
+        return False
+    return None

@@ -2,7 +2,166 @@
 
 {% block title %}Profile - {{ user.name }} - Indiana University Campus Resource Hub{% endblock %}
 
+{% block extra_head %}
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css">
+{% endblock %}
+
 {% block content %}
+<script>
+// Image cropping functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('profile_image');
+    const cropModal = document.getElementById('cropModal');
+    const cropImage = document.getElementById('cropImage');
+    const cropButton = document.getElementById('cropBtn');
+    const cancelCropBtn = document.getElementById('cancelCropBtn');
+    const profileImageForm = document.getElementById('profileImageForm');
+    let cropper = null;
+    let isProcessingCrop = false; // Flag to prevent re-opening modal when file is set programmatically
+    
+    if (fileInput && cropModal) {
+        fileInput.addEventListener('change', function(e) {
+            // Don't open modal if we're currently processing a crop
+            if (isProcessingCrop) {
+                return;
+            }
+            
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    cropImage.src = event.target.result;
+                    // Show modal and initialize cropper
+                    const modal = new bootstrap.Modal(cropModal);
+                    modal.show();
+                    
+                    // Initialize cropper when modal is shown
+                    cropModal.addEventListener('shown.bs.modal', function initCropper() {
+                        if (cropper) {
+                            cropper.destroy();
+                        }
+                        cropper = new Cropper(cropImage, {
+                            aspectRatio: 1,
+                            viewMode: 1,
+                            dragMode: 'move',
+                            autoCropArea: 0.8,
+                            restore: false,
+                            guides: true,
+                            center: true,
+                            highlight: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false,
+                        });
+                        cropModal.removeEventListener('shown.bs.modal', initCropper);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    if (cropButton) {
+        cropButton.addEventListener('click', function() {
+            if (cropper) {
+                // Set flag to prevent change event from re-opening modal
+                isProcessingCrop = true;
+                
+                const canvas = cropper.getCroppedCanvas({
+                    width: 400,
+                    height: 400,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+                
+                // Convert canvas to blob and replace file input, then submit form
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        console.error('Failed to create blob from canvas');
+                        isProcessingCrop = false; // Reset flag on error
+                        return;
+                    }
+                    
+                    // Create a new File object from blob with proper filename
+                    const file = new File([blob], 'profile-image.png', { 
+                        type: 'image/png',
+                        lastModified: Date.now()
+                    });
+                    
+                    // Create a new DataTransfer object to attach the file
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Hide modal
+                    const modal = bootstrap.Modal.getInstance(cropModal);
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    // Clean up cropper
+                    if (cropper) {
+                        cropper.destroy();
+                        cropper = null;
+                    }
+                    
+                    // Use FormData to ensure file is properly included in submission
+                    const formData = new FormData(profileImageForm);
+                    
+                    // Submit form using fetch to ensure file is sent correctly
+                    fetch(profileImageForm.action, {
+                        method: 'POST',
+                        body: formData
+                    }).then(function(response) {
+                        if (response.ok) {
+                            // Redirect to profile page after successful upload
+                            window.location.href = profileImageForm.action.replace('/update', '');
+                        } else {
+                            console.error('Failed to upload profile image');
+                            alert('Failed to upload profile image. Please try again.');
+                        }
+                    }).catch(function(error) {
+                        console.error('Error uploading profile image:', error);
+                        alert('Error uploading profile image. Please try again.');
+                    });
+                }, 'image/png', 0.95);
+            }
+        });
+    }
+    
+    if (cancelCropBtn) {
+        cancelCropBtn.addEventListener('click', function() {
+            // Reset processing flag
+            isProcessingCrop = false;
+            // Reset file input
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            // Clean up cropper
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+    }
+    
+    // Clean up cropper when modal is hidden
+    if (cropModal) {
+        cropModal.addEventListener('hidden.bs.modal', function() {
+            // Reset processing flag after modal is fully hidden
+            // This ensures any delayed change events won't reopen the modal
+            isProcessingCrop = false;
+            
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+    }
+});
+</script>
+
 <div class="row">
     <div class="col-12">
         <!-- Page Title -->
@@ -10,6 +169,18 @@
         
         <!-- Profile Card -->
         <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <!-- Profile Image -->
+            {% if user.profile_image and user.profile_image.startswith('profiles/') %}
+            <div class="mb-4 text-center">
+                <img src="{{ url_for('auth.uploaded_file', filename=user.profile_image.split('/')[-1]) }}?t={{ user.profile_image.split('/')[-1].split('.')[0] }}" 
+                     alt="{{ user.name }}'s profile picture"
+                     class="rounded-circle mb-3"
+                     style="width: 150px; height: 150px; object-fit: cover; border: 3px solid var(--crimson);"
+                     onerror="this.style.display='none'; this.parentElement.style.display='none';">
+            </div>
+            {% endif %}
+
+            
             <!-- Email -->
             <div class="mb-4">
                 <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Email</label>
@@ -40,7 +211,57 @@
                 </p>
             </div>
         </div>
+        
+        <!-- Profile Image Upload Card -->
+        {% if user.user_id == current_user.user_id or current_user.is_admin() %}
+        <div class="bg-white p-5 rounded-3 mb-4" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 class="mb-4 fw-semibold" style="color: #333;">Update Profile Picture</h3>
+            
+            <form method="POST" action="{{ url_for('auth.update_profile', user_id=user.user_id) }}" enctype="multipart/form-data" id="profileImageForm">
+                <div class="mb-4">
+                    <label for="profile_image" class="form-label fw-semibold" style="color: #333;">
+                        Upload Profile Image
+                    </label>
+                    <input type="file" 
+                           class="form-control" 
+                           id="profile_image" 
+                           name="profile_image" 
+                           accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                           style="border-radius: 8px;">
+                    <small class="text-muted d-block mt-2">
+                        Accepted formats: PNG, JPG, JPEG, GIF, WebP. Maximum file size: 16MB. You'll be able to crop the image after selection. The image will be uploaded automatically after cropping.
+                    </small>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Crop Modal -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cropModalLabel">Crop Profile Picture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Drag to reposition and resize the crop area. The image will be cropped to a perfect circle.</p>
+                <div style="max-width: 100%; max-height: 70vh; overflow: hidden;">
+                    <img id="cropImage" src="" alt="Crop" style="max-width: 100%; display: block;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelCropBtn" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-crimson" id="cropBtn">Crop & Save</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
+{% block extra_scripts %}
+<!-- Cropper.js JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+{% endblock %}

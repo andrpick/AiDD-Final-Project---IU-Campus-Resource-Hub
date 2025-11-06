@@ -48,6 +48,9 @@ def test_db():
                 capacity INTEGER CHECK(capacity IS NULL OR capacity > 0),
                 images TEXT,
                 availability_rules TEXT,
+                operating_hours_start INTEGER NOT NULL DEFAULT 8 CHECK(operating_hours_start >= 0 AND operating_hours_start <= 23),
+                operating_hours_end INTEGER NOT NULL DEFAULT 22 CHECK(operating_hours_end >= 0 AND operating_hours_end <= 23),
+                is_24_hours BOOLEAN DEFAULT 0,
                 status TEXT DEFAULT 'published' CHECK(status IN ('draft', 'published', 'archived')),
                 featured BOOLEAN DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,8 +81,8 @@ def test_db():
                       ('Test User', 'test@example.com', 'hash', 'student'))
         cursor.execute("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
                       ('Resource Owner', 'owner@example.com', 'hash', 'staff'))
-        cursor.execute("INSERT INTO resources (owner_id, title, category, location, status) VALUES (?, ?, ?, ?, ?)",
-                      (2, 'Test Resource', 'study_room', 'Test Location', 'published'))
+        cursor.execute("INSERT INTO resources (owner_id, title, category, location, status, operating_hours_start, operating_hours_end, is_24_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                      (2, 'Test Resource', 'study_room', 'Test Location', 'published', 8, 22, 0))
         conn.commit()
     
     yield test_db_path
@@ -227,13 +230,13 @@ def test_validate_booking_datetime_valid(test_db):
 
 
 def test_validate_booking_datetime_duration_min(test_db):
-    """Test minimum booking duration (30 minutes)."""
+    """Test minimum booking duration (29 minutes)."""
     future_start = datetime.now(tzutc()) + timedelta(hours=2)
-    future_end = datetime.now(tzutc()) + timedelta(hours=2, minutes=20)
+    future_end = datetime.now(tzutc()) + timedelta(hours=2, minutes=20)  # Only 20 minutes
     
     valid, start_dt, end_dt, error = validate_booking_datetime(future_start, future_end)
     assert valid == False
-    assert "30" in error or "minimum" in error.lower()
+    assert "29" in error or "minimum" in error.lower()
 
 
 def test_validate_booking_datetime_duration_max(test_db):

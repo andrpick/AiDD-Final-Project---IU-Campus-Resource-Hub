@@ -3,6 +3,7 @@ Search controller (Flask blueprint).
 """
 from flask import Blueprint, render_template, request
 from src.services.search_service import search_resources
+from src.data_access.database import get_db_connection
 
 search_bp = Blueprint('search', __name__, url_prefix='/search')
 
@@ -16,10 +17,20 @@ def index():
     capacity_max = request.args.get('capacity_max', type=int)
     available_from = request.args.get('available_from', '').strip() or None
     available_to = request.args.get('available_to', '').strip() or None
+    # New availability filter parameters
+    available_date = request.args.get('available_date', '').strip() or None
+    available_start_time = request.args.get('available_start_time', '').strip() or None
+    available_end_time = request.args.get('available_end_time', '').strip() or None
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    
+    # Get unique locations for dropdown
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT location FROM resources WHERE status = 'published' ORDER BY location")
+        locations_list = [row['location'] for row in cursor.fetchall()]
     
     result = search_resources(
         keyword=keyword,
@@ -29,6 +40,9 @@ def index():
         capacity_max=capacity_max,
         available_from=available_from,
         available_to=available_to,
+        available_date=available_date,
+        available_start_time=available_start_time,
+        available_end_time=available_end_time,
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,
@@ -47,13 +61,27 @@ def index():
                              location=location,
                              capacity_min=capacity_min,
                              capacity_max=capacity_max,
+                             available_date=available_date,
+                             available_start_time=available_start_time,
+                             available_end_time=available_end_time,
                              sort_by=sort_by,
-                             sort_order=sort_order)
+                             sort_order=sort_order,
+                             locations_list=locations_list)
     else:
         return render_template('search/index.html',
                              resources=[],
                              page=1,
                              total_pages=0,
                              total=0,
-                             keyword=keyword)
+                             keyword=keyword,
+                             category=category,
+                             location=location,
+                             capacity_min=capacity_min,
+                             capacity_max=capacity_max,
+                             available_date=available_date,
+                             available_start_time=available_start_time,
+                             available_end_time=available_end_time,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             locations_list=locations_list)
 

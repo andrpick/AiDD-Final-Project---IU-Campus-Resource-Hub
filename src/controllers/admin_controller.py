@@ -5,11 +5,14 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from src.services.admin_service import (
     get_statistics, list_users, suspend_user, unsuspend_user,
-    change_user_role, delete_user, get_admin_logs, get_user, update_user
+    change_user_role, delete_user, get_admin_logs, get_user, update_user, restore_user, get_deleted_users
 )
-from src.services.resource_service import list_resources, update_resource, get_resource
+from src.services.resource_service import list_resources, update_resource, get_resource, reassign_resource_ownership
 from src.services.booking_service import list_bookings, get_booking, update_booking
+from src.services.messaging_service import get_deleted_threads, restore_thread
 from src.utils.decorators import admin_required
+from src.utils.controller_helpers import categorize_bookings, log_admin_action, parse_bool_filter
+from src.utils.query_builder import QueryBuilder
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -18,35 +21,229 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 @admin_required
 def dashboard():
     """Admin dashboard."""
-    # Get filter parameters for popular resources
+    result = get_statistics()
+    
+    if result['success']:
+        stats = result['data']
+        return render_template('admin/dashboard.html', stats=stats)
+    else:
+        return render_template('admin/dashboard.html', stats={})
+
+@admin_bp.route('/statistics')
+@login_required
+@admin_required
+def statistics():
+    """Resource statistics page."""
+    # Get filter parameters
     category_filter = request.args.get('category', '').strip() or None
     location_filter = request.args.get('location', '').strip() or None
     featured_filter = request.args.get('featured', '').strip()
-    featured = None
-    if featured_filter == '1':
-        featured = True
-    elif featured_filter == '0':
-        featured = False
+    featured = parse_bool_filter(featured_filter)
     
     # Get sort parameter
     sort_by = request.args.get('sort_by', 'booking_count').strip()
     sort_order = request.args.get('sort_order', 'desc').strip()
+    
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    offset = (page - 1) * page_size
     
     result = get_statistics(category_filter=category_filter, location_filter=location_filter, 
                            featured_filter=featured, sort_by=sort_by, sort_order=sort_order)
     
     if result['success']:
         stats = result['data']
-        return render_template('admin/dashboard.html', 
+        popular_resources = stats.get('popular_resources', [])
+        
+        # Get total count and featured count from database (not limited by popular_resources LIMIT)
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Build base query builder for filtering
+            base_query = QueryBuilder('resources r')
+            base_query.add_condition("r.status = 'published'")
+            base_query.add_equals_filter('r.category', category_filter)
+            if location_filter:
+                base_query.add_like_filter('r.location', location_filter)
+            if featured is not None:
+                base_query.add_equals_filter('r.featured', 1 if featured else 0)
+            
+            # Get total count
+            count_query, count_params = base_query.build_count_query('r.resource_id')
+            cursor.execute(count_query, count_params)
+            total_result = cursor.fetchone()
+            total_resources = total_result[0] if total_result else 0
+            
+            # Get featured count - add featured condition
+            featured_query = QueryBuilder('resources r')
+            featured_query.add_condition("r.status = 'published'")
+            featured_query.add_equals_filter('r.category', category_filter)
+            if location_filter:
+                featured_query.add_like_filter('r.location', location_filter)
+            featured_query.add_equals_filter('r.featured', 1)
+            featured_count_query, featured_count_params = featured_query.build_count_query('r.resource_id')
+            cursor.execute(featured_count_query, featured_count_params)
+            featured_result = cursor.fetchone()
+            featured_count = featured_result[0] if featured_result else 0
+            
+            # Get all resources (not just top 10) for pagination
+            sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
+            valid_sort_fields = ['booking_count', 'review_count', 'avg_rating', 'title', 'category', 'location']
+            if sort_by not in valid_sort_fields:
+                sort_by = 'booking_count'
+            
+            # Build main query with aggregations
+            main_query = QueryBuilder(
+                'resources r',
+                base_select="""SELECT 
+                    r.resource_id, 
+                    r.title, 
+                    r.category,
+                    r.location,
+                    r.capacity,
+                    r.featured,
+                    COUNT(DISTINCT b.booking_id) as booking_count,
+                    COUNT(DISTINCT rev.review_id) as review_count,
+                    AVG(rev.rating) as avg_rating
+                    FROM resources r"""
+            )
+            main_query.add_join("LEFT JOIN bookings b ON r.resource_id = b.resource_id")
+            main_query.add_join("LEFT JOIN reviews rev ON r.resource_id = rev.resource_id")
+            main_query.add_condition("r.status = 'published'")
+            main_query.add_equals_filter('r.category', category_filter)
+            if location_filter:
+                main_query.add_like_filter('r.location', location_filter)
+            if featured is not None:
+                main_query.add_equals_filter('r.featured', 1 if featured else 0)
+            main_query.set_group_by('r.resource_id, r.title, r.category, r.location, r.capacity, r.featured')
+            # Order by requires a single column, so we'll handle complex ordering manually
+            main_query.order_by = f"{sort_by} {sort_direction}, booking_count DESC"
+            main_query.set_pagination(page_size, offset)
+            
+            query, query_params = main_query.build()
+            cursor.execute(query, query_params)
+            all_resources_raw = cursor.fetchall()
+            
+            # Process resources
+            all_resources = []
+            for row in all_resources_raw:
+                resource = dict(row)
+                if resource.get('avg_rating'):
+                    resource['avg_rating'] = float(resource['avg_rating'])
+                else:
+                    resource['avg_rating'] = None
+                all_resources.append(resource)
+            
+            # Calculate resource-specific statistics for summary cards
+            # IMPORTANT: These are GLOBAL statistics, not filtered by category/location/featured
+            # 1. Average rating across all resources (only resources with reviews)
+            cursor.execute("""
+                SELECT AVG(rating) as avg_rating
+                FROM reviews
+            """)
+            avg_rating_result = cursor.fetchone()
+            avg_rating_all = float(avg_rating_result['avg_rating']) if avg_rating_result and avg_rating_result['avg_rating'] else None
+            
+            # 2. Most booked resource (top resource by booking count) - GLOBAL, not filtered
+            # This query ensures we get the resource with the highest booking count
+            # In case of ties, it picks alphabetically first by title for consistency
+            # Counts ALL bookings (historical), not just approved
+            cursor.execute("""
+                SELECT r.resource_id, r.title, COUNT(DISTINCT b.booking_id) as booking_count
+                FROM resources r
+                LEFT JOIN bookings b ON r.resource_id = b.resource_id
+                WHERE r.status = 'published'
+                GROUP BY r.resource_id, r.title
+                ORDER BY booking_count DESC, r.title ASC
+                LIMIT 1
+            """)
+            most_booked_result = cursor.fetchone()
+            most_booked_resource = None
+            most_booked_count = 0
+            if most_booked_result and most_booked_result['booking_count']:
+                most_booked_resource = most_booked_result['title']
+                most_booked_count = most_booked_result['booking_count']
+            
+            # 3. Top rated resource (highest average rating with at least 1 review) - GLOBAL, not filtered
+            cursor.execute("""
+                SELECT r.resource_id, r.title, AVG(rev.rating) as avg_rating, COUNT(rev.review_id) as review_count
+                FROM resources r
+                LEFT JOIN reviews rev ON r.resource_id = rev.resource_id
+                WHERE r.status = 'published'
+                GROUP BY r.resource_id, r.title
+                HAVING COUNT(rev.review_id) >= 1
+                ORDER BY avg_rating DESC, review_count DESC, r.title ASC
+                LIMIT 1
+            """)
+            top_rated_result = cursor.fetchone()
+            top_rated_resource = None
+            top_rated_rating = None
+            if top_rated_result and top_rated_result['avg_rating']:
+                top_rated_resource = top_rated_result['title']
+                top_rated_rating = float(top_rated_result['avg_rating'])
+            
+            # 4. Average bookings per resource (only published resources) - GLOBAL, not filtered
+            # Counts ALL bookings (historical), not just approved
+            cursor.execute("""
+                SELECT 
+                    COUNT(DISTINCT r.resource_id) as resource_count,
+                    COUNT(DISTINCT b.booking_id) as total_bookings
+                FROM resources r
+                LEFT JOIN bookings b ON r.resource_id = b.resource_id
+                WHERE r.status = 'published'
+            """)
+            avg_bookings_result = cursor.fetchone()
+            avg_bookings_per_resource = None
+            if avg_bookings_result:
+                resource_count = avg_bookings_result['resource_count'] or 1
+                total_bookings = avg_bookings_result['total_bookings'] or 0
+                avg_bookings_per_resource = round(total_bookings / resource_count, 1) if resource_count > 0 else 0
+        
+        # Paginate resources
+        paginated_resources = all_resources
+        total_pages = (total_resources + page_size - 1) // page_size
+        
+        # Resource-specific statistics summary
+        resource_stats = {
+            'avg_rating_all': avg_rating_all,
+            'most_booked_resource': most_booked_resource,
+            'most_booked_count': most_booked_count,
+            'top_rated_resource': top_rated_resource,
+            'top_rated_rating': top_rated_rating,
+            'avg_bookings_per_resource': avg_bookings_per_resource
+        }
+        
+        return render_template('admin/statistics.html', 
                              stats=stats,
+                             resources=paginated_resources,
+                             featured_count=featured_count,
+                             resource_stats=resource_stats,
+                             page=page,
+                             total_pages=total_pages,
+                             total=total_resources,
                              category_filter=category_filter,
                              location_filter=location_filter,
                              featured_filter=featured_filter,
                              sort_by=sort_by,
                              sort_order=sort_order)
     else:
-        return render_template('admin/dashboard.html', 
+        return render_template('admin/statistics.html', 
                              stats={},
+                             resources=[],
+                             featured_count=0,
+                             resource_stats={
+                                 'avg_rating_all': None,
+                                 'most_booked_resource': None,
+                                 'most_booked_count': 0,
+                                 'top_rated_resource': None,
+                                 'top_rated_rating': None,
+                                 'avg_bookings_per_resource': 0
+                             },
+                             page=1,
+                             total_pages=0,
+                             total=0,
                              category_filter=None,
                              location_filter=None,
                              featured_filter=None,
@@ -58,24 +255,19 @@ def dashboard():
 @admin_required
 def users():
     """List all users."""
+    # Get filter parameters
     role = request.args.get('role', '').strip() or None
     suspended_arg = request.args.get('suspended', '').strip()
-    # Properly handle suspended filter: empty = None, "1" = True, "0" = False
-    suspended = None
-    if suspended_arg == '1':
-        suspended = True
-    elif suspended_arg == '0':
-        suspended = False
-    # If suspended_arg is empty or anything else, suspended stays None
-    
+    suspended = parse_bool_filter(suspended_arg)
     department = request.args.get('department', '').strip() or None
     search = request.args.get('search', '').strip() or None
+    include_deleted = request.args.get('include_deleted', '').strip() == '1'
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
     offset = (page - 1) * page_size
     
     result = list_users(role=role, suspended=suspended, department=department,
-                       search=search, limit=page_size, offset=offset)
+                       search=search, limit=page_size, offset=offset, include_deleted=include_deleted)
     
     if result['success']:
         data = result['data']
@@ -91,10 +283,12 @@ def users():
                              role_filter=role,
                              suspended_filter=suspended,
                              department_filter=department,
-                             search_query=search)
+                             search_query=search,
+                             include_deleted=include_deleted)
     else:
         return render_template('admin/users.html', users=[], page=1, total_pages=0, total=0,
-                             role_filter=None, suspended_filter=None, department_filter=None, search_query=None)
+                             role_filter=None, suspended_filter=None, department_filter=None, search_query=None,
+                             include_deleted=False)
 
 @admin_bp.route('/users/<int:user_id>/suspend', methods=['POST'])
 @login_required
@@ -149,6 +343,55 @@ def change_role(user_id):
         flash(result['error'], 'error')
     
     return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/restore', methods=['POST'])
+@login_required
+@admin_required
+def restore_user_route(user_id):
+    """Restore a soft-deleted user."""
+    result = restore_user(user_id, current_user.user_id)
+    
+    if result['success']:
+        flash('User restored. Note: Email, name, and password were anonymized and need to be manually restored.', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.restore'))
+
+@admin_bp.route('/restore')
+@login_required
+@admin_required
+def restore():
+    """Data restore management page."""
+    # Get deleted users
+    users_result = get_deleted_users(limit=100, offset=0)
+    deleted_users = users_result['data']['users'] if users_result['success'] else []
+    deleted_users_count = users_result['data']['total'] if users_result['success'] else 0
+    
+    # Get deleted threads
+    threads_result = get_deleted_threads(current_user.user_id, limit=100, offset=0)
+    deleted_threads = threads_result['data']['threads'] if threads_result['success'] else []
+    deleted_threads_count = threads_result['data']['total'] if threads_result['success'] else 0
+    
+    return render_template('admin/restore.html',
+                         deleted_users=deleted_users,
+                         deleted_users_count=deleted_users_count,
+                         deleted_threads=deleted_threads,
+                         deleted_threads_count=deleted_threads_count)
+
+@admin_bp.route('/restore/thread/<int:thread_id>', methods=['POST'])
+@login_required
+@admin_required
+def restore_thread_admin(thread_id):
+    """Restore a deleted thread (admin route)."""
+    result = restore_thread(thread_id, current_user.user_id)
+    
+    if result['success']:
+        flash(f'Thread restored ({result["data"]["restored_count"]} messages restored).', 'success')
+    else:
+        flash(result['error'], 'error')
+    
+    return redirect(url_for('admin.restore'))
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
@@ -261,6 +504,7 @@ def logs():
         return render_template('admin/logs.html',
                              logs=logs,
                              page=page,
+                             page_size=page_size,
                              total_pages=total_pages,
                              total=total,
                              admin_id_filter=admin_id,
@@ -270,7 +514,7 @@ def logs():
                              actions_list=actions_list,
                              target_tables_list=target_tables_list)
     else:
-        return render_template('admin/logs.html', logs=[], page=1, total_pages=0, total=0,
+        return render_template('admin/logs.html', logs=[], page=1, page_size=50, total_pages=0, total=0,
                              admin_id_filter=None, action_filter=None, target_table_filter=None,
                              admins_list=[], actions_list=[], target_tables_list=[])
 
@@ -289,14 +533,16 @@ def resources():
     status_filter = request.args.get('status', '').strip() or None
     category_filter = request.args.get('category', '').strip() or None
     featured_filter = request.args.get('featured', '').strip()
-    featured = None
-    if featured_filter == '1':
-        featured = True
-    elif featured_filter == '0':
-        featured = False
+    featured = parse_bool_filter(featured_filter)
     keyword_filter = request.args.get('keyword', '').strip() or None
     location_filter = request.args.get('location', '').strip() or None
     owner_id_filter = request.args.get('owner_id', type=int)
+    is_24_hours_filter = request.args.get('is_24_hours', '').strip()
+    is_24_hours = parse_bool_filter(is_24_hours_filter)
+    
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', '').strip() or None
+    sort_order = request.args.get('sort_order', 'desc').strip()
     
     # Get filter options for dropdowns
     with get_db_connection() as conn:
@@ -320,6 +566,9 @@ def resources():
         featured=featured,
         keyword=keyword_filter,
         location=location_filter,
+        is_24_hours=is_24_hours,
+        sort_by=sort_by,
+        sort_order=sort_order,
         limit=page_size,
         offset=offset
     )
@@ -328,6 +577,25 @@ def resources():
         resources_list = result['data']['resources']
         total = result['data']['total']
         total_pages = (total + page_size - 1) // page_size
+        
+        # Check which resources are owned by deleted users
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            owner_ids = [r['owner_id'] for r in resources_list]
+            owner_deleted_map = {}
+            if owner_ids:
+                placeholders = ','.join(['?'] * len(owner_ids))
+                cursor.execute(f"""
+                    SELECT user_id, deleted FROM users WHERE user_id IN ({placeholders})
+                """, owner_ids)
+                for row in cursor.fetchall():
+                    owner_deleted_map[row['user_id']] = bool(row['deleted'])
+        
+        # Add deleted owner flag to each resource
+        for resource in resources_list:
+            resource['owner_is_deleted'] = owner_deleted_map.get(resource['owner_id'], False)
+        
         return render_template('admin/resources.html',
                              resources=resources_list,
                              page=page,
@@ -339,6 +607,9 @@ def resources():
                              keyword_filter=keyword_filter,
                              location_filter=location_filter,
                              owner_id_filter=owner_id_filter,
+                             is_24_hours_filter=is_24_hours_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
                              categories_list=categories_list,
                              locations_list=locations_list,
                              owners_list=owners_list)
@@ -354,6 +625,9 @@ def resources():
                              keyword_filter=keyword_filter,
                              location_filter=location_filter,
                              owner_id_filter=owner_id_filter,
+                             is_24_hours_filter=is_24_hours_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
                              categories_list=categories_list,
                              locations_list=locations_list,
                              owners_list=owners_list)
@@ -366,16 +640,8 @@ def feature_resource(resource_id):
     result = update_resource(resource_id, featured=1)
     
     if result['success']:
-        # Log admin action
-        from src.data_access.database import get_db_connection
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
-                VALUES (?, 'feature_resource', 'resources', ?, 'Resource featured on homepage')
-            """, (current_user.user_id, resource_id))
-            conn.commit()
-        
+        log_admin_action(current_user.user_id, 'feature_resource', 'resources', resource_id, 
+                        'Resource featured on homepage')
         flash('Resource featured on homepage.', 'success')
     else:
         flash(result['error'], 'error')
@@ -390,16 +656,8 @@ def unfeature_resource(resource_id):
     result = update_resource(resource_id, featured=0)
     
     if result['success']:
-        # Log admin action
-        from src.data_access.database import get_db_connection
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
-                VALUES (?, 'unfeature_resource', 'resources', ?, 'Resource removed from homepage')
-            """, (current_user.user_id, resource_id))
-            conn.commit()
-        
+        log_admin_action(current_user.user_id, 'unfeature_resource', 'resources', resource_id, 
+                        'Resource removed from homepage')
         flash('Resource removed from homepage.', 'success')
     else:
         flash(result['error'], 'error')
@@ -416,16 +674,8 @@ def archive_resource(resource_id):
     result = delete_resource(resource_id)
     
     if result['success']:
-        # Log admin action
-        from src.data_access.database import get_db_connection
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
-                VALUES (?, 'archive_resource', 'resources', ?, 'Resource archived')
-            """, (current_user.user_id, resource_id))
-            conn.commit()
-        
+        log_admin_action(current_user.user_id, 'archive_resource', 'resources', resource_id, 
+                        'Resource archived')
         flash('Resource archived successfully.', 'success')
     else:
         flash(result['error'], 'error')
@@ -440,29 +690,78 @@ def unarchive_resource(resource_id):
     result = update_resource(resource_id, status='published')
     
     if result['success']:
-        # Log admin action
-        from src.data_access.database import get_db_connection
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
-                VALUES (?, 'unarchive_resource', 'resources', ?, 'Resource unarchived (set to published)')
-            """, (current_user.user_id, resource_id))
-            conn.commit()
-        
+        log_admin_action(current_user.user_id, 'unarchive_resource', 'resources', resource_id, 
+                        'Resource unarchived (set to published)')
         flash('Resource unarchived successfully.', 'success')
     else:
         flash(result['error'], 'error')
     
     return redirect(url_for('admin.resources'))
 
+@admin_bp.route('/resources/<int:resource_id>/reassign', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def reassign_resource(resource_id):
+    """Reassign resource ownership to another user. Admin only."""
+    if request.method == 'GET':
+        # Get resource info and list of users for reassignment
+        result = get_resource(resource_id)
+        if not result['success']:
+            flash(result['error'], 'error')
+            return redirect(url_for('admin.resources'))
+        
+        resource = result['data']
+        
+        # Get list of active users (excluding deleted users)
+        users_result = list_users(limit=500, offset=0)
+        users_list = users_result['data']['users'] if users_result['success'] else []
+        
+        # Get current owner information
+        from src.data_access.database import get_db_connection
+        current_owner = None
+        owner_is_deleted = False
+        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, name, email, deleted FROM users WHERE user_id = ?", (resource['owner_id'],))
+            owner_info = cursor.fetchone()
+            
+            if owner_info:
+                owner_is_deleted = bool(owner_info['deleted'])
+                current_owner = {
+                    'user_id': owner_info['user_id'],
+                    'name': owner_info['name'] if owner_info['name'] else '[Deleted User]',
+                    'email': owner_info['email'] if owner_info['email'] else '[Deleted]',
+                    'deleted': owner_is_deleted
+                }
+        
+        return render_template('admin/reassign_resource.html',
+                             resource=resource,
+                             users=users_list,
+                             owner_is_deleted=owner_is_deleted,
+                             current_owner=current_owner)
+    
+    # POST request - perform reassignment
+    new_owner_id = request.form.get('new_owner_id', type=int)
+    
+    if not new_owner_id:
+        flash('Please select a new owner.', 'error')
+        return redirect(url_for('admin.reassign_resource', resource_id=resource_id))
+    
+    result = reassign_resource_ownership(resource_id, new_owner_id, current_user.user_id)
+    
+    if result['success']:
+        flash('Resource ownership reassigned successfully.', 'success')
+        return redirect(url_for('admin.resources'))
+    else:
+        flash(result['error'], 'error')
+        return redirect(url_for('admin.reassign_resource', resource_id=resource_id))
+
 @admin_bp.route('/bookings')
 @login_required
 @admin_required
 def bookings():
     """List all bookings for admin management."""
-    from datetime import datetime
-    from dateutil.tz import tzutc
     from src.services.booking_service import list_bookings
     from src.services.resource_service import get_resource, list_resources
     from src.models.user import User
@@ -479,79 +778,11 @@ def bookings():
         all_bookings = result['data']['bookings']
         total = result['data']['total']
         
-        # Helper function to parse datetime (same as bookings_controller)
-        def _parse_datetime_aware(dt_str):
-            """Parse datetime string and ensure it's timezone-aware (UTC)."""
-            from dateutil.tz import tzutc
-            from dateutil import parser
-            
-            try:
-                dt = parser.parse(dt_str.replace('Z', '+00:00'))
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=tzutc())
-                else:
-                    # Convert to UTC if timezone-aware
-                    dt = dt.astimezone(tzutc())
-                return dt
-            except Exception:
-                # Return a very old datetime as fallback for sorting
-                return datetime(1970, 1, 1, tzinfo=tzutc())
-        
-        # Get current time in UTC
-        now = datetime.now(tzutc())
-        
-        # Separate bookings into three categories (same logic as user bookings)
-        upcoming_bookings = []  # Approved bookings that haven't started yet
-        previous_bookings = []  # Approved bookings that have passed OR completed bookings
-        canceled_bookings = []  # Canceled bookings regardless of date
-        
-        for booking in all_bookings:
-            try:
-                # Parse booking start datetime
-                start_dt = _parse_datetime_aware(booking['start_datetime'])
-                
-                if booking['status'] == 'cancelled':
-                    # Canceled bookings go to canceled section
-                    canceled_bookings.append(booking)
-                elif booking['status'] == 'approved' and start_dt >= now:
-                    # Upcoming approved bookings
-                    upcoming_bookings.append(booking)
-                elif booking['status'] == 'approved' and start_dt < now:
-                    # Previous approved bookings (past their start time)
-                    previous_bookings.append(booking)
-                elif booking['status'] == 'completed':
-                    # Completed bookings go to previous section
-                    previous_bookings.append(booking)
-                else:
-                    # Any other status goes to previous section
-                    previous_bookings.append(booking)
-            except Exception:
-                # If parsing fails, treat as previous booking
-                if booking['status'] == 'cancelled':
-                    canceled_bookings.append(booking)
-                else:
-                    previous_bookings.append(booking)
-        
-        # Sort upcoming by start_datetime ASC (soonest first)
-        upcoming_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']))
-        
-        # Sort previous by start_datetime DESC (most recent first)
-        previous_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
-        
-        # Sort canceled by start_datetime DESC (most recent first)
-        canceled_bookings.sort(key=lambda b: _parse_datetime_aware(b['start_datetime']), reverse=True)
-        
-        # Apply section filter if specified
-        if section_filter == 'upcoming':
-            previous_bookings = []
-            canceled_bookings = []
-        elif section_filter == 'previous':
-            upcoming_bookings = []
-            canceled_bookings = []
-        elif section_filter == 'canceled':
-            upcoming_bookings = []
-            previous_bookings = []
-        # If section_filter is None or 'all', show all sections
+        # Categorize bookings
+        categorized = categorize_bookings(all_bookings, section_filter)
+        upcoming_bookings = categorized['upcoming']
+        previous_bookings = categorized['previous']
+        canceled_bookings = categorized['canceled']
         
         # Enrich with resource and user info
         for booking in upcoming_bookings + previous_bookings + canceled_bookings:
@@ -682,20 +913,13 @@ def update_booking_admin(booking_id):
     
     if result['success']:
         # Log admin action
-        from src.data_access.database import get_db_connection
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            details = f"Booking updated by admin"
-            if start_datetime or end_datetime:
-                details += f" (datetime changed)"
-            if status:
-                details += f" (status: {status})"
-            
-            cursor.execute("""
-                INSERT INTO admin_logs (admin_id, action, target_table, target_id, details)
-                VALUES (?, 'update_booking', 'bookings', ?, ?)
-            """, (current_user.user_id, booking_id, details))
-            conn.commit()
+        details = f"Booking updated by admin"
+        if start_datetime or end_datetime:
+            details += f" (datetime changed)"
+        if status:
+            details += f" (status: {status})"
+        
+        log_admin_action(current_user.user_id, 'update_booking', 'bookings', booking_id, details)
         
         flash('Booking updated successfully.', 'success')
     else:

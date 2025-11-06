@@ -64,9 +64,21 @@ The application is fully functional with all core features implemented:
    - Feature flags (AI Concierge, registration)
    - Production settings
    
-   **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly. The default admin account credentials are:
+   **Note:** The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data to help you get started quickly. The default user accounts are:
+   
+   **Admin User:**
    - Email: `admin@iu.edu`
-   - Password: `Admin123!`
+   - Password: `AdminUser1!`
+   
+   **Staff User:**
+   - Email: `staffuser@iu.edu`
+   - Password: `StaffUser1!`
+   
+   **Student User:**
+   - Email: `studentuser@iu.edu`
+   - Password: `StudentUser1!`
+   
+   **⚠️ IMPORTANT:** Change these default passwords immediately after first login in production!
    
    Additional sample users may be included in the database with various email addresses. Check the User Management page after logging in to see all available accounts.
 
@@ -95,8 +107,7 @@ The AI Concierge uses Google Gemini for natural language resource queries:
 #### B. Database Notes
 - The database (`campus_resource_hub.db`) is included with the project and contains sample/starter data
 - The database includes sample resources, users, bookings, and other data to help you get started
-- All database migrations have been completed
-- Migration scripts are archived in the `archive/` folder for reference
+- All database schema changes have been completed and are included in `init_db.py`
 - The `init_db.py` script is available if you need to recreate the database from scratch
 
 ### 4. Key Features Overview
@@ -107,19 +118,25 @@ The application includes the following implemented features:
    - Create, edit, and delete resources
    - Upload multiple images per resource
    - Optional capacity constraints
+   - Set resource-specific operating hours (required field, 12-hour format input)
+   - Mark resources as 24-hour operation
    - Featured resources for homepage
    - Resource archiving (admin-only)
 
 2. **Booking System:**
    - Interactive month-view calendar for date selection
-   - Day-view with drag-and-select time slot selection (8 AM - 10 PM)
+   - Day-view with drag-and-select time slot selection (12 AM - 11:59 PM)
    - Current time indicator on the current day
+   - Resource-specific operating hours (set by owner/admin, 12-hour format input)
+   - Resources can operate 24 hours a day (is_24_hours flag)
+   - All time slots from 12 AM to 11:59 PM are displayed
+   - Slots outside operating hours are displayed but marked as unavailable (grayed out)
    - Automatic approval for available slots (no conflicts) - bookings are automatically approved when created
    - Simplified booking workflow: bookings are either 'approved', 'cancelled', or 'completed' (no pending/rejected statuses)
    - Conflict detection prevents double-booking
    - Calendar export to Google Calendar, Outlook, and iCal formats
    - Admin booking management with override capabilities (modify/cancel any booking)
-   - Booking duration validation (minimum 30 minutes, maximum 8 hours)
+   - Booking duration validation (minimum 29 minutes, maximum 8 hours)
    - Advance booking requirement (must be at least 1 hour in the future)
    - All times displayed in EST/EDT timezone
 
@@ -138,10 +155,22 @@ The application includes the following implemented features:
      - Full user editing (edit name, email, password, role, department, profile image, suspension status)
      - Suspend/unsuspend users with reason
      - Change user roles (with self-demotion prevention)
-     - Delete users (with cascade effects)
+     - **Soft Delete Users**: Users are soft-deleted (not permanently removed) - preserves data integrity and enables recovery
+       - PII (email, name, password) is anonymized when deleted
+       - User's resources are automatically archived
+       - User's active bookings are cancelled
+       - Deleted users cannot log in or be found in searches
+       - Reviews and messages from deleted users are preserved with "[Deleted User]" label
      - Streamlined dropdown menu interface for all user actions
    - **Resource Management**:
      - Comprehensive filtering options (status, category, featured status, location, owner, keyword search)
+     - **Resource Operating Hours**: Owners/admins can set custom operating hours for each resource (12-hour format input)
+     - **24-Hour Operation**: Resources can be marked as operating 24 hours a day
+     - **Resource Ownership Reassignment**: Admins can reassign ownership of any resource to another user
+       - Available for all resources regardless of status or owner deletion status
+       - Shows current owner information before reassignment
+       - New owner gains full owner privileges (edit, publish, archive, etc.)
+       - Action is logged in admin logs for audit trail
      - Resource archiving and unarchiving
      - Feature/unfeature resources for homepage
      - Edit any resource (admins can edit all resources)
@@ -260,7 +289,6 @@ The application includes the following implemented features:
    - Configure secure cookies
    - Set up rate limiting
    - Ensure `SECRET_KEY` is strong and unique
-   - Review `archive/ERROR_HANDLING_REFACTORING.md` for error handling best practices (reference documentation)
 
 5. **Logging:**
    - Configure log directory and rotation
@@ -269,10 +297,23 @@ The application includes the following implemented features:
 
 ## 🎯 Quick Reference
 
-### Default Admin Account
+### Default User Accounts
+
+The database includes sample/starter data with default accounts:
+
+**Admin User:**
 - **Email:** admin@iu.edu
-- **Password:** Admin123!
-- **⚠️ CHANGE THIS IN PRODUCTION!**
+- **Password:** AdminUser1!
+
+**Staff User:**
+- **Email:** staffuser@iu.edu
+- **Password:** StaffUser1!
+
+**Student User:**
+- **Email:** studentuser@iu.edu
+- **Password:** StudentUser1!
+
+**⚠️ IMPORTANT:** Change these default passwords immediately after first login in production!
 
 **Note:** Additional sample users may be included in the database with various email addresses. You can view all users in the Admin Dashboard > User Management section.
 
@@ -305,10 +346,10 @@ The application includes the following implemented features:
 - ✅ All core functionality is fully implemented
 - ✅ All 139 tests passing (100% pass rate)
 - ✅ Templates use Bootstrap 5 with Indiana University colors (crimson #990000, white)
+- ✅ Clean, modern UI design with subtle shadows and hover effects
 - ✅ Database uses SQLite (easy to switch to PostgreSQL later)
 - ✅ Database is included with sample/starter data - no initialization needed
 - ✅ All validation and business logic is complete
-- ✅ Migration scripts and outdated documentation archived in `archive/` folder
 - ✅ Calendar export supports Google Calendar, Outlook, and iCal formats
 - ✅ AI Concierge uses Google Gemini API (with fallback to search-based responses)
 - ✅ Thread-based messaging with resource-specific threading
@@ -363,34 +404,6 @@ python -m pytest tests/ --cov=src --cov-report=html
 
 **Current Status:** ✅ All 139 tests passing
 
-## 🔧 Archive Folder
-
-The `archive/` folder contains migration scripts, outdated documentation, and generated artifacts:
-- **Migration scripts** (6 files):
-  - `migrate_remove_capacity_limit.py` - Removed 500 capacity limit
-  - `migrate_add_featured.py` - Added featured column to resources
-  - `migrate_allow_multiple_reviews.py` - Removed unique constraint on reviews
-  - `migrate_make_capacity_optional.py` - Made capacity nullable
-  - `migrate_add_resource_id_to_messages.py` - Added resource_id to messages
-  - `migrate_add_thread_read_tracking.py` - Added thread_read table
-- **Utility scripts:**
-  - `clear_old_messages.py` - Utility script (no longer needed)
-- **Old templates:**
-  - `views/ai_concierge/concierge.html` - Legacy AI concierge page
-  - `views/resources/index.html` - Legacy resources index page
-- **Outdated documentation:**
-  - `MISSING_COMPONENTS.md` - Outdated component tracking
-  - `tests/FAILING_TESTS_ANALYSIS.md` - Historical test analysis (all tests now pass)
-  - `CODEBASE_REVIEW_COMPLETE.md` - Historical refactoring summary (archived - see README.md and SETUP_STEPS.md for current info)
-  - `REFACTORING_SUMMARY.md` - Refactoring summary (archived - see README.md Code Quality section for current info)
-  - `ERROR_HANDLING_REFACTORING.md` - Error handling implementation reference
-  - `ENVIRONMENT_VARIABLES_IMPLEMENTATION.md` - Environment variables reference
-- **Generated artifacts:**
-  - `htmlcov/` - Test coverage reports (31 files, can be regenerated)
-  - `docs_context_backup/` - Empty directory structure (unused)
-
-See `archive/ARCHIVE_REVIEW.md` for complete documentation of archived items. These files are kept for reference but are no longer needed as the database is included with the project. The `init_db.py` script is available if you need to recreate the database from scratch.
-
 ## 🆕 Recent Improvements
 
 ### Code Refactoring (Completed)
@@ -404,6 +417,13 @@ See `archive/ARCHIVE_REVIEW.md` for complete documentation of archived items. Th
 - ✅ **Reduced Code Duplication**: Image upload logic consolidated from ~50 duplicated lines to reusable functions
 - ✅ **Standardized Patterns**: Consistent permission checks and error handling across controllers
 
+### UI & UX Improvements (Completed)
+- ✅ **UI Standardization**: Standardized all filter/sort boxes across the web app for consistent user experience
+- ✅ **Form Input Consistency**: All form inputs use `form-control-sm` and `form-select-sm` for uniform heights
+- ✅ **Button Standardization**: All Apply and Reset buttons have consistent height (`py-2`), width (side-by-side use `flex-fill`, separate columns use `w-100`), and font size (`0.875rem`)
+- ✅ **Label Standardization**: All labels use consistent margin (`mb-1`), font size (`0.875rem`), and font weight (`fw-semibold`)
+- ✅ **Visual Consistency**: Uniform styling across all filter/sort interfaces for improved usability and professional appearance
+
 ### New Features Added
 - ✅ **Centralized Configuration**: `src/utils/config.py` for all environment variables
 - ✅ **Custom Exceptions**: `src/utils/exceptions.py` for better error categorization
@@ -414,10 +434,7 @@ See `archive/ARCHIVE_REVIEW.md` for complete documentation of archived items. Th
 
 ### Documentation Updates
 - ✅ **Environment Variables**: See `.env.example` and README.md Environment Variables section
-- ✅ **Error Handling**: See `archive/ERROR_HANDLING_REFACTORING.md` (reference documentation)
-- ✅ **Refactoring Summary**: See README.md Code Quality & Refactoring section and `archive/REFACTORING_SUMMARY.md` (reference documentation)
 - ✅ **README**: Updated with comprehensive environment variable documentation and code quality improvements
-- ✅ **Archive Review**: See `archive/ARCHIVE_REVIEW.md` for complete list of archived files and directories
 
 ---
 

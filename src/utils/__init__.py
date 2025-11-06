@@ -38,7 +38,11 @@ from .controller_helpers import (
     save_uploaded_images,
     delete_image_file,
     parse_existing_images,
-    combine_images
+    combine_images,
+    categorize_bookings,
+    handle_service_error,
+    log_admin_action,
+    parse_bool_filter
 )
 from .query_builder import QueryBuilder
 
@@ -82,6 +86,10 @@ __all__ = [
     'delete_image_file',
     'parse_existing_images',
     'combine_images',
+    'categorize_bookings',
+    'handle_service_error',
+    'log_admin_action',
+    'parse_bool_filter',
     # Query builder
     'QueryBuilder',
 ]

@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Resource Statistics - Indiana University Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resource Statistics</h1>
+            <p class="text-muted mb-0">Detailed analytics and insights for resources</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-white border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-4 d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bi bi-star-fill" style="font-size: 2.5rem; color: var(--crimson);"></i>
+                        </div>
+                        <h5 class="card-title mb-2 fw-semibold" style="color: #333;">Average Rating</h5>
+                        <h2 class="mb-2 fw-bold" style="color: var(--crimson); font-size: 2.5rem;">
+                            {% if resource_stats.avg_rating_all %}
+                            {{ "%.1f"|format(resource_stats.avg_rating_all) }}
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </h2>
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem;">Across all resources</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-white border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-4 d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bi bi-calendar-check-fill" style="font-size: 2.5rem; color: var(--crimson);"></i>
+                        </div>
+                        <h5 class="card-title mb-2 fw-semibold" style="color: #333;">Most Booked Resource</h5>
+                        <h2 class="mb-2 fw-bold" style="color: var(--crimson); font-size: 2.5rem;">
+                            {% if resource_stats.most_booked_resource %}
+                            {{ resource_stats.most_booked_count }}
+                            {% else %}
+                            0
+                            {% endif %}
+                        </h2>
+                        {% if resource_stats.most_booked_resource %}
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem; line-height: 1.3;">
+                            <strong>{{ resource_stats.most_booked_resource|truncate(30) }}</strong>
+                        </small>
+                        {% else %}
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem;">No bookings yet</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-white border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-4 d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bi bi-trophy-fill" style="font-size: 2.5rem; color: var(--crimson);"></i>
+                        </div>
+                        <h5 class="card-title mb-2 fw-semibold" style="color: #333;">Top Rated Resource</h5>
+                        <h2 class="mb-2 fw-bold" style="color: var(--crimson); font-size: 2.5rem;">
+                            {% if resource_stats.top_rated_rating %}
+                            {{ "%.1f"|format(resource_stats.top_rated_rating) }}
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </h2>
+                        {% if resource_stats.top_rated_resource %}
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem; line-height: 1.3;">
+                            <strong>{{ resource_stats.top_rated_resource|truncate(30) }}</strong>
+                        </small>
+                        {% else %}
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem;">No reviews yet</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-white border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-4 d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bi bi-graph-up-arrow" style="font-size: 2.5rem; color: var(--crimson);"></i>
+                        </div>
+                        <h5 class="card-title mb-2 fw-semibold" style="color: #333;">Avg Bookings/Resource</h5>
+                        <h2 class="mb-2 fw-bold" style="color: var(--crimson); font-size: 2.5rem;">
+                            {{ resource_stats.avg_bookings_per_resource or 0 }}
+                        </h2>
+                        <small class="text-muted d-block mt-auto" style="font-size: 0.75rem;">Across published resources</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Sort -->
+        <div class="card bg-white border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0 fw-semibold" style="color: #333;">
+                        <i class="bi bi-funnel-fill text-crimson me-2"></i> Filters & Sort
+                    </h4>
+                </div>
+                
+                <form method="GET" action="{{ url_for('admin.statistics') }}" class="mb-0" id="resourceStatsForm">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Category</label>
+                            <select class="form-select form-select-sm" name="category" style="border-radius: 8px;">
+                                <option value="">All Categories</option>
+                                {% if stats.available_categories %}
+                                {% for cat in stats.available_categories %}
+                                <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
+                                    {{ cat|format_category }}
+                                </option>
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Location</label>
+                            <select class="form-select form-select-sm" name="location" style="border-radius: 8px;">
+                                <option value="">All Locations</option>
+                                {% if stats.available_locations %}
+                                {% for loc in stats.available_locations %}
+                                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>
+                                    {{ loc }}
+                                </option>
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Featured</label>
+                            <select class="form-select form-select-sm" name="featured" style="border-radius: 8px;">
+                                <option value="">All Resources</option>
+                                <option value="1" {% if featured_filter == '1' %}selected{% endif %}>Featured Only</option>
+                                <option value="0" {% if featured_filter == '0' %}selected{% endif %}>Not Featured</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Sort By</label>
+                            <select class="form-select form-select-sm" name="sort_by" id="sort_by_select" style="border-radius: 8px;">
+                                <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Bookings</option>
+                                <option value="review_count" {% if sort_by == 'review_count' %}selected{% endif %}>Reviews</option>
+                                <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Rating</option>
+                                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                                <option value="category" {% if sort_by == 'category' %}selected{% endif %}>Category</option>
+                                <option value="location" {% if sort_by == 'location' %}selected{% endif %}>Location</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Order</label>
+                            <select class="form-select form-select-sm" name="sort_order" id="sort_order_select" style="border-radius: 8px;">
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-crimson w-100 px-3 py-2" style="font-weight: 500; font-size: 0.875rem; border-radius: 8px;">
+                                <i class="bi bi-funnel me-2"></i> Apply
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-2">
+                            <a href="{{ url_for('admin.statistics') }}" class="btn btn-outline-secondary w-100 px-3 py-2" style="font-weight: 500; font-size: 0.875rem; border-radius: 8px;">
+                                <i class="bi bi-x-circle me-2"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Resource Statistics Table -->
+        <div class="card bg-white border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0 fw-semibold" style="color: #333;">
+                        <i class="bi bi-bar-chart-fill text-crimson me-2"></i> Resource Statistics
+                    </h4>
+                    <div class="text-muted" style="font-size: 0.875rem;">
+                        Showing {{ resources|length }} of {{ total }} resources
+                    </div>
+                </div>
+            </div>
+            {% if resources and resources|length > 0 %}
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Resource</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Category</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem;">Location</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Capacity</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Bookings</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Reviews</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Rating</th>
+                                <th style="font-weight: 600; color: #333; padding: 1rem; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resource in resources %}
+                            <tr>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                                       class="text-decoration-none fw-semibold" 
+                                       style="color: var(--crimson);">
+                                        {{ resource.title }}
+                                    </a>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="badge bg-secondary">{{ resource.category|format_category }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle;">
+                                    <span class="text-muted">{{ resource.location }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.capacity %}
+                                    <span class="badge bg-info">{{ resource.capacity }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    <span class="fw-bold text-crimson">{{ resource.booking_count or 0 }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    <span class="fw-bold text-crimson">{{ resource.review_count or 0 }}</span>
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.avg_rating %}
+                                    <span class="fw-bold text-crimson">{{ "%.1f"|format(resource.avg_rating) }}</span>
+                                    <i class="bi bi-star-fill text-warning ms-1"></i>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; vertical-align: middle; text-align: center;">
+                                    {% if resource.featured %}
+                                    <span class="badge bg-primary rounded-pill">
+                                        <i class="bi bi-star-fill me-1"></i> Featured
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary rounded-pill">Regular</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="card-footer bg-white border-top py-3">
+                <nav aria-label="Resource statistics pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.statistics', page=page-1, category=category_filter or '', location=location_filter or '', featured=featured_filter or '', sort_by=sort_by, sort_order=sort_order) }}">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-left"></i> Previous</span>
+                        </li>
+                        {% endif %}
+                        
+                        {% for p in range(1, total_pages + 1) %}
+                            {% if p == page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ p }}</span>
+                            </li>
+                            {% elif p <= 2 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.statistics', page=p, category=category_filter or '', location=location_filter or '', featured=featured_filter or '', sort_by=sort_by, sort_order=sort_order) }}">{{ p }}</a>
+                            </li>
+                            {% elif p == 3 or p == total_pages - 2 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.statistics', page=page+1, category=category_filter or '', location=location_filter or '', featured=featured_filter or '', sort_by=sort_by, sort_order=sort_order) }}">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next <i class="bi bi-chevron-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <div class="text-center mt-2">
+                    <small class="text-muted">Page {{ page }} of {{ total_pages }}</small>
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <!-- Empty State -->
+            <div class="card-body text-center py-5 d-flex flex-column align-items-center">
+                <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center mb-3" 
+                     style="width: 50px; height: 50px; font-size: 1.5rem;">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <h5 class="mb-2 fw-semibold" style="color: #333;">No resources found</h5>
+                <p class="text-muted mb-0">Try adjusting your filters to see more results.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: all 0.2s ease;
+}
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+</style>
+{% endblock %}
+

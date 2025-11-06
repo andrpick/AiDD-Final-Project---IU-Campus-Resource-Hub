@@ -75,12 +75,38 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Operating Hours</label>
+                            <select class="form-select form-select-sm" name="is_24_hours" style="border-radius: 8px;">
+                                <option value="">All</option>
+                                <option value="1" {% if is_24_hours_filter == '1' %}selected{% endif %}>24 Hours</option>
+                                <option value="0" {% if is_24_hours_filter == '0' %}selected{% endif %}>Limited Hours</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Sort By</label>
+                            <select class="form-select form-select-sm" name="sort_by" style="border-radius: 8px;">
+                                <option value="" {% if not sort_by %}selected{% endif %}>Default</option>
+                                <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Most Booked</option>
+                                <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Top Rated</option>
+                                <option value="recently_booked" {% if sort_by == 'recently_booked' %}selected{% endif %}>Recently Booked</option>
+                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date Created</option>
+                                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Order</label>
+                            <select class="form-select form-select-sm" name="sort_order" style="border-radius: 8px;">
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                            </select>
+                        </div>
                         <div class="col-md-6">
                             <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500;">
-                                    <i class="bi bi-funnel me-2"></i> Filter
+                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
+                                    <i class="bi bi-funnel me-2"></i> Apply
                                 </button>
-                                <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary px-3 py-2" style="font-weight: 500;">
+                                <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
                                     <i class="bi bi-x-circle me-2"></i> Reset
                                 </a>
                             </div>
@@ -195,6 +221,13 @@
                                                 </form>
                                             </li>
                                             {% endif %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a href="{{ url_for('admin.reassign_resource', resource_id=resource.resource_id) }}" 
+                                                   class="dropdown-item">
+                                                    <i class="bi bi-person-check me-2 text-info"></i> Reassign Ownership
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
                                 </td>
@@ -217,6 +250,9 @@
                 {% if keyword_filter %}{% set _ = query_parts.append('keyword=' + keyword_filter|urlencode) %}{% endif %}
                 {% if location_filter %}{% set _ = query_parts.append('location=' + location_filter|urlencode) %}{% endif %}
                 {% if owner_id_filter %}{% set _ = query_parts.append('owner_id=' + owner_id_filter|string) %}{% endif %}
+                {% if is_24_hours_filter %}{% set _ = query_parts.append('is_24_hours=' + is_24_hours_filter) %}{% endif %}
+                {% if sort_by %}{% set _ = query_parts.append('sort_by=' + sort_by) %}{% endif %}
+                {% if sort_order %}{% set _ = query_parts.append('sort_order=' + sort_order) %}{% endif %}
                 {% set base_query = query_parts|join('&') if query_parts else '' %}
                 
                 {% if page > 1 %}

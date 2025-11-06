@@ -29,11 +29,21 @@ For detailed environment variable documentation, see `.env.example` and the Envi
 
 ## Default Admin Account
 
-The database includes sample/starter data with a default admin account:
-- **Email:** admin@iu.edu  
-- **Password:** Admin123!
+The database includes sample/starter data with default accounts:
 
-**⚠️ IMPORTANT:** Change the default admin password immediately after first login in production!
+### Admin User
+- **Email:** admin@iu.edu  
+- **Password:** AdminUser1!
+
+### Staff User
+- **Email:** staffuser@iu.edu
+- **Password:** StaffUser1!
+
+### Student User
+- **Email:** studentuser@iu.edu
+- **Password:** StudentUser1!
+
+**⚠️ IMPORTANT:** Change the default passwords immediately after first login in production!
 
 **Note:** The sample database may include additional test users with various email addresses. Check the User Management page after logging in to see all available accounts.
 
@@ -62,14 +72,12 @@ The database includes sample/starter data with a default admin account:
 - `src/static/` - Static files (CSS, JS, images)
 - `tests/` - Test suite (139 tests, 100% passing)
 - `uploads/` - User-uploaded files
-- `logs/` - Application logs (auto-generated)
-- `archive/` - Archived migration scripts, outdated documentation, and generated artifacts
 
 ## Features
 
 ### Core Features
 - **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing
-- **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, and admin-only archiving
+- **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, resource-specific operating hours, and admin-only archiving
 - **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, and capacity-based search
 - **Booking System**: 
   - Interactive month/day calendar view with drag-and-select time selection
@@ -92,10 +100,25 @@ The database includes sample/starter data with a default admin account:
   - Supports queries for statistics, resource details, availability, comparisons, and recommendations
 - **Featured Resources**: Admin can feature resources for homepage display
 - **Admin Dashboard**: Comprehensive statistics, user management, resource management, booking management, and action logging
-  - **User Management**: Full user editing capabilities (edit name, email, password, role, department, profile image, suspension status)
-  - **Resource Management**: Comprehensive filtering and management (filter by status, category, featured status, location, owner, and keyword search)
+  - **User Management**: 
+    - Full user editing capabilities (edit name, email, password, role, department, profile image, suspension status)
+    - **Soft Delete**: Users are soft-deleted (not permanently removed) - PII is anonymized but records are preserved for data integrity
+    - Suspended users cannot perform actions until unsuspended
+    - Role changes with self-demotion prevention
+  - **Resource Management**: 
+    - Comprehensive filtering and management (filter by status, category, featured status, location, owner, and keyword search)
+    - **Resource Operating Hours**: Owners/admins can set custom operating hours for each resource (12-hour format input)
+    - **24-Hour Operation**: Resources can be marked as operating 24 hours a day
+    - **Resource Ownership Reassignment**: Admins can reassign ownership of any resource to another user (admin-only feature)
+    - Resource archiving and unarchiving
+    - Feature/unfeature resources for homepage display
   - **Resource Statistics**: Detailed resource analytics with filtering and sorting options
-  - **UI Improvements**: Streamlined dropdown menus for admin actions, table-based statistics display
+  - **UI Improvements**: 
+    - Streamlined dropdown menus for admin actions, table-based statistics display
+    - **Standardized UI Components**: Consistent filter/sort boxes across all pages with uniform input heights, button sizes, and font sizes
+    - **Uniform Button Styling**: All Apply and Reset buttons have consistent height (`py-2`), width (side-by-side use `flex-fill`, separate columns use `w-100`), and font size (`0.875rem`)
+    - **Standardized Form Inputs**: All form inputs use `form-control-sm` and `form-select-sm` for consistent heights
+    - **Uniform Label Styling**: All labels use consistent margin (`mb-1`), font size (`0.875rem`), and font weight (`fw-semibold`)
 
 ## Technology Stack
 
@@ -110,6 +133,10 @@ The database includes sample/starter data with a default admin account:
 - **Configuration**: Environment variable-based configuration system
 - **Logging**: Structured logging with file rotation
 - **Styling**: Custom CSS with Indiana University branding (Crimson #990000, White)
+  - Clean, modern design with Bootstrap 5 framework
+  - Light backgrounds with subtle shadows and hover effects
+  - Responsive design with modern UX patterns
+  - **UI Standardization**: Consistent filter/sort boxes, form inputs, buttons, and labels across all pages for a cohesive user experience
 
 ## Testing
 
@@ -145,7 +172,7 @@ The codebase has been refactored to improve maintainability and reduce duplicati
 - **Reduced Code Duplication**: Image upload logic consolidated from ~50 duplicated lines to reusable functions
 - **Standardized Patterns**: Consistent permission checks and error handling across controllers
 
-For detailed migration guides and examples, see the refactoring documentation in `archive/REFACTORING_SUMMARY.md`.
+For detailed information about the codebase structure, see the Project Structure section above.
 
 ## Environment Variables
 
@@ -217,8 +244,8 @@ BOOKING_OPERATING_HOURS_END=22
 # Minimum advance booking time in hours (default: 1)
 BOOKING_MIN_ADVANCE_HOURS=1
 
-# Minimum booking duration in minutes (default: 30)
-BOOKING_MIN_DURATION_MINUTES=30
+# Minimum booking duration in minutes (default: 29)
+BOOKING_MIN_DURATION_MINUTES=29
 
 # Maximum booking duration in hours (default: 8)
 BOOKING_MAX_DURATION_HOURS=8

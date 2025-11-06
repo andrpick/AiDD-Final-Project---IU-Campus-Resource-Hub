@@ -141,39 +141,38 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 
 **Requirements:**
 - Calendar-based booking with start/end datetime selection
-- Recurrence option (optional) - ability to create recurring bookings
+- Interactive month-view calendar for date selection
+- Day-view with drag-and-select time slot selection (12 AM - 11:59 PM)
+- Current time indicator on the current day
 - Conflict detection algorithm (see Business Rules)
-- Approval workflow: automatic for open resources, staff/admin/owner approval for restricted
-- Booking status management: pending → approved/rejected/cancelled → completed
-- Booking duration constraints (min 30 minutes, max 8 hours)
-- Operating hours constraints (8 AM - 10 PM)
+- Approval workflow: automatic approval for available slots (no manual approval needed)
+- Booking status management: approved → cancelled/completed (simplified workflow)
+- Booking duration constraints (min 29 minutes, max 8 hours)
+- Resource-specific operating hours constraints (set by owner/admin, 12-hour format input)
+- Resources can operate 24 hours a day (is_24_hours flag)
 - Advance booking requirement (must be at least 1 hour in future)
+- Calendar export to Google Calendar, Outlook, and iCal formats
 - Email notifications or simulated notifications for booking confirmations and changes
 
 **Functionality:**
 - Only authenticated users can request bookings
-- Optional recurrence support for recurring bookings (e.g., weekly study sessions)
-- Conflict detection prevents overlapping bookings (checks all recurrences if applicable)
+- Bookings are automatically approved when created (no pending/rejected statuses)
+- Conflict detection prevents overlapping bookings
 - Booking requester or admin can cancel bookings
-- Resource owner, staff, or admin can approve/reject
-- Status transitions are validated
-- Rejection requires a reason
 - Completed bookings (past end time) are eligible for reviews
+- Calendar displays all time slots from 12 AM to 11:59 PM
+- Slots outside operating hours are displayed but marked as unavailable (grayed out)
+- For 24-hour resources, all slots are available for booking
 - Email notifications or simulated notifications sent for booking confirmations and status changes
 
 **Booking Status Flow:**
 ```
-pending → approved (by owner/staff/admin)
-pending → rejected (by owner/staff/admin with reason)
-pending → cancelled (by requester/admin)
 approved → cancelled (by requester/admin)
 approved → completed (after booking end time passes)
 ```
 
 **Status Values:**
-- `pending` - Initial status when booking is requested
-- `approved` - Booking has been approved by owner/staff/admin
-- `rejected` - Booking has been rejected (with reason)
+- `approved` - Booking has been created and approved automatically (default status)
 - `cancelled` - Booking has been cancelled by requester or admin
 - `completed` - Booking has passed its end time (used for review eligibility)
 
@@ -279,7 +278,7 @@ approved → completed (after booking end time passes)
 CREATE TABLE users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('student', 'staff', 'admin')),
     department TEXT,
@@ -287,7 +286,10 @@ CREATE TABLE users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     suspended BOOLEAN DEFAULT 0,
     suspended_reason TEXT,
-    suspended_at DATETIME
+    suspended_at DATETIME,
+    deleted BOOLEAN DEFAULT 0,
+    deleted_at DATETIME,
+    deleted_by INTEGER
 );
 ```
 
@@ -306,10 +308,14 @@ CREATE TABLE resources (
     description TEXT,
     category TEXT NOT NULL CHECK(category IN ('study_room', 'lab_equipment', 'av_equipment', 'event_space', 'tutoring', 'other')),
     location TEXT NOT NULL,
-    capacity INTEGER NOT NULL CHECK(capacity > 0 AND capacity <= 500),
+    capacity INTEGER CHECK(capacity IS NULL OR capacity > 0),
     images TEXT,  -- JSON array of image paths
     availability_rules TEXT,  -- JSON blob describing recurring availability
+    operating_hours_start INTEGER NOT NULL DEFAULT 8 CHECK(operating_hours_start >= 0 AND operating_hours_start <= 23),
+    operating_hours_end INTEGER NOT NULL DEFAULT 22 CHECK(operating_hours_end >= 0 AND operating_hours_end <= 23),
+    is_24_hours BOOLEAN DEFAULT 0,
     status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published', 'archived')),
+    featured BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(user_id)
@@ -319,7 +325,9 @@ CREATE TABLE resources (
 **Constraints:**
 - `owner_id` must reference existing user
 - `category` must be from allowed enum
-- `capacity` must be between 1 and 500
+- `capacity` can be NULL or greater than 0
+- `operating_hours_start` must be between 0 and 23 (inclusive)
+- `operating_hours_end` must be between 0 and 23 (inclusive)
 - `status` defaults to 'draft'
 - `images` stored as JSON array string
 - `availability_rules` stored as JSON object string
@@ -332,7 +340,7 @@ CREATE TABLE bookings (
     requester_id INTEGER NOT NULL,
     start_datetime DATETIME NOT NULL,
     end_datetime DATETIME NOT NULL,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled', 'completed')),
+    status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed')),
     rejection_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -343,8 +351,8 @@ CREATE TABLE bookings (
 
 **Constraints:**
 - `resource_id` and `requester_id` must reference existing records
-- `status` defaults to 'pending'
-- `rejection_reason` required when status is 'rejected'
+- `status` defaults to 'approved' (bookings are auto-approved when created)
+- `rejection_reason` optional (rejected status no longer used in simplified workflow)
 - `end_datetime` must be after `start_datetime`
 - Conflict detection enforced at application level
 
@@ -904,14 +912,54 @@ WHERE resource_id = ?
 3. Clear `suspended_at = NULL`
 4. User regains normal access
 
-### 7.6 User Deletion Cascade Rules
+### 7.6 User Deletion Cascade Rules (Soft Delete Implementation)
 
-When admin deletes a user:
-1. Mark user's resources as 'archived' (soft delete)
-2. Cancel user's active bookings (status → 'cancelled')
-3. Keep reviews but mark reviewer as [Deleted User] in display
-4. Keep messages but anonymize sender/receiver
-5. Log admin action
+When admin deletes a user, the system performs a **soft delete** (not a hard delete) to preserve data integrity:
+
+1. **User Record**: 
+   - Sets `deleted = 1`, `deleted_at = CURRENT_TIMESTAMP`, `deleted_by = admin_id`
+   - Anonymizes PII: sets email to NULL, name to '[Deleted User]', clears password_hash, department, profile_image
+   - Clears suspension status (suspended = 0, suspended_reason = NULL, suspended_at = NULL)
+   - User record remains in database for referential integrity
+
+2. **User's Resources**: 
+   - Mark user's resources as 'archived' (status → 'archived')
+   - Resources remain accessible but archived
+   - Admin can reassign ownership to another user if needed
+
+3. **User's Bookings**: 
+   - Cancel user's active bookings (status → 'cancelled')
+   - Historical bookings remain in database
+
+4. **Reviews**: 
+   - Keep all reviews created by deleted user
+   - Display reviewer as "[Deleted User]" in review listings
+   - Use LEFT JOIN to handle deleted users gracefully
+
+5. **Messages**: 
+   - Keep all messages but anonymize sender/receiver names
+   - Display "[Deleted User]" for deleted users in thread listings
+   - Messages remain accessible for context
+
+6. **Authentication**: 
+   - Deleted users cannot log in (authenticate_user checks deleted status)
+   - Email address becomes available for new registrations (deleted users excluded from uniqueness check)
+
+7. **Search & Queries**: 
+   - Deleted users excluded from user searches and listings (default behavior)
+   - Admin can optionally include deleted users with `include_deleted` parameter
+   - Statistics exclude deleted users from active user counts
+
+8. **Admin Actions**: 
+   - Cannot suspend, unsuspend, change role, or update deleted users
+   - Cannot delete already deleted users
+   - Log admin action in admin_logs table
+
+**Benefits of Soft Delete:**
+- Preserves referential integrity (no orphaned records)
+- Enables data recovery if needed
+- Maintains audit trail and compliance
+- Graceful handling of deleted users throughout the application
 
 ---
 
@@ -984,10 +1032,10 @@ When admin deletes a user:
 - Length: Max 200 characters
 
 **Capacity:**
-- Required: Yes
+- Required: No (optional)
 - Type: Integer
-- Range: 1-500 (inclusive)
-- Must be positive integer
+- Range: Must be NULL or greater than 0
+- Allows NULL values for resources without capacity limits
 
 **Images:**
 - Required: No
@@ -1001,6 +1049,15 @@ When admin deletes a user:
 - Format: JSON object string
 - Structure: Valid JSON, custom schema
 - Validation: JSON parsing and structure check
+
+**Operating Hours:**
+- Required: Yes (must be set by resource owner/admin)
+- Format: 12-hour format (hour 1-12 + AM/PM) during input, stored as 24-hour format (0-23) in database
+- Start Hour: Integer between 0-23 (default: 8 for 8 AM)
+- End Hour: Integer between 0-23 (default: 22 for 10 PM)
+- 24-Hour Operation: Boolean flag (`is_24_hours`) to mark resource as operating 24 hours a day
+- When `is_24_hours` is True, operating hours constraints are bypassed and all slots are available
+- Validation: Start hour must be less than end hour (unless 24-hour operation)
 
 **Status:**
 - Required: No (defaults to 'draft')
@@ -1020,24 +1077,29 @@ When admin deletes a user:
 - Format: ISO 8601 datetime string
 - Validation: Must be valid datetime
 - Must be in the future (at least 1 hour from now)
-- Must be during operating hours (8 AM - 10 PM)
+- Must be during resource's operating hours (unless resource operates 24 hours)
 
 **End Datetime:**
 - Required: Yes
 - Format: ISO 8601 datetime string
 - Validation: Must be valid datetime
 - Must be after start_datetime
-- Must be during operating hours (8 AM - 10 PM)
+- Must be during resource's operating hours (unless resource operates 24 hours)
 
 **Duration:**
-- Minimum: 30 minutes
+- Minimum: 29 minutes
 - Maximum: 8 hours
 - Calculated: end_datetime - start_datetime
 
 **Operating Hours:**
-- Start time: 8:00 AM
-- End time: 10:00 PM (22:00)
-- Validation: Both start and end must be within this range
+- Each resource has configurable operating hours set by owner/admin
+- Operating hours are specified in 12-hour format (hour + AM/PM) during resource creation/editing
+- Stored in database as 24-hour format (0-23) for `operating_hours_start` and `operating_hours_end`
+- Resources can be marked as 24-hour operation (`is_24_hours` flag), which overrides operating hours constraints
+- Calendar displays all time slots from 12 AM to 11:59 PM
+- Slots outside operating hours are displayed but marked as unavailable (grayed out)
+- For 24-hour resources, all slots from 12 AM to 11:59 PM are available for booking
+- Validation: Both start and end must be within resource's operating hours (unless 24-hour operation)
 
 **Conflict Check:**
 - Must not overlap with existing 'approved' or 'pending' bookings
@@ -1371,8 +1433,30 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - Table of all users
 - Filters: Role, Suspended status, Department
 - Search: Name or email
-- Actions per user: Suspend, Change Role, Delete
+- Actions per user: Suspend, Change Role, Edit, Delete (soft delete)
 - Pagination
+
+**Resource Management Page (`/admin/resources`):**
+- Table of all resources
+- Comprehensive filtering options:
+  - Status (draft, published, archived)
+  - Category (study_room, lab_equipment, av_equipment, event_space, tutoring, other)
+  - Featured status (featured, not featured)
+  - Location (dropdown with unique locations)
+  - Owner (dropdown with resource owners)
+  - Keyword search (title or description)
+- Actions per resource:
+  - View resource details
+  - Edit resource (admins can edit all resources)
+  - Feature/Unfeature for homepage
+  - Archive/Unarchive
+  - **Reassign Ownership** (admin-only): Transfer ownership to another user
+    - Available for all resources regardless of status or owner deletion status
+    - Shows current owner information before reassignment
+    - New owner gains full owner privileges (edit, publish, archive, etc.)
+    - Action logged in admin logs for audit trail
+- Pagination with filter preservation
+- Visual indicators for resources owned by deleted users
 
 **Admin Logs Page (`/admin/logs`):**
 - Table of admin actions
@@ -1416,20 +1500,23 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - **Primary Color (Crimson):** #990000
   - Used for primary buttons, links, headings, navigation highlights
   - Indiana University official crimson
-- **Secondary Color (Cream):** #EEEDEB or #F0EAD6
-  - Used for backgrounds, card backgrounds, alternate sections
-  - Indiana University official cream
+- **Secondary Color (White):** #FFFFFF
+  - Used for backgrounds, text contrast, card backgrounds
+- **Background:** Light theme with white and light gray backgrounds (#f8f9fa)
+- **UI Theme:** Clean, modern design with Bootstrap 5 framework
+  - Subtle shadows and hover effects on cards and buttons
+  - System font stack for consistent typography
+  - Responsive design with modern UX patterns
 - **Color Usage:**
   - Crimson for primary actions, active states, important information
-  - Cream for page backgrounds and card backgrounds
-  - White (#FFFFFF) for text on crimson backgrounds
+  - White for page backgrounds and card backgrounds
   - Dark gray (#333333 or #212529) for primary text on light backgrounds
   - Ensure color contrast ratios meet WCAG 2.1 Level AA standards
 - **Brand Consistency:**
-  - Header/navigation uses crimson background with cream or white text
+  - Header/navigation uses crimson background with white text
   - Primary CTA buttons use crimson
-  - Secondary buttons use cream with crimson borders or text
-  - Cards and content areas use cream backgrounds
+  - Cards and content areas use white backgrounds with subtle shadows
+  - Consistent spacing and typography throughout
 
 **Responsive Design:**
 - Mobile-first approach
@@ -1448,7 +1535,13 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - Bootstrap 5 for layout and components
 - Bootstrap Icons for icons
 - Custom CSS for Indiana University branding and color scheme
-- Override Bootstrap default colors with IU crimson and cream palette
+- Override Bootstrap default colors with IU crimson and white palette
+- **UI Standardization:**
+  - All filter/sort boxes use consistent styling across all pages
+  - Form inputs standardized: `form-control-sm` and `form-select-sm` for uniform heights
+  - Button standardization: Apply and Reset buttons have consistent height (`py-2`), width (side-by-side use `flex-fill`, separate columns use `w-100`), and font size (`0.875rem`)
+  - Label standardization: All labels use consistent margin (`mb-1`), font size (`0.875rem`), and font weight (`fw-semibold`)
+  - Consistent spacing and alignment throughout filter/sort interfaces for improved usability
 
 ---
 

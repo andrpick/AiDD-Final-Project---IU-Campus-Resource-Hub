@@ -124,9 +124,9 @@ def get_resource_reviews(resource_id, limit=20, offset=0):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT r.*, u.name as reviewer_name
+            SELECT r.*, COALESCE(u.name, '[Deleted User]') as reviewer_name
             FROM reviews r
-            JOIN users u ON r.reviewer_id = u.user_id
+            LEFT JOIN users u ON r.reviewer_id = u.user_id AND (u.deleted = 0 OR u.deleted IS NULL)
             WHERE r.resource_id = ?
             ORDER BY r.timestamp DESC
             LIMIT ? OFFSET ?

@@ -362,7 +362,7 @@
             );
 
             const results = viewMode === 'grid'
-                ? e('div', { className: 'row g-4 featured-resources-grid mt-4' }, cards)
+                ? e('div', { className: 'row g-4 justify-content-center featured-resources-grid mt-4' }, cards)
                 : e('div', { className: 'featured-resources-list mt-4' }, cards);
 
             return e(React.Fragment, null, toolbar, results);

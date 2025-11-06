@@ -16,13 +16,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let endSlot = null;
     
     // Position current time indicator
+    // Since we now show slots from 12 AM (00:00) to 11:59 PM (23:59), use minutes from midnight
     {% if day_data.is_today and current_time_info %}
     if (currentTimeLine) {
         const timeMinutes = {{ current_time_info.minutes_from_midnight }};
-        const minutesFrom8am = timeMinutes - (8 * 60);
-        if (minutesFrom8am >= 0 && minutesFrom8am < (14 * 60)) {
-            const slotIndex = Math.floor(minutesFrom8am / 30);
-            const minutesIntoSlot = minutesFrom8am % 30;
+        // Slots are shown from 12 AM (00:00) to 11:59 PM (23:59)
+        // Each slot is 30 minutes, so position = (timeMinutes / 30) * 30px
+        if (timeMinutes >= 0 && timeMinutes < (24 * 60)) {
+            const slotIndex = Math.floor(timeMinutes / 30);
+            const minutesIntoSlot = timeMinutes % 30;
             const topPosition = (slotIndex * 30) + (minutesIntoSlot / 30 * 30);
             
             currentTimeLine.style.top = topPosition + 'px';
@@ -73,6 +75,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Example: Selecting 9:00 slot gives 9:00-9:30 (30 min)
         // Example: Selecting 9:00 slot to 9:30 slot gives 9:00-10:00 (1 hour)
         endMinutes = endMinutes + 30;
+        
+        // Cap end time at 11:59 PM (1439 minutes) to keep it on the same day
+        // If endMinutes would roll over to next day (>= 1440), cap at 11:59 PM
+        if (endMinutes >= 1440) {
+            endMinutes = 1439; // 23:59 (11:59 PM)
+        }
         
         const firstPos = startPos.timeMinutes <= endPos.timeMinutes ? startPos : endPos;
         const lastPos = startPos.timeMinutes <= endPos.timeMinutes ? endPos : startPos;
@@ -160,6 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Example: Selecting 9:00 slot to 9:30 slot gives 9:00-10:00 (1 hour)
             endMinutes = endMinutes + 30;
             
+            // Cap end time at 11:59 PM (1439 minutes) to keep it on the same day
+            // If endMinutes would roll over to next day (>= 1440), cap at 11:59 PM
+            if (endMinutes >= 1440) {
+                endMinutes = 1439; // 23:59 (11:59 PM)
+            }
+            
             const startHour = Math.floor(startMinutes / 60);
             const startMin = startMinutes % 60;
             const endHour = Math.floor(endMinutes / 60);
@@ -216,11 +230,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            // Check duration (30 minutes to 8 hours)
+            // Check duration (29 minutes to 8 hours)
             const durationMinutes = (end - start) / (1000 * 60);
-            if (durationMinutes < 30) {
+            if (durationMinutes < 29) {
                 e.preventDefault();
-                alert('Minimum booking duration is 30 minutes.');
+                alert('Minimum booking duration is 29 minutes.');
                 return false;
             }
             if (durationMinutes > 480) {

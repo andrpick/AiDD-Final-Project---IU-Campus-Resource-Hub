@@ -3,63 +3,172 @@
 {% block title %}Search - Indiana University Campus Resource Hub{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-3">
-        <!-- Search Filters -->
-        <div class="card bg-white mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Filters</h5>
-                <form method="GET" action="{{ url_for('search.index') }}">
-                    <div class="mb-3">
-                        <label for="keyword" class="form-label">Keyword</label>
-                        <input type="text" class="form-control" id="keyword" name="keyword" value="{{ keyword or '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="category" class="form-label">Category</label>
-                        <select class="form-select" id="category" name="category">
-                            <option value="">All Categories</option>
-                            <option value="study_room" {% if category == 'study_room' %}selected{% endif %}>Study Room</option>
-                            <option value="lab_equipment" {% if category == 'lab_equipment' %}selected{% endif %}>Lab Equipment</option>
-                            <option value="av_equipment" {% if category == 'av_equipment' %}selected{% endif %}>AV Equipment</option>
-                            <option value="event_space" {% if category == 'event_space' %}selected{% endif %}>Event Space</option>
-                            <option value="tutoring" {% if category == 'tutoring' %}selected{% endif %}>Tutoring</option>
-                            <option value="other" {% if category == 'other' %}selected{% endif %}>Other</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="location" class="form-label">Location</label>
-                        <input type="text" class="form-control" id="location" name="location" value="{{ location or '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="capacity_min" class="form-label">Min Capacity</label>
-                        <input type="number" class="form-control" id="capacity_min" name="capacity_min" value="{{ capacity_min or '' }}" min="1">
-                    </div>
-                    <div class="mb-3">
-                        <label for="capacity_max" class="form-label">Max Capacity</label>
-                        <input type="number" class="form-control" id="capacity_max" name="capacity_max" value="{{ capacity_max or '' }}" min="1">
-                    </div>
-                    <div class="mb-3">
-                        <label for="sort_by" class="form-label">Sort By</label>
-                        <select class="form-select" id="sort_by" name="sort_by">
-                            <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date</option>
-                            <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
-                            <option value="capacity" {% if sort_by == 'capacity' %}selected{% endif %}>Capacity</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="sort_order" class="form-label">Order</label>
-                        <select class="form-select" id="sort_order" name="sort_order">
-                            <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
-                            <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-crimson w-100">Apply Filters</button>
-                    <a href="{{ url_for('search.index') }}" class="btn btn-outline-secondary w-100 mt-2">Reset</a>
-                </form>
+<!-- Page Title -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resources</h1>
+                <p class="text-muted mb-0">Search and discover available campus resources</p>
             </div>
         </div>
     </div>
-    <div class="col-md-9">
+</div>
+
+<!-- Filters Section at Top -->
+<div class="card bg-white mb-4" style="overflow: visible;">
+    <div class="card-body" style="overflow: visible; position: relative; z-index: 1;">
+        <form method="GET" action="{{ url_for('search.index') }}">
+            <!-- First Row: Basic Filters -->
+            <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-3">
+                    <label for="keyword" class="form-label small mb-1" style="font-weight: 500;">Keyword</label>
+                    <input type="text" class="form-control form-control-sm" id="keyword" name="keyword" value="{{ keyword or '' }}" placeholder="Search...">
+                </div>
+                <div class="col-md-2">
+                    <label for="category" class="form-label small mb-1" style="font-weight: 500;">Category</label>
+                    <select class="form-select form-select-sm" id="category" name="category">
+                        <option value="">All Categories</option>
+                        <option value="study_room" {% if category == 'study_room' %}selected{% endif %}>Study Room</option>
+                        <option value="lab_equipment" {% if category == 'lab_equipment' %}selected{% endif %}>Lab Equipment</option>
+                        <option value="av_equipment" {% if category == 'av_equipment' %}selected{% endif %}>AV Equipment</option>
+                        <option value="event_space" {% if category == 'event_space' %}selected{% endif %}>Event Space</option>
+                        <option value="tutoring" {% if category == 'tutoring' %}selected{% endif %}>Tutoring</option>
+                        <option value="other" {% if category == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="location" class="form-label small mb-1" style="font-weight: 500;">Location</label>
+                    <select class="form-select form-select-sm" id="location" name="location">
+                        <option value="">All Locations</option>
+                        {% for loc in locations_list %}
+                        <option value="{{ loc }}" {% if location == loc %}selected{% endif %}>{{ loc }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="capacity_min" class="form-label small mb-1" style="font-weight: 500;">Min Capacity</label>
+                    <input type="number" class="form-control form-control-sm" id="capacity_min" name="capacity_min" value="{{ capacity_min or '' }}" min="1" placeholder="Min">
+                </div>
+                <div class="col-md-3">
+                    <label for="capacity_max" class="form-label small mb-1" style="font-weight: 500;">Max Capacity</label>
+                    <input type="number" class="form-control form-control-sm" id="capacity_max" name="capacity_max" value="{{ capacity_max or '' }}" min="1" placeholder="Max">
+                </div>
+            </div>
+            
+            <!-- Second Row: Availability and Sort -->
+            <div class="row g-3 align-items-end mb-0">
+                <div class="col-md-2">
+                    <label for="available_date" class="form-label small mb-1" style="font-weight: 500;">Date</label>
+                    <input type="date" class="form-control form-control-sm" id="available_date" name="available_date" value="{{ available_date or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1" style="font-weight: 500;">Time Range</label>
+                    <div class="position-relative" style="z-index: 10000;">
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100" data-bs-toggle="collapse" data-bs-target="#timePickerCollapse" id="timePickerToggleBtn">
+                            <i class="bi bi-clock"></i> <span id="timePickerBtnText">Select Time</span>
+                        </button>
+                        <div class="collapse position-absolute" id="timePickerCollapse" style="top: 100%; left: 0; right: 0; z-index: 99999; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; min-width: 400px;">
+                            <div class="small text-muted mb-2">Drag to select time window</div>
+                            <div class="availability-time-picker" style="border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; max-height: 300px; overflow-y: auto;">
+                                <div class="time-picker-grid" style="display: grid; grid-template-columns: 60px 1fr; position: relative;">
+                                    <!-- Time Labels Column -->
+                                    <div style="background-color: #f8f9fa; border-right: 1px solid #dee2e6;">
+                                        {% for hour in range(0, 24) %}
+                                        <div class="time-label-row" 
+                                             style="height: 60px; 
+                                                    border-bottom: 1px solid #dee2e6; 
+                                                    display: flex; 
+                                                    align-items: center; 
+                                                    justify-content: center;
+                                                    font-weight: 500;
+                                                    color: #333;
+                                                    font-size: 0.75rem;"
+                                             data-hour="{{ hour }}">
+                                            {% set display_hour = hour if hour <= 12 else hour - 12 %}
+                                            {% if display_hour == 0 %}{% set display_hour = 12 %}{% endif %}
+                                            {% set am_pm = "PM" if hour >= 12 else "AM" %}
+                                            {{ display_hour }}:00 {{ am_pm }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <!-- Time Slot Cells -->
+                                    <div class="time-slots-container-availability" style="position: relative;">
+                                        {% for hour in range(0, 24) %}
+                                        {% for minute in [0, 30] %}
+                                        {% set time_minutes = hour * 60 + minute %}
+                                        <div class="time-slot-cell-availability available-slot-availability" 
+                                             data-time-minutes="{{ time_minutes }}"
+                                             data-hour="{{ hour }}"
+                                             data-minute="{{ minute }}"
+                                             style="height: 30px; 
+                                                    border-bottom: 1px dashed #dee2e6; 
+                                                    position: relative;
+                                                    cursor: pointer;
+                                                    background-color: #ffffff;
+                                                    transition: background-color 0.1s ease;">
+                                        </div>
+                                        {% endfor %}
+                                        {% endfor %}
+                                        
+                                        <!-- Selection Overlay -->
+                                        <div id="availability-time-selection-overlay" 
+                                             style="display: none; 
+                                                    position: absolute; 
+                                                    background-color: rgba(0, 123, 255, 0.4); 
+                                                    border: 2px solid #007bff; 
+                                                    pointer-events: none; 
+                                                    z-index: 10; 
+                                                    border-radius: 2px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="availability-time-selection-info" class="small text-muted mt-2" style="display: none;">
+                                <span id="selected-time-display-availability"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label small mb-1" style="font-weight: 500;">Sort By</label>
+                    <select class="form-select form-select-sm" id="sort_by" name="sort_by">
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date Added</option>
+                        <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                        <option value="capacity" {% if sort_by == 'capacity' %}selected{% endif %}>Capacity</option>
+                        <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Most Booked</option>
+                        <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Top Rated</option>
+                        <option value="recently_booked" {% if sort_by == 'recently_booked' %}selected{% endif %}>Recently Booked</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_order" class="form-label small mb-1" style="font-weight: 500;">Order</label>
+                    <select class="form-select form-select-sm" id="sort_order" name="sort_order">
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
+                        <i class="bi bi-funnel me-2"></i> Apply
+                    </button>
+                    <a href="{{ url_for('search.index') }}" class="btn btn-outline-secondary flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
+                        <i class="bi bi-x-circle me-2"></i> Reset
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Hidden inputs for form submission -->
+            <input type="hidden" id="available_start_time" name="available_start_time" value="{{ available_start_time or '' }}">
+            <input type="hidden" id="available_end_time" name="available_end_time" value="{{ available_end_time or '' }}">
+            <small class="text-muted d-block mt-2">Leave blank to see all resources</small>
+        </form>
+    </div>
+</div>
+
+<!-- Search Results Section -->
+<div style="position: relative; z-index: 1;">
         <h2 class="mb-4">Search Results</h2>
         
         {% if keyword %}
@@ -85,7 +194,7 @@
                     </div>
                     {% endif %}
                     <div class="card-body d-flex flex-column">
-                        <h5 class="card-title"><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></h5>
+                        <h5 class="card-title"><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" style="text-decoration: none; color: inherit;">{{ resource.title }}</a></h5>
                         <p class="card-text text-muted flex-grow-1">
                             <i class="bi bi-geo-alt"></i> {{ resource.location }}<br>
                             {% if resource.capacity %}
@@ -108,15 +217,15 @@
         <nav aria-label="Search pagination" class="mt-4">
             <ul class="pagination justify-content-center">
                 {% if page > 1 %}
-                <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Previous</a></li>
                 {% endif %}
                 {% for p in range(1, total_pages + 1) %}
                 <li class="page-item {% if p == page %}active{% endif %}">
-                    <a class="page-link" href="?page={{ p }}{% if keyword %}&keyword={{ keyword }}{% endif %}">{{ p }}</a>
+                    <a class="page-link" href="?page={{ p }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">{{ p }}</a>
                 </li>
                 {% endfor %}
                 {% if page < total_pages %}
-                <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Next</a></li>
                 {% endif %}
             </ul>
         </nav>
@@ -135,5 +244,270 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+// Set default date to today if not already set
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('available_date');
+    if (dateInput && !dateInput.value) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+    }
+    
+    // Initialize drag-and-select time picker for availability filter
+    initAvailabilityTimePicker();
+    
+    // Restore selected time range if present
+    const startTimeInput = document.getElementById('available_start_time');
+    const endTimeInput = document.getElementById('available_end_time');
+    if (startTimeInput && endTimeInput && startTimeInput.value && endTimeInput.value) {
+        highlightSelectedTimeRange(startTimeInput.value, endTimeInput.value);
+        // Auto-expand time picker if time range is selected
+        const timePickerCollapse = document.getElementById('timePickerCollapse');
+        if (timePickerCollapse) {
+            const bsCollapse = new bootstrap.Collapse(timePickerCollapse, { toggle: false });
+            bsCollapse.show();
+        }
+    }
+    
+    // Ensure time picker has highest z-index when shown
+    const timePickerCollapse = document.getElementById('timePickerCollapse');
+    if (timePickerCollapse) {
+        timePickerCollapse.addEventListener('shown.bs.collapse', function() {
+            this.style.zIndex = '99999';
+        });
+        timePickerCollapse.addEventListener('hidden.bs.collapse', function() {
+            this.style.zIndex = '10000';
+        });
+    }
+});
+
+// Initialize drag-and-select time picker
+function initAvailabilityTimePicker() {
+    const timeSlotCells = document.querySelectorAll('.time-slot-cell-availability');
+    const timeSelectionOverlay = document.getElementById('availability-time-selection-overlay');
+    const timeSelectionInfo = document.getElementById('availability-time-selection-info');
+    const selectedTimeDisplay = document.getElementById('selected-time-display-availability');
+    const startTimeInput = document.getElementById('available_start_time');
+    const endTimeInput = document.getElementById('available_end_time');
+    
+    let isSelecting = false;
+    let startSlot = null;
+    let endSlot = null;
+    
+    // Helper function to get slot position
+    function getSlotPosition(slot) {
+        const container = document.querySelector('.time-slots-container-availability');
+        if (!container) return null;
+        const containerRect = container.getBoundingClientRect();
+        const slotRect = slot.getBoundingClientRect();
+        return {
+            top: slotRect.top - containerRect.top + container.scrollTop,
+            left: slotRect.left - containerRect.left + container.scrollLeft,
+            width: slotRect.width,
+            height: slotRect.height,
+            timeMinutes: parseInt(slot.getAttribute('data-time-minutes'))
+        };
+    }
+    
+    // Update selection overlay
+    function updateTimeSelectionOverlay(startSlot, endSlot) {
+        if (!startSlot || !endSlot) {
+            timeSelectionOverlay.style.display = 'none';
+            timeSelectionInfo.style.display = 'none';
+            return;
+        }
+        
+        const startPos = getSlotPosition(startSlot);
+        const endPos = getSlotPosition(endSlot);
+        
+        let startMinutes = Math.min(startPos.timeMinutes, endPos.timeMinutes);
+        let endMinutes = Math.max(startPos.timeMinutes, endPos.timeMinutes);
+        
+        // Each slot represents a 30-minute interval
+        // To include the full duration of the selected end slot, add 30 minutes
+        endMinutes = endMinutes + 30;
+        
+        // Cap end time at 11:59 PM (1439 minutes)
+        if (endMinutes >= 1440) {
+            endMinutes = 1439; // 23:59 (11:59 PM)
+        }
+        
+        const firstPos = startPos.timeMinutes <= endPos.timeMinutes ? startPos : endPos;
+        const lastPos = startPos.timeMinutes <= endPos.timeMinutes ? endPos : startPos;
+        
+        const overlayTop = firstPos.top;
+        const overlayHeight = (startSlot === endSlot) ? firstPos.height : ((lastPos.top + lastPos.height) - firstPos.top);
+        
+        timeSelectionOverlay.style.display = 'block';
+        timeSelectionOverlay.style.top = overlayTop + 'px';
+        timeSelectionOverlay.style.left = firstPos.left + 'px';
+        timeSelectionOverlay.style.width = firstPos.width + 'px';
+        timeSelectionOverlay.style.height = overlayHeight + 'px';
+        
+        // Update selection info
+        const startHour = Math.floor(startMinutes / 60);
+        const startMin = startMinutes % 60;
+        const endHour = Math.floor(endMinutes / 60);
+        const endMin = endMinutes % 60;
+        
+        const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+        const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+        
+        // Convert to 12-hour format for display
+        const startHour12 = startHour === 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour);
+        const endHour12 = endHour === 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
+        const startAmPm = startHour >= 12 ? 'PM' : 'AM';
+        const endAmPm = endHour >= 12 ? 'PM' : 'AM';
+        
+        const duration = endMinutes - startMinutes;
+        const hours = Math.floor(duration / 60);
+        const minutes = duration % 60;
+        
+        selectedTimeDisplay.textContent = `${startHour12}:${startMin.toString().padStart(2, '0')} ${startAmPm} - ${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm} (${hours}h${minutes > 0 ? ' ' + minutes + 'm' : ''})`;
+        timeSelectionInfo.style.display = 'block';
+        
+        // Update hidden inputs
+        if (startTimeInput) startTimeInput.value = startTimeStr;
+        if (endTimeInput) endTimeInput.value = endTimeStr;
+        
+        // Update button text
+        const btnText = document.getElementById('timePickerBtnText');
+        if (btnText) {
+            btnText.textContent = `${startHour12}:${startMin.toString().padStart(2, '0')} ${startAmPm} - ${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+        }
+    }
+    
+    // Mouse events for drag selection
+    timeSlotCells.forEach(slot => {
+        slot.addEventListener('mousedown', function(e) {
+            isSelecting = true;
+            startSlot = slot;
+            endSlot = slot;
+            updateTimeSelectionOverlay(startSlot, endSlot);
+            e.preventDefault();
+        });
+        
+        slot.addEventListener('mouseenter', function() {
+            if (isSelecting) {
+                endSlot = slot;
+                updateTimeSelectionOverlay(startSlot, endSlot);
+            }
+        });
+        
+        slot.addEventListener('mouseup', function() {
+            if (isSelecting) {
+                isSelecting = false;
+                // Finalize selection
+                if (startSlot && endSlot) {
+                    const startPos = getSlotPosition(startSlot);
+                    const endPos = getSlotPosition(endSlot);
+                    
+                    let startMinutes = Math.min(startPos.timeMinutes, endPos.timeMinutes);
+                    let endMinutes = Math.max(startPos.timeMinutes, endPos.timeMinutes);
+                    endMinutes = endMinutes + 30;
+                    
+                    if (endMinutes >= 1440) {
+                        endMinutes = 1439;
+                    }
+                    
+                    const startHour = Math.floor(startMinutes / 60);
+                    const startMin = startMinutes % 60;
+                    const endHour = Math.floor(endMinutes / 60);
+                    const endMin = endMinutes % 60;
+                    
+                    const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+                    const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+                    
+                    // Display is handled by selection info
+                }
+            }
+        });
+    });
+    
+    // Stop selection when mouse leaves
+    document.addEventListener('mouseup', function() {
+        if (isSelecting) {
+            isSelecting = false;
+        }
+    });
+}
+
+// Update time display
+function updateTimeDisplay(startTime, endTime) {
+    // Display is now handled by the selection info, no need for separate display
+}
+
+// Highlight selected time range (for restoring from URL params)
+function highlightSelectedTimeRange(startTime, endTime) {
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    let endMinutes = endHour * 60 + endMin;
+    
+    // Find start and end slots
+    const slots = document.querySelectorAll('.time-slot-cell-availability');
+    let startSlot = null;
+    let endSlot = null;
+    
+    slots.forEach(slot => {
+        const slotMinutes = parseInt(slot.getAttribute('data-time-minutes'));
+        if (slotMinutes === startMinutes) {
+            startSlot = slot;
+        }
+        // Find the slot that ends at endMinutes (subtract 30 to find the start slot)
+        if (endMinutes >= 30 && slotMinutes === endMinutes - 30) {
+            endSlot = slot;
+        }
+    });
+    
+    if (startSlot && endSlot) {
+        const overlay = document.getElementById('availability-time-selection-overlay');
+        const info = document.getElementById('availability-time-selection-info');
+        const display = document.getElementById('selected-time-display-availability');
+        
+        if (overlay && info && display) {
+            const container = document.querySelector('.time-slots-container-availability');
+            const containerRect = container.getBoundingClientRect();
+            
+            const startRect = startSlot.getBoundingClientRect();
+            const endRect = endSlot.getBoundingClientRect();
+            
+            const overlayTop = startRect.top - containerRect.top + container.scrollTop;
+            const overlayHeight = (endRect.bottom - containerRect.top + container.scrollTop) - overlayTop;
+            
+            overlay.style.display = 'block';
+            overlay.style.top = overlayTop + 'px';
+            overlay.style.left = (startRect.left - containerRect.left + container.scrollLeft) + 'px';
+            overlay.style.width = startRect.width + 'px';
+            overlay.style.height = overlayHeight + 'px';
+            
+            // Update display
+            const startHour12 = startHour === 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour);
+            const endHour12 = endHour === 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
+            const startAmPm = startHour >= 12 ? 'PM' : 'AM';
+            const endAmPm = endHour >= 12 ? 'PM' : 'AM';
+            
+            const duration = endMinutes - startMinutes;
+            const hours = Math.floor(duration / 60);
+            const minutes = duration % 60;
+            
+            display.textContent = `${startHour12}:${startMin.toString().padStart(2, '0')} ${startAmPm} - ${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm} (${hours}h${minutes > 0 ? ' ' + minutes + 'm' : ''})`;
+            info.style.display = 'block';
+            
+            // Update button text
+            const btnText = document.getElementById('timePickerBtnText');
+            if (btnText) {
+                btnText.textContent = `${startHour12}:${startMin.toString().padStart(2, '0')} ${startAmPm} - ${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+            }
+        }
+    }
+}
+
+</script>
 {% endblock %}
 

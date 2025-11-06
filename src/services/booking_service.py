@@ -65,8 +65,8 @@ def check_conflicts(resource_id, start_datetime, end_datetime, exclude_booking_i
     
     return conflicts
 
-def validate_booking_datetime(start_datetime, end_datetime):
-    """Validate booking datetime constraints."""
+def validate_booking_datetime(start_datetime, end_datetime, resource_id=None):
+    """Validate booking datetime constraints using resource-specific operating hours."""
     try:
         if isinstance(start_datetime, str):
             start_dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
@@ -121,15 +121,37 @@ def validate_booking_datetime(start_datetime, end_datetime):
     if duration > max_duration:
         return False, None, None, f"Maximum booking duration is {Config.BOOKING_MAX_DURATION_HOURS} hours"
     
-    # Operating hours validation
-    operating_start = Config.BOOKING_OPERATING_HOURS_START
-    operating_end = Config.BOOKING_OPERATING_HOURS_END
+    # Operating hours validation - fetch resource-specific hours
+    if resource_id:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT operating_hours_start, operating_hours_end, is_24_hours
+                FROM resources 
+                WHERE resource_id = ?
+            """, (resource_id,))
+            result = cursor.fetchone()
+            if result:
+                operating_start = result['operating_hours_start']
+                operating_end = result['operating_hours_end']
+                is_24_hours = bool(result['is_24_hours']) if result['is_24_hours'] is not None else False
+            else:
+                return False, None, None, "Resource not found"
+    else:
+        # Fallback to global config if resource_id not provided (for backward compatibility)
+        operating_start = Config.BOOKING_OPERATING_HOURS_START
+        operating_end = Config.BOOKING_OPERATING_HOURS_END
+        is_24_hours = False
     
-    if start_hour < operating_start or (start_hour == operating_start and start_minute > 0):
-        return False, None, None, f"Booking must start at or after {operating_start:02d}:00"
-    
-    if end_hour > operating_end or (end_hour == operating_end and end_minute > 0):
-        return False, None, None, f"Booking must end at or before {operating_end:02d}:00"
+    # Validate booking times are within operating hours (skip if 24-hour operation)
+    if not is_24_hours:
+        # Start time must be at or after operating_start
+        if start_hour < operating_start or (start_hour == operating_start and start_minute > 0):
+            return False, None, None, f"Booking must start at or after {operating_start:02d}:00"
+        
+        # End time must be at or before operating_end
+        if end_hour > operating_end or (end_hour == operating_end and end_minute > 0):
+            return False, None, None, f"Booking must end at or before {operating_end:02d}:00"
     
     return True, start_dt, end_dt, "Valid"
 
@@ -138,8 +160,8 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime):
     Create a new booking request with transaction-level conflict checking.
     Uses a transaction to prevent race conditions where two users book the same slot simultaneously.
     """
-    # Validate datetime
-    valid, start_dt, end_dt, msg = validate_booking_datetime(start_datetime, end_datetime)
+    # Validate datetime with resource-specific operating hours
+    valid, start_dt, end_dt, msg = validate_booking_datetime(start_datetime, end_datetime, resource_id=resource_id)
     if not valid:
         return {'success': False, 'error': msg}
     
@@ -266,6 +288,7 @@ def update_booking(booking_id, start_datetime=None, end_datetime=None, status=No
         return {'success': False, 'error': 'Booking not found'}
     
     existing_booking = booking_result['data']
+    resource_id = existing_booking['resource_id']
     
     # Use existing values if not provided
     new_start = start_datetime if start_datetime is not None else existing_booking['start_datetime']
@@ -274,7 +297,7 @@ def update_booking(booking_id, start_datetime=None, end_datetime=None, status=No
     
     # Validate datetime if provided and validation not skipped
     if not skip_validation and (start_datetime is not None or end_datetime is not None):
-        valid, start_dt, end_dt, msg = validate_booking_datetime(new_start, new_end)
+        valid, start_dt, end_dt, msg = validate_booking_datetime(new_start, new_end, resource_id=resource_id)
         if not valid:
             return {'success': False, 'error': msg}
         new_start = start_dt.isoformat()

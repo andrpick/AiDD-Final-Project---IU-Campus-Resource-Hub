@@ -12,10 +12,13 @@
                     <i class="bi bi-arrow-left"></i>
                 </a>
                 <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-crimson text-white d-flex align-items-center justify-content-center me-3" 
-                         style="width: 45px; height: 45px; font-size: 1.1rem; font-weight: 600;">
-                        {{ (other_user.name if other_user else 'U')[0]|upper }}
-                    </div>
+                    {% if other_user and other_user.profile_image and other_user.profile_image.startswith('profiles/') %}
+                        <img src="{{ url_for('auth.uploaded_file', filename=other_user.profile_image.split('/')[-1]) }}?t={{ other_user.profile_image.split('/')[-1].split('.')[0] }}" 
+                             alt="{{ other_user.name }}'s profile picture"
+                             class="rounded-circle me-3"
+                             style="width: 45px; height: 45px; object-fit: cover; border: 2px solid var(--crimson);"
+                             onerror="this.style.display='none';">
+                    {% endif %}
                     <div>
                         <h4 class="mb-0 fw-semibold" style="color: #333;">
                             {{ other_user.name if other_user else 'User' }}
@@ -44,7 +47,7 @@
                     <div class="d-flex flex-column">
                         {% for message in messages %}
                         <div class="mb-3 d-flex {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
-                            <div style="max-width: 70%;">
+                            <div style="max-width: 70%; position: relative;">
                                 <div class="d-flex align-items-center mb-1 {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
                                     {% if message.sender_id != current_user.user_id %}
                                         <small class="text-muted me-2" style="font-size: 0.75rem;">
