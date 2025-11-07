@@ -78,7 +78,7 @@ The application is fully functional with all core features implemented:
    - Email: `studentuser@iu.edu`
    - Password: `StudentUser1!`
    
-   **⚠️ IMPORTANT:** Change these default passwords immediately after first login in production!
+   **⚠️ SECURITY WARNING:** These are default test credentials for development and testing purposes only. **You MUST change all default passwords immediately after first login in production environments.** Never use default credentials in production!
    
    Additional sample users may be included in the database with various email addresses. Check the User Management page after logging in to see all available accounts.
 
@@ -284,11 +284,14 @@ The application includes the following implemented features:
    - Optimize images
 
 4. **Security:**
-   - Change default admin password
+   - **CRITICAL:** Change all default passwords (admin, staff, student accounts) before production deployment
+   - **CRITICAL:** Generate a secure `SECRET_KEY` (never use the default placeholder)
    - Enable HTTPS
    - Configure secure cookies
    - Set up rate limiting
-   - Ensure `SECRET_KEY` is strong and unique
+   - Ensure `SECRET_KEY` is strong and unique (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
+   - Never commit `.env` files to version control
+   - Store API keys securely in `.env` file (never in code)
 
 5. **Logging:**
    - Configure log directory and rotation
@@ -313,7 +316,7 @@ The database includes sample/starter data with default accounts:
 - **Email:** studentuser@iu.edu
 - **Password:** StudentUser1!
 
-**⚠️ IMPORTANT:** Change these default passwords immediately after first login in production!
+**⚠️ SECURITY WARNING:** These are default test credentials for development and testing purposes only. **You MUST change all default passwords immediately after first login in production environments.** Never use default credentials in production!
 
 **Note:** Additional sample users may be included in the database with various email addresses. You can view all users in the Admin Dashboard > User Management section.
 

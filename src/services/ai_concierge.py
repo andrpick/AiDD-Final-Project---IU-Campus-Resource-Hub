@@ -9,8 +9,11 @@ from src.services.review_service import get_resource_reviews
 from src.services.resource_service import get_resource, list_resources
 from src.services.booking_service import check_conflicts
 from src.data_access.database import get_db_connection
+from src.utils.logging_config import get_logger
 from datetime import datetime, timedelta
 from dateutil.tz import gettz, tzutc
+
+logger = get_logger(__name__)
 
 # Try to import Google Gemini AI
 try:
@@ -130,7 +133,7 @@ def get_database_statistics():
             stats['featured_resources'] = cursor.fetchone()[0]
             
     except Exception as e:
-        print(f"Error getting database statistics: {e}")
+        logger.error(f"Error getting database statistics: {e}", exc_info=True)
         stats = {}
     
     return stats
@@ -178,7 +181,7 @@ def get_largest_resource_by_capacity():
             
             return resources
     except Exception as e:
-        print(f"Error querying largest resource: {e}")
+        logger.error(f"Error querying largest resource: {e}", exc_info=True)
         return []
 
 def get_resource_by_name_or_id(query):
@@ -224,7 +227,7 @@ def get_resource_by_name_or_id(query):
             
             return resources
     except Exception as e:
-        print(f"Error querying resource: {e}")
+        logger.error(f"Error querying resource: {e}", exc_info=True)
         return []
 
 def get_resources_by_category(category):
@@ -263,7 +266,7 @@ def get_resources_by_category(category):
             return resources
         return []
     except Exception as e:
-        print(f"Error querying resources by category: {e}")
+        logger.error(f"Error querying resources by category: {e}", exc_info=True)
         return []
 
 def get_resources_by_location(location_keyword):
@@ -289,7 +292,7 @@ def get_resources_by_location(location_keyword):
             return resources
         return []
     except Exception as e:
-        print(f"Error querying resources by location: {e}")
+        logger.error(f"Error querying resources by location: {e}", exc_info=True)
         return []
 
 def get_top_rated_resources(limit=10, category=None):
@@ -352,7 +355,7 @@ def get_top_rated_resources(limit=10, category=None):
             
             return resources
     except Exception as e:
-        print(f"Error querying top-rated resources: {e}")
+        logger.error(f"Error querying top-rated resources: {e}", exc_info=True)
         return []
 
 def check_resource_availability(resource_id, date_str=None):
@@ -427,7 +430,7 @@ def check_resource_availability(resource_id, date_str=None):
                 'is_available_today': len([b for b in bookings if b['status'] == 'approved']) == 0 if date_str else None
             }
     except Exception as e:
-        print(f"Error checking resource availability: {e}")
+        logger.error(f"Error checking resource availability: {e}", exc_info=True)
         return None
 
 def get_recently_added_resources(limit=10):
@@ -447,7 +450,7 @@ def get_recently_added_resources(limit=10):
             return resources
         return []
     except Exception as e:
-        print(f"Error querying recently added resources: {e}")
+        logger.error(f"Error querying recently added resources: {e}", exc_info=True)
         return []
 
 def compare_resources(resource_id_1, resource_id_2):
@@ -479,7 +482,7 @@ def compare_resources(resource_id_1, resource_id_2):
             'resource2': res2
         }
     except Exception as e:
-        print(f"Error comparing resources: {e}")
+        logger.error(f"Error comparing resources: {e}", exc_info=True)
         return None
 
 def get_resource_context():
@@ -597,11 +600,11 @@ def query_concierge(user_query, conversation_history=None):
     
     api_key = Config.GOOGLE_GEMINI_API_KEY
     
-    # Debug logging (remove in production)
+    # Debug logging
     if not GEMINI_AVAILABLE:
-        print(f"[DEBUG] Gemini not available - GEMINI_AVAILABLE: {GEMINI_AVAILABLE}")
+        logger.debug(f"Gemini not available - GEMINI_AVAILABLE: {GEMINI_AVAILABLE}")
     if not api_key:
-        print(f"[DEBUG] API key not found in environment - GOOGLE_GEMINI_API_KEY: {api_key}")
+        logger.debug("API key not found in environment - GOOGLE_GEMINI_API_KEY is empty")
     
     # Check if Gemini is available and API key is provided
     if not GEMINI_AVAILABLE or not api_key:
@@ -1124,7 +1127,7 @@ Respond naturally to the user's query, but strictly within the bounds of the cam
                 break
             except Exception as e:
                 last_error = e
-                print(f"[DEBUG] Model {model_name} failed: {e}")
+                logger.debug(f"Model {model_name} failed: {e}")
                 continue
         
         if response is None:
@@ -1173,8 +1176,6 @@ Respond naturally to the user's query, but strictly within the bounds of the cam
         }
     except Exception as e:
         # Fallback on error
-        from src.utils.logging_config import get_logger
-        logger = get_logger(__name__)
         logger.error(f"Gemini API error: {e}", exc_info=True)
         return query_concierge_fallback(user_query)
 

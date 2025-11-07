@@ -43,9 +43,33 @@ The database includes sample/starter data with default accounts:
 - **Email:** studentuser@iu.edu
 - **Password:** StudentUser1!
 
-**⚠️ IMPORTANT:** Change the default passwords immediately after first login in production!
+**⚠️ SECURITY WARNING:** These are default test credentials for development and testing purposes only. **You MUST change all default passwords immediately after first login in production environments.** Never use default credentials in production!
 
 **Note:** The sample database may include additional test users with various email addresses. Check the User Management page after logging in to see all available accounts.
+
+## Security Considerations
+
+**⚠️ IMPORTANT SECURITY NOTES:**
+
+1. **Default Credentials**: The application includes default test accounts with known passwords. These are for development and testing only. **You MUST change all default passwords before deploying to production.**
+
+2. **Secret Key**: The default `SECRET_KEY` in `.env.example` is a placeholder. **You MUST generate a secure random key for production** using:
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+
+3. **Environment Variables**: Never commit `.env` files to version control. The `.env.example` file is a template only and contains no actual secrets.
+
+4. **Production Deployment**: 
+   - Set `PRODUCTION=1` and `FLASK_DEBUG=0` in your `.env` file
+   - Use HTTPS in production
+   - Configure secure session cookies
+   - Set up proper database backups
+   - Review and update all default credentials
+
+5. **API Keys**: If using the AI Concierge feature, store your `GOOGLE_GEMINI_API_KEY` securely in your `.env` file (never commit it).
+
+For more detailed security information, see the [SETUP_STEPS.md](SETUP_STEPS.md) Security section.
 
 ## Project Structure
 
