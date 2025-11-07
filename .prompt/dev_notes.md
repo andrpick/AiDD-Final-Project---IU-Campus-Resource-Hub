@@ -12,8 +12,7 @@ How might these tools change the role of a business technologist or product mana
 ## Interaction Log
 The Interaction Log below is designed to transparently document how AI tools were utilized throughout the project. Its primary purpose is to provide a detailed, reproducible record of each prompt and the resulting actions the agent took. This log is intentionally long and comprehensive, as it records every user prompt along with a summary of the steps performed in response, making the AI's contributions and decision-making process clear for future reference and auditing.
 
-**Important Disclaimer**
-This log began after a prototpye application had been developed. The log below is further development of that prototype.
+**Important Disclaimer**: This log began after a prototpye application had been developed. The log below is further development of that prototype.
 
 ### Interaction #1
 **User Prompt:**
