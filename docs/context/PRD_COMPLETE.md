@@ -6,6 +6,8 @@
 **Team:** AiDD Capstone Project Team  
 **Purpose:** This document contains all product and technical requirements needed to recreate the Indiana University Campus Resource Hub application from scratch.
 
+> **Note:** This is a comprehensive reference document (2,800+ lines). For quick start instructions, see [README.md](../../README.md). For setup instructions, see [SETUP_STEPS.md](../../SETUP_STEPS.md). For database schema reference, see [ERD_AND_SCHEMA.md](ERD_AND_SCHEMA.md).
+
 ---
 
 ## Table of Contents
@@ -2390,7 +2392,7 @@ The following features are explicitly **out of scope** for the MVP version (but 
 
 ---
 
-## Appendix A: Complete File Structure
+## Appendix A: Complete Template File Structure 
 
 ```
 campus-resource-hub/

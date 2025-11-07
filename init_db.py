@@ -156,8 +156,8 @@ def init_database():
         cursor.execute(index_sql)
     
     # Create default admin user if it doesn't exist
-    admin_email = 'admin@example.com'
-    admin_password = 'Admin123!'
+    admin_email = 'admin@iu.edu'
+    admin_password = 'AdminUser1!'
     password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
     
     cursor.execute("SELECT user_id FROM users WHERE email = ?", (admin_email,))

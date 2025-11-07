@@ -1,5 +1,7 @@
 # Entity Relationship Diagram (ERD) and Database Schema
 
+> **Note:** This document provides a focused database schema reference. For complete technical specifications including business rules, validation rules, and API endpoints, see [PRD_COMPLETE.md](PRD_COMPLETE.md).
+
 ## Entity Relationship Diagram
 
 ```mermaid

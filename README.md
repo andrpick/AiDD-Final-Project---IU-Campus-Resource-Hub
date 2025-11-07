@@ -149,7 +149,7 @@ For more detailed security information, see the [SETUP_STEPS.md](SETUP_STEPS.md)
   - Test restore procedures regularly
   - Document disaster recovery procedures
 
-For detailed deployment instructions, see the [SETUP_STEPS.md](SETUP_STEPS.md) Deployment Preparation section.
+For detailed deployment instructions and scalability recommendations, see [SETUP_STEPS.md](SETUP_STEPS.md#7-deployment-preparation).
 
 ## Project Structure
 
@@ -179,50 +179,18 @@ For detailed deployment instructions, see the [SETUP_STEPS.md](SETUP_STEPS.md) D
 
 ## Features
 
-### Core Features
+The application includes the following core features:
+
 - **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing
 - **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, resource-specific operating hours, and admin-only archiving
 - **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, and capacity-based search
-- **Booking System**: 
-  - Interactive month/day calendar view with drag-and-select time selection
-  - Automatic approval for available time slots (no manual approval needed)
-  - Booking statuses: approved, cancelled, completed (simplified workflow)
-  - Conflict detection and validation (prevents double-booking)
-  - Calendar export to Google Calendar, Outlook, and iCal formats
-  - Admin booking management with override capabilities
-- **Messaging System**:
-  - Thread-based messaging with resource-specific threading (separate threads per resource)
-  - Thread-level read/unread status tracking
-  - Unread message notifications in navbar
-  - Mark threads as read/unread functionality
-  - "Message Owner" button on resource detail pages
+- **Booking System**: Interactive calendar view with drag-and-select time selection, automatic approval, conflict detection, and calendar export (Google Calendar, Outlook, iCal)
+- **Messaging System**: Thread-based messaging with resource-specific threading, read/unread status tracking, and navbar notifications
 - **Reviews & Ratings**: Multiple reviews per user per resource with star ratings
-- **AI Concierge**: 
-  - Chatbot widget accessible from any page
-  - Google Gemini AI integration
-  - Natural language resource queries with read-only database access
-  - Supports queries for statistics, resource details, availability, comparisons, and recommendations
-- **Featured Resources**: Admin can feature resources for homepage display
-- **Admin Dashboard**: Comprehensive statistics, user management, resource management, booking management, and action logging
-  - **User Management**: 
-    - Full user editing capabilities (edit name, email, password, role, department, profile image, suspension status)
-    - **Soft Delete**: Users are soft-deleted (not permanently removed) - PII is anonymized but records are preserved for data integrity
-    - Suspended users cannot perform actions until unsuspended
-    - Role changes with self-demotion prevention
-  - **Resource Management**: 
-    - Comprehensive filtering and management (filter by status, category, featured status, location, owner, and keyword search)
-    - **Resource Operating Hours**: Owners/admins can set custom operating hours for each resource (12-hour format input)
-    - **24-Hour Operation**: Resources can be marked as operating 24 hours a day
-    - **Resource Ownership Reassignment**: Admins can reassign ownership of any resource to another user (admin-only feature)
-    - Resource archiving and unarchiving
-    - Feature/unfeature resources for homepage display
-  - **Resource Statistics**: Detailed resource analytics with filtering and sorting options
-  - **UI Improvements**: 
-    - Streamlined dropdown menus for admin actions, table-based statistics display
-    - **Standardized UI Components**: Consistent filter/sort boxes across all pages with uniform input heights, button sizes, and font sizes
-    - **Uniform Button Styling**: All Apply and Reset buttons have consistent height (`py-2`), width (side-by-side use `flex-fill`, separate columns use `w-100`), and font size (`0.875rem`)
-    - **Standardized Form Inputs**: All form inputs use `form-control-sm` and `form-select-sm` for consistent heights
-    - **Uniform Label Styling**: All labels use consistent margin (`mb-1`), font size (`0.875rem`), and font weight (`fw-semibold`)
+- **AI Concierge**: Chatbot widget with Google Gemini AI integration for natural language resource queries
+- **Admin Dashboard**: Comprehensive statistics, user management (including soft delete), resource management, booking management, and action logging
+
+For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-features-overview). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
 
 ## Technology Stack
 
@@ -251,28 +219,14 @@ For detailed deployment instructions, see the [SETUP_STEPS.md](SETUP_STEPS.md) D
 
 ## Testing
 
-The application includes a comprehensive test suite with 139 tests covering:
-- Unit tests for booking logic, data access layer, controller helpers, and query builder
-- Integration tests for authentication and booking flows
-- End-to-end tests for complete user workflows
-- Security tests for SQL injection and XSS prevention
+The application includes a comprehensive test suite with **139 tests** (100% pass rate) covering unit tests, integration tests, end-to-end tests, and security tests.
 
-Run tests:
+**Quick Start:**
 ```bash
-# Quick way - use the test runner script
 python tests/run_tests.py
-
-# Or use pytest directly
-python -m pytest tests/ -v
-
-# Run specific test file
-python -m pytest tests/test_booking_service.py -v
-
-# Run with coverage
-python -m pytest tests/ --cov=src --cov-report=html
 ```
 
-**Current Status:** ✅ All 139 tests passing (100% pass rate)
+For detailed testing information, see [SETUP_STEPS.md](SETUP_STEPS.md#-testing).
 
 ## Code Quality & Refactoring
 
@@ -287,107 +241,13 @@ For detailed information about the codebase structure, see the Project Structure
 
 ## Environment Variables
 
-Create a `.env` file in the project root (copy from `.env.example`):
+Create a `.env` file in the project root by copying `.env.example`:
 
-### Required Variables
-
-```env
-# Flask secret key for session management (CHANGE THIS IN PRODUCTION!)
-# Generate a secure random key: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=your-secret-key-change-this
-
-# Database file path (SQLite)
-DATABASE_PATH=campus_resource_hub.db
-
-# Upload folder for user-uploaded files
-UPLOAD_FOLDER=uploads/
+```bash
+cp .env.example .env
 ```
 
-### Optional Variables
+**Required:** Set `SECRET_KEY` (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
 
-#### Application Settings
-```env
-# Flask debug mode (set to '1' to enable - NEVER enable in production!)
-FLASK_DEBUG=0
-
-# Flask host (default: 0.0.0.0)
-FLASK_HOST=0.0.0.0
-
-# Flask port (default: 5000)
-FLASK_PORT=5000
-
-# Maximum file upload size in bytes (default: 16MB = 16777216)
-MAX_UPLOAD_SIZE=16777216
-```
-
-#### Logging Configuration
-```env
-# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
-# If FLASK_DEBUG=1, this is automatically set to DEBUG
-LOG_LEVEL=INFO
-
-# Log directory (default: logs/)
-LOG_DIR=logs/
-```
-
-#### AI Concierge Configuration
-```env
-# Google Gemini API key (optional, for AI Concierge feature)
-# Get your API key from: https://makersuite.google.com/app/apikey
-GOOGLE_GEMINI_API_KEY=your-api-key-here
-
-# Enable AI Concierge feature (set to '1' to enable, requires GOOGLE_GEMINI_API_KEY)
-ENABLE_AI_CONCIERGE=1
-```
-
-#### Booking System Configuration
-```env
-# Timezone for displaying dates/times (default: America/New_York)
-# Use IANA timezone names: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-TIMEZONE=America/New_York
-
-# Operating hours start hour (24-hour format, default: 8)
-BOOKING_OPERATING_HOURS_START=8
-
-# Operating hours end hour (24-hour format, default: 22)
-BOOKING_OPERATING_HOURS_END=22
-
-# Minimum advance booking time in hours (default: 1)
-BOOKING_MIN_ADVANCE_HOURS=1
-
-# Minimum booking duration in minutes (default: 29)
-BOOKING_MIN_DURATION_MINUTES=29
-
-# Maximum booking duration in hours (default: 8)
-BOOKING_MAX_DURATION_HOURS=8
-```
-
-#### Feature Flags
-```env
-# Enable user registration (set to '0' to disable registration)
-ENABLE_REGISTRATION=1
-
-# Production mode (set to '1' for production)
-PRODUCTION=0
-```
-
-### Quick Start
-
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and update at minimum:
-   - `SECRET_KEY` - Generate a secure random key
-   - Other values as needed
-
-3. For production, set:
-   ```env
-   PRODUCTION=1
-   FLASK_DEBUG=0
-   SECRET_KEY=<generate-secure-random-key>
-   ```
-
-**Note:** The database (`campus_resource_hub.db`) is included with sample/starter data. No database initialization is required. The `init_db.py` script is available if you need to recreate the database from scratch.
+For complete environment variable documentation, see `.env.example` and [SETUP_STEPS.md](SETUP_STEPS.md#1-initial-setup).
 

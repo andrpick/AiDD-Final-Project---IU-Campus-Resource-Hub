@@ -112,94 +112,15 @@ The AI Concierge uses Google Gemini for natural language resource queries:
 
 ### 4. Key Features Overview
 
-The application includes the following implemented features:
+The application includes comprehensive features for resource management, booking, messaging, reviews, and administration. For a high-level overview, see [README.md](README.md#features). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
 
-1. **Resource Management:**
-   - Create, edit, and delete resources
-   - Upload multiple images per resource
-   - Optional capacity constraints
-   - Set resource-specific operating hours (required field, 12-hour format input)
-   - Mark resources as 24-hour operation
-   - Featured resources for homepage
-   - Resource archiving (admin-only)
-
-2. **Booking System:**
-   - Interactive month-view calendar for date selection
-   - Day-view with drag-and-select time slot selection (12 AM - 11:59 PM)
-   - Current time indicator on the current day
-   - Resource-specific operating hours (set by owner/admin, 12-hour format input)
-   - Resources can operate 24 hours a day (is_24_hours flag)
-   - All time slots from 12 AM to 11:59 PM are displayed
-   - Slots outside operating hours are displayed but marked as unavailable (grayed out)
-   - Automatic approval for available slots (no conflicts) - bookings are automatically approved when created
-   - Simplified booking workflow: bookings are either 'approved', 'cancelled', or 'completed' (no pending/rejected statuses)
-   - Conflict detection prevents double-booking
-   - Calendar export to Google Calendar, Outlook, and iCal formats
-   - Admin booking management with override capabilities (modify/cancel any booking)
-   - Booking duration validation (minimum 29 minutes, maximum 8 hours)
-   - Advance booking requirement (must be at least 1 hour in the future)
-   - All times displayed in EST/EDT timezone
-
-3. **User Features:**
-   - User registration and authentication
-   - Profile management
-   - Multiple reviews per resource (users can review a resource multiple times)
-   - Thread-based messaging system with resource-specific threading
-   - Read/unread thread status tracking
-   - Unread message notifications in navbar
-   - Booking calendar integration with drag-and-select time selection
-   - Calendar export (Google Calendar, Outlook, iCal)
-
-4. **Admin Features:**
-   - **User Management**:
-     - Full user editing (edit name, email, password, role, department, profile image, suspension status)
-     - Suspend/unsuspend users with reason
-     - Change user roles (with self-demotion prevention)
-     - **Soft Delete Users**: Users are soft-deleted (not permanently removed) - preserves data integrity and enables recovery
-       - PII (email, name, password) is anonymized when deleted
-       - User's resources are automatically archived
-       - User's active bookings are cancelled
-       - Deleted users cannot log in or be found in searches
-       - Reviews and messages from deleted users are preserved with "[Deleted User]" label
-     - Streamlined dropdown menu interface for all user actions
-   - **Resource Management**:
-     - Comprehensive filtering options (status, category, featured status, location, owner, keyword search)
-     - **Resource Operating Hours**: Owners/admins can set custom operating hours for each resource (12-hour format input)
-     - **24-Hour Operation**: Resources can be marked as operating 24 hours a day
-     - **Resource Ownership Reassignment**: Admins can reassign ownership of any resource to another user
-       - Available for all resources regardless of status or owner deletion status
-       - Shows current owner information before reassignment
-       - New owner gains full owner privileges (edit, publish, archive, etc.)
-       - Action is logged in admin logs for audit trail
-     - Resource archiving and unarchiving
-     - Feature/unfeature resources for homepage
-     - Edit any resource (admins can edit all resources)
-     - Filter combinations preserved across pagination
-   - **Booking Management**:
-     - View all bookings with section filtering (upcoming, previous, canceled)
-     - Filter by status, resource, and requester
-     - Admin booking override capabilities
-   - **Statistics Dashboard**:
-     - Resource Statistics section with detailed analytics (bookings, reviews, ratings)
-     - Filtering options (category, location, featured status)
-     - Sorting options (by bookings, reviews, rating, title, category, location)
-     - Table format display for easy comparison
-     - Summary cards with breakdown statistics (users by role, resources by status, bookings by status, reviews by rating)
-   - Admin action logging with comprehensive filtering and audit trail
-
-5. **AI Concierge:**
-   - Chatbot widget accessible from any page (bottom-right corner)
-   - Google Gemini AI integration with read-only database access
-   - Natural language resource queries with strict topic guardrails
-   - Supports queries for:
-     - Database statistics ("How many resources are there?")
-     - Resource details ("Tell me about Merchants Bank Field")
-     - Resource comparisons ("Compare Study Room A vs Study Room B")
-     - Availability checks ("When is Resource X available?")
-     - Category/location filtering ("Show me study rooms in the library")
-     - Top-rated resources ("What are the best resources?")
-     - Recently added resources ("What resources were recently added?")
-   - Fallback to search-based responses if Gemini API unavailable
+**Core Features:**
+- Resource Management (CRUD, multiple images, operating hours, archiving)
+- Booking System (calendar view, conflict detection, automatic approval, calendar export)
+- Messaging System (thread-based, resource-specific threading, read/unread tracking)
+- Reviews & Ratings (multiple reviews per user per resource)
+- AI Concierge (Google Gemini integration, natural language queries)
+- Admin Dashboard (user management with soft delete, resource management, booking management, statistics)
 
 ### 5. Testing the Application
 
@@ -369,23 +290,7 @@ The application includes the following implemented features:
 
 ### Default User Accounts
 
-The database includes sample/starter data with default accounts:
-
-**Admin User:**
-- **Email:** admin@iu.edu
-- **Password:** AdminUser1!
-
-**Staff User:**
-- **Email:** staffuser@iu.edu
-- **Password:** StaffUser1!
-
-**Student User:**
-- **Email:** studentuser@iu.edu
-- **Password:** StudentUser1!
-
-**⚠️ SECURITY WARNING:** These are default test credentials for development and testing purposes only. **You MUST change all default passwords immediately after first login in production environments.** Never use default credentials in production!
-
-**Note:** Additional sample users may be included in the database with various email addresses. You can view all users in the Admin Dashboard > User Management section.
+See [README.md](README.md#default-admin-account) for default credentials and security warnings.
 
 ### Key Files to Review/Edit
 - `app.py` - Main Flask application
@@ -432,47 +337,12 @@ The database includes sample/starter data with default accounts:
 
 ## 🧪 Testing
 
-The application includes a comprehensive test suite:
+The application includes a comprehensive test suite with **139 tests** (100% pass rate). For testing information, see [README.md](README.md#testing).
 
-**Test Coverage:**
-- ✅ 139 tests total (100% passing)
-- ✅ Unit tests: Booking logic, data access layer, controller helpers, query builder, validation
-- ✅ Integration tests: Authentication flows, booking workflows
-- ✅ End-to-end tests: Complete user journeys (search → book → verify)
-- ✅ Security tests: SQL injection prevention, XSS protection, input sanitization
-
-**Running Tests:**
+**Quick Start:**
 ```bash
-# Activate virtual environment (if using one)
-.\.venv\Scripts\Activate.ps1  # Windows PowerShell
-# or
-source .venv/bin/activate  # Linux/Mac
-
-# Quick way - use the test runner script
 python tests/run_tests.py
-
-# Or use pytest directly
-python -m pytest tests/ -v
-
-# Run specific test file
-python -m pytest tests/test_booking_service.py -v
-
-# Run with coverage report
-python -m pytest tests/ --cov=src --cov-report=html
 ```
-
-**Test Files:**
-- `tests/test_booking_service.py` - Booking logic unit tests (16 tests)
-- `tests/test_booking_e2e.py` - End-to-end booking tests (5 tests)
-- `tests/test_data_access.py` - Data access layer tests (11 tests)
-- `tests/test_auth_integration.py` - Authentication integration tests (8 tests)
-- `tests/test_app_integration.py` - Application integration tests (2 tests)
-- `tests/test_security.py` - Security tests (8 tests)
-- `tests/test_controller_helpers.py` - Controller helper utilities tests (37 tests)
-- `tests/test_query_builder.py` - Query builder utility tests (50 tests)
-- `tests/ai_eval/test_ai_concierge.py` - AI Concierge tests (2 tests)
-
-**Current Status:** ✅ All 139 tests passing
 
 ## 🆕 Recent Improvements
 
