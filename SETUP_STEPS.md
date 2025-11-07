@@ -276,14 +276,65 @@ The application includes the following implemented features:
    - See `.env.example` for complete documentation and all available options
 
 2. **Database:**
-   - Consider migrating to PostgreSQL for production
-   - Set up database backups
+   - **Current:** SQLite (suitable for development and class projects)
+   - **Production Recommendation:** Migrate to PostgreSQL or MySQL
+     - Better concurrent access and multi-server support
+     - Connection pooling capabilities
+     - Built-in replication and backup features
+     - Improved performance for larger datasets
+   - Set up automated database backups (daily/hourly)
+   - Implement database connection pooling
+   - Consider read replicas for read-heavy workloads
 
-3. **Static files:**
-   - Consider using CDN for Bootstrap/CSS
-   - Optimize images
+3. **File Storage:**
+   - **Current:** Local filesystem (`uploads/` directory)
+   - **Production Recommendation:** Migrate to cloud object storage
+     - **AWS S3**, **Google Cloud Storage**, or **Azure Blob Storage**
+     - Enables horizontal scaling across multiple servers
+     - CDN integration for faster image delivery
+     - Automatic backup and redundancy
+     - Implement image optimization/compression on upload
+     - Generate thumbnails for different use cases
+   - If keeping local storage: ensure proper backup procedures
 
-4. **Security:**
+4. **Static Files:**
+   - Consider using CDN for Bootstrap/CSS and static assets
+   - Optimize and minify CSS/JavaScript
+   - Implement browser caching headers
+
+5. **Application Server:**
+   - **Current:** Flask development server (single-threaded)
+   - **Production Recommendation:** Use production WSGI server
+     - **Gunicorn** or **uWSGI** with multiple worker processes
+     - **Nginx** as reverse proxy and load balancer
+     - Deploy multiple application instances for high availability
+     - Consider containerization (Docker) for consistent deployments
+     - Use process managers (systemd, supervisord) for service management
+
+6. **Session Management:**
+   - **Current:** Flask session cookies (server-side storage)
+   - **Production Recommendation:** External session storage
+     - **Redis** or **Memcached** for session storage
+     - Enables session sharing across multiple application servers
+     - Better performance and scalability
+
+7. **Caching:**
+   - **Recommendation:** Implement caching layers
+     - **Redis** for frequently accessed data (resource listings, user sessions)
+     - Cache database query results where appropriate
+     - Implement cache invalidation strategies
+     - CDN caching for static assets
+
+8. **Monitoring & Logging:**
+   - **Recommendation:** Implement comprehensive monitoring
+     - Application performance monitoring (APM) tools
+     - Error tracking services (Sentry, Rollbar)
+     - Log aggregation and analysis (ELK stack, CloudWatch)
+     - Health check endpoints for load balancers
+     - Database query performance monitoring
+     - Set up alerts for critical errors and performance issues
+
+9. **Security:**
    - **CRITICAL:** Change all default passwords (admin, staff, student accounts) before production deployment
    - **CRITICAL:** Generate a secure `SECRET_KEY` (never use the default placeholder)
    - Enable HTTPS
@@ -293,10 +344,26 @@ The application includes the following implemented features:
    - Never commit `.env` files to version control
    - Store API keys securely in `.env` file (never in code)
 
-5. **Logging:**
-   - Configure log directory and rotation
-   - Set up log monitoring/alerting
-   - Review logs regularly for errors
+10. **Performance Optimization:**
+    - Database query optimization and proper indexing
+    - Implement database connection pooling
+    - Use async/background tasks for heavy operations (Celery + Redis)
+    - Optimize static asset delivery (minification, compression)
+    - Implement API rate limiting (Flask-Limiter)
+    - Consider implementing database read replicas for read-heavy workloads
+
+11. **Backup & Disaster Recovery:**
+    - Automated database backups (daily/hourly)
+    - File storage backups (if using local storage)
+    - Test restore procedures regularly
+    - Document disaster recovery procedures
+    - Consider geographic redundancy for critical data
+
+12. **Logging:**
+    - Configure log directory and rotation
+    - Set up log monitoring/alerting
+    - Review logs regularly for errors
+    - Implement structured logging for better analysis
 
 ## 🎯 Quick Reference
 

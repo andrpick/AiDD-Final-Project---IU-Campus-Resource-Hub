@@ -71,6 +71,86 @@ The database includes sample/starter data with default accounts:
 
 For more detailed security information, see the [SETUP_STEPS.md](SETUP_STEPS.md) Security section.
 
+## Production Deployment & Scalability Considerations
+
+**Note:** This application is designed for class project demonstration. For production deployment, consider the following scalability recommendations:
+
+### Database Migration
+- **Current:** SQLite (file-based, single-server)
+- **Production Recommendation:** Migrate to PostgreSQL, MySQL, or another relational database
+  - Better concurrent access handling
+  - Supports multiple application servers
+  - Built-in replication and backup features
+  - Better performance for larger datasets
+  - Connection pooling support
+
+### File Storage
+- **Current:** Local filesystem storage (`uploads/` directory)
+- **Production Recommendation:** Migrate to cloud object storage
+  - **AWS S3**, **Google Cloud Storage**, or **Azure Blob Storage**
+  - Enables horizontal scaling across multiple servers
+  - Built-in CDN integration for faster image delivery
+  - Automatic backup and redundancy
+  - Cost-effective pay-as-you-go pricing
+  - Consider implementing image optimization/compression on upload
+  - Generate thumbnails/variants for different use cases
+
+### Session Management
+- **Current:** Flask session cookies (server-side storage)
+- **Production Recommendation:** Use external session storage
+  - **Redis** or **Memcached** for session storage
+  - Enables session sharing across multiple application servers
+  - Better performance for high-traffic scenarios
+  - Supports session expiration and cleanup
+
+### Caching Strategy
+- **Recommendation:** Implement caching layers
+  - **Redis** for frequently accessed data (resource listings, user sessions)
+  - Cache database query results where appropriate
+  - Implement cache invalidation strategies
+  - Consider CDN caching for static assets
+
+### Application Server Scaling
+- **Current:** Single Flask development server
+- **Production Recommendation:** Use production WSGI server
+  - **Gunicorn** or **uWSGI** with multiple workers
+  - **Nginx** as reverse proxy and load balancer
+  - Deploy multiple application instances behind load balancer
+  - Consider containerization (Docker) for consistent deployments
+
+### Monitoring & Logging
+- **Recommendation:** Implement comprehensive monitoring
+  - Application performance monitoring (APM) tools
+  - Error tracking services (Sentry, Rollbar)
+  - Log aggregation (ELK stack, CloudWatch, etc.)
+  - Health check endpoints for load balancers
+  - Database query performance monitoring
+
+### Security Enhancements
+- **Recommendation:** Additional security measures
+  - Rate limiting (Flask-Limiter) to prevent abuse
+  - DDoS protection via CDN or cloud provider
+  - Regular security audits and dependency updates
+  - Implement Content Security Policy (CSP) headers
+  - Use HTTPS with proper certificate management
+
+### Performance Optimization
+- **Recommendation:** Optimize for production workloads
+  - Database query optimization and indexing
+  - Implement database connection pooling
+  - Use async/background tasks for heavy operations (Celery + Redis)
+  - Optimize static asset delivery (minification, compression)
+  - Consider implementing API rate limiting
+
+### Backup & Disaster Recovery
+- **Recommendation:** Implement backup strategies
+  - Automated database backups (daily/hourly)
+  - File storage backups (if using local storage)
+  - Test restore procedures regularly
+  - Document disaster recovery procedures
+
+For detailed deployment instructions, see the [SETUP_STEPS.md](SETUP_STEPS.md) Deployment Preparation section.
+
 ## Project Structure
 
 - `app.py` - Flask application entry point
