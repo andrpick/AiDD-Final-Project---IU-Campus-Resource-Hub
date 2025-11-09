@@ -2852,3 +2852,112 @@ Review @SETUP_STEPS.md, @README.md, @PRD_COMPLETE.md, and @ERD_AND_SCHEMA.md. Th
 - Each document now has clear purpose and better navigation
 - No linting errors introduced
 - Documentation is now more concise and easier to navigate
+
+### Interaction #115
+**User Prompt:**
+```
+Make sure you log all interactions at the end of @dev_notes.md, you should see the format within that file. Do you see the UI issue? How could this be fixed?
+```
+
+**Agent Actions:**
+- Identified UI issue in messages page: Horizontal overflow causing timestamp and action buttons to be cut off
+- Root cause analysis:
+  - Card lacks overflow handling, allowing content to overflow boundaries
+  - Timestamp uses `white-space: nowrap` preventing wrapping
+  - Long resource title badges (e.g., "Merchants Bank Field at Memorial Stadium") consume horizontal space
+  - Right-side flex container (timestamp + buttons) can overflow card width
+  - No responsive constraints on flex layout
+- Implemented fix in `src/views/messages/index.html`:
+  - Added `overflow: hidden` to card to prevent content overflow
+  - Added `min-width: 0` to flex-grow container to allow proper shrinking
+  - Added `min-width: 0; padding-right: 1rem;` to left content section to maintain spacing while allowing shrinking
+  - Added `flex-wrap gap-1` to badge container to allow wrapping if needed
+  - Added `max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;` to resource title badge to prevent excessive width
+  - Added `flex-shrink: 0` to user name and status badges to prevent compression
+  - Added `flex-shrink-0` to right-side container to prevent timestamp and buttons from being compressed
+  - Removed `ms-3` margin from right-side container (using gap-2 instead for spacing)
+- Fix ensures:
+  - Content doesn't overflow card boundaries
+  - Timestamp and buttons remain fully visible
+  - Long resource titles are truncated with ellipsis
+  - Layout is responsive and maintains proper spacing
+- No linting errors introduced
+- UI issue resolved: All content now displays correctly without horizontal overflow
+
+### Interaction #116
+**User Prompt:**
+```
+Implement the changes and log it in @dev_notes.md.
+```
+
+**Agent Actions:**
+- Implemented fix for horizontal overflow issue in messages page
+- Updated `src/views/messages/index.html`:
+  - Added `overflow: hidden` to card element to prevent content overflow
+  - Added `min-width: 0` to flex-grow container to allow proper shrinking in flex layout
+  - Added `min-width: 0; padding-right: 1rem;` to left content section to maintain spacing while allowing shrinking
+  - Added `flex-wrap gap-1` to badge container to allow wrapping if needed
+  - Added `max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;` to resource title badge to prevent excessive width consumption
+  - Added `flex-shrink: 0` to user name and status badges to prevent compression
+  - Added `flex-shrink-0` class to right-side container to prevent timestamp and buttons from being compressed
+  - Removed `ms-3` margin from right-side container (using gap-2 for spacing instead)
+- Logged Interaction #115 in `dev_notes.md` documenting the UI issue identification and fix proposal
+- Logged Interaction #116 in `dev_notes.md` documenting the implementation of the fix
+- No linting errors introduced
+- UI issue resolved: Timestamp and action buttons now display correctly without being cut off
+
+### Interaction #117
+**User Prompt:**
+```
+Review date selected logic, I have selected "11/09/2025", however it mapped to "11/8/2025". Remeber all interactions need to be logged at the bottom of @dev_notes.md.
+```
+
+**Agent Actions:**
+- Identified date formatting issue in active filter badge display
+- Root cause analysis:
+  - Date string from URL parameter (YYYY-MM-DD format) was being converted using `new Date(availableDate)`
+  - JavaScript interprets date strings as UTC midnight when creating Date objects
+  - `toLocaleDateString()` then converts to local timezone, causing date to shift back by one day in timezones behind UTC (e.g., EST/EDT)
+  - Example: "2025-11-09" → UTC midnight → EST (UTC-5) → 2025-11-08T19:00:00 → displays as 11/8/2025
+- Fixed date formatting in `updateActiveFilterBadges()` function in `src/views/search/index.html`:
+  - Replaced `new Date(availableDate)` and `toLocaleDateString()` with manual parsing
+  - Parse date string (YYYY-MM-DD) directly: `const [year, month, day] = availableDate.split('-').map(Number)`
+  - Format as M/D/YYYY: `${month}/${day}/${year}`
+  - This avoids timezone conversion issues entirely
+- Date now displays correctly in active filter badge matching the selected date
+- Logged Interaction #117 in `dev_notes.md` documenting the date formatting fix
+- No linting errors introduced
+- Date selection issue resolved: Selected dates now display correctly without timezone shift
+
+### Interaction #118
+**User Prompt:**
+```
+Since 11/08/2025 1AM-2:30AM is in the past, a user should not be able to filter for this. A user should also be able to close the time range window without having to drag and select a time range.
+```
+
+**Agent Actions:**
+- Added validation to prevent filtering for past dates and times
+- Updated `applyFilters()` function in `src/views/search/index.html`:
+  - Added validation to check if selected date is in the past before applying filters
+  - Added validation to check if selected time is in the past when date is today
+  - Shows alert messages if user tries to filter for past dates/times
+  - Prevents form submission if validation fails
+- Updated `selectTimeRange()` function:
+  - Added validation to check if selected time is in the past when date is today
+  - Shows alert and clears time range if validation fails
+- Added date input minimum date constraint:
+  - Set `min` attribute to today's date to prevent past date selection in calendar picker
+  - Updated both `populateModalFields()` and DOMContentLoaded initialization
+- Added close button to time range window:
+  - Added "Close" button (X icon) next to "Clear" and "Select Range" buttons
+  - Implemented `closeTimeRangeWindow()` function to close time picker collapse without selecting
+  - Users can now close the time range window without having to select a time range
+- Validation ensures:
+  - Users cannot select past dates in the date picker (min attribute)
+  - Users cannot apply filters for past dates (validation in applyFilters)
+  - Users cannot apply filters for past times when date is today (validation in applyFilters and selectTimeRange)
+  - Users can close time range window without selecting (close button)
+- Logged Interaction #118 in `dev_notes.md` documenting the past date/time validation and close button addition
+- No linting errors introduced
+- Past date/time filtering prevented: Users can no longer filter for dates/times in the past
+- Time range window can be closed without selection: Users can close the window without selecting a time range

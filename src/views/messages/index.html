@@ -21,7 +21,7 @@
         <div class="row g-3">
             {% for thread in threads %}
             <div class="col-12">
-                <div class="card bg-white border-0 hover-card position-relative" style="{% if thread.is_unread %}border-left: 4px solid var(--crimson) !important;{% endif %}">
+                <div class="card bg-white border-0 hover-card position-relative" style="{% if thread.is_unread %}border-left: 4px solid var(--crimson) !important;{% endif %} overflow: hidden;">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-start">
                             <!-- Avatar/Profile Image -->
@@ -36,27 +36,27 @@
                             {% endif %}
                             
                             <!-- Message Content -->
-                            <div class="flex-grow-1">
+                            <div class="flex-grow-1" style="min-width: 0;">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <h5 class="mb-0 fw-semibold me-2" style="color: #333;">
+                                    <div class="flex-grow-1" style="min-width: 0; padding-right: 1rem;">
+                                        <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
+                                            <h5 class="mb-0 fw-semibold me-2" style="color: #333; flex-shrink: 0;">
                                                 {{ thread.other_user_name or 'User #' + thread.other_user_id|string }}
                                             </h5>
                                             {% if thread.resource_title %}
-                                                <span class="badge bg-secondary me-2" style="font-size: 0.7rem; font-weight: 400;">{{ thread.resource_title }}</span>
+                                                <span class="badge bg-secondary me-2" style="font-size: 0.7rem; font-weight: 400; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;">{{ thread.resource_title }}</span>
                                             {% endif %}
                                             {% if thread.is_unread %}
-                                                <span class="badge bg-crimson rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">Unread</span>
+                                                <span class="badge bg-crimson rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em; flex-shrink: 0;">Unread</span>
                                             {% else %}
-                                                <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">Read</span>
+                                                <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em; flex-shrink: 0;">Read</span>
                                             {% endif %}
                                         </div>
                                         <p class="mb-0 text-muted" style="font-size: 0.875rem; max-height: 2.5em; overflow: hidden; text-overflow: ellipsis;">
                                             {{ thread.last_message }}
                                         </p>
                                     </div>
-                                    <div class="text-end ms-3 d-flex flex-column align-items-end gap-2 position-relative" style="z-index: 10;">
+                                    <div class="text-end d-flex flex-column align-items-end gap-2 position-relative flex-shrink-0" style="z-index: 10;">
                                         <div>
                                             <small class="text-muted d-block" style="font-size: 0.75rem; white-space: nowrap;">
                                                 {{ thread.last_message_time|format_datetime_est('short') }}
