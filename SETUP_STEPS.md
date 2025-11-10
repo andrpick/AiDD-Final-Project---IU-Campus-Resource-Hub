@@ -25,23 +25,15 @@ The application is fully functional with all core features implemented:
 
 ## 📋 Steps to Complete
 
-### 1. Initial Setup
-
-1. **Create a virtual environment:**
-   ```bash
-   # Windows PowerShell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   
-   # Windows Command Prompt
-   python -m venv .venv
-   .venv\Scripts\activate.bat
-   
-   # Linux/Mac
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
+1. **Create a virtual environment**
+   - VS Code shortcut: `View` → `Command Palette…` → `Python: Create Environment` → choose **Venv** and select **requirements.txt**.
+   - Manual commands:
+     ```bash
+     python -m venv .venv
+     .\.venv\Scripts\Activate.ps1    # Windows PowerShell
+     # or
+     source .venv/bin/activate       # macOS / Linux
+     ```
 2. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt

@@ -4,28 +4,31 @@ A full-stack web application for managing and booking campus resources including
 
 ## Quick Start
 
-1. **Copy environment template:**
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Edit `.env`** and set at minimum:
-   - `SECRET_KEY` - Generate a secure key: `python -c "import secrets; print(secrets.token_hex(32))"`
-
-3. **Install dependencies:**
+1. **Create a virtual environment**
+   - VS Code shortcut: `View` → `Command Palette…` → `Python: Create Environment` → choose **Venv** and select **requirements.txt**.
+   - Manual commands:
+     ```bash
+     python -m venv .venv
+     .\.venv\Scripts\Activate.ps1    # Windows PowerShell
+     # or
+     source .venv/bin/activate       # macOS / Linux
+     ```
+2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
-
-4. **Run the application:**
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env   # use `copy` on Windows
+   ```
+   Review the new `.env` file end-to-end, update `SECRET_KEY`, and adjust any feature toggles you plan to use.
+4. **Run the application**
    ```bash
    python app.py
    ```
+   Visit `http://localhost:5000` to start exploring.
 
-The application will be available at `http://localhost:5000`
-
-For detailed setup instructions, see [SETUP_STEPS.md](SETUP_STEPS.md).  
-For detailed environment variable documentation, see `.env.example` and the Environment Variables section below.
+Need more detail? The streamlined checklist lives in [SETUP_STEPS.md](SETUP_STEPS.md).
 
 ## Default Admin Account
 
