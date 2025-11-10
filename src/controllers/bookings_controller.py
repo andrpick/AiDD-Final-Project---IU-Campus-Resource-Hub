@@ -17,13 +17,14 @@ bookings_bp = Blueprint('bookings', __name__, url_prefix='/bookings')
 def index():
     """List user's bookings."""
     status = request.args.get('status')
+    resource_id_filter = request.args.get('resource_id', type=int)
     section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
     page = request.args.get('page', 1, type=int)
     page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
     offset = (page - 1) * page_size
     
     # Get all bookings to separate into upcoming, previous, and canceled
-    result = list_bookings(user_id=current_user.user_id, status=status, limit=100, offset=0)
+    result = list_bookings(user_id=current_user.user_id, status=status, resource_id=resource_id_filter, limit=100, offset=0)
     
     if result['success']:
         all_bookings = result['data']['bookings']
@@ -42,6 +43,19 @@ def index():
             if resource_result['success']:
                 booking['resource'] = resource_result['data']
         
+        # Get list of resources the user has booked for filter dropdown
+        from src.data_access.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT r.resource_id, r.title
+                FROM resources r
+                INNER JOIN bookings b ON r.resource_id = b.resource_id
+                WHERE b.requester_id = ?
+                ORDER BY r.title
+            """, (current_user.user_id,))
+            resources_list = [{'resource_id': row['resource_id'], 'title': row['title']} for row in cursor.fetchall()]
+        
         return render_template('bookings/index.html',
                              upcoming_bookings=upcoming_bookings,
                              in_progress_bookings=in_progress_bookings,
@@ -51,7 +65,9 @@ def index():
                              total_pages=1,
                              total=total,
                              status_filter=status,
-                             section_filter=section_filter)
+                             resource_id_filter=resource_id_filter,
+                             section_filter=section_filter,
+                             resources_list=resources_list)
     else:
         return render_template('bookings/index.html', 
                              upcoming_bookings=[],
@@ -62,7 +78,9 @@ def index():
                              total_pages=0, 
                              total=0,
                              status_filter=status,
-                             section_filter=section_filter)
+                             resource_id_filter=resource_id_filter,
+                             section_filter=section_filter,
+                             resources_list=[])
 
 @bookings_bp.route('/create', methods=['POST'])
 @login_required

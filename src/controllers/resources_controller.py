@@ -15,6 +15,7 @@ from src.utils.controller_helpers import (
     parse_existing_images,
     combine_images
 )
+from src.utils.config import Config
 from datetime import date
 
 resources_bp = Blueprint('resources', __name__, url_prefix='/resources')
@@ -106,7 +107,8 @@ def detail(resource_id):
                          next_month=next_month,
                          can_go_prev=can_go_prev,
                          today=today,
-                         current_time_info=current_time_info)
+                         current_time_info=current_time_info,
+                         booking_min_advance_hours=Config.BOOKING_MIN_ADVANCE_HOURS)
 
 @resources_bp.route('/create', methods=['GET', 'POST'])
 @login_required

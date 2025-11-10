@@ -46,24 +46,19 @@
                 {% if messages %}
                     <div class="d-flex flex-column">
                         {% for message in messages %}
-                        <div class="mb-3 d-flex {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
-                            <div class="message-container" style="max-width: 70%; position: relative;">
-                                <div class="d-flex align-items-center mb-1 {% if message.sender_id == current_user.user_id %}justify-content-end{% else %}justify-content-start{% endif %}">
-                                    {% if message.sender_id != current_user.user_id %}
-                                        <small class="text-muted me-2" style="font-size: 0.75rem;">
-                                            {{ other_user.name if other_user else 'User' }}
-                                        </small>
-                                    {% endif %}
-                                    <small class="text-muted {% if message.sender_id != current_user.user_id %}ms-2{% endif %}" style="font-size: 0.75rem;">
-                                        {{ message.timestamp|format_datetime_est('short') }}
+                        <div class="mb-3 message-row {% if message.sender_id == current_user.user_id %}message-row-sent{% else %}message-row-received{% endif %}">
+                            <div class="message-meta mb-1">
+                                {% if message.sender_id != current_user.user_id %}
+                                    <small class="text-muted me-2" style="font-size: 0.75rem;">
+                                        {{ other_user.name if other_user else 'User' }}
                                     </small>
-                                </div>
-                                <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %} p-3 rounded-3" 
-                                     style="word-wrap: break-word;">
-                                    <p class="mb-0" style="line-height: 1.5;">
-                                        {{ message.content|nl2br }}
-                                    </p>
-                                </div>
+                                {% endif %}
+                                <small class="text-muted" style="font-size: 0.75rem;">
+                                    {{ message.timestamp|format_datetime_est('short') }}
+                                </small>
+                            </div>
+                            <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %}">
+                                <span class="message-content">{{ message.content|nl2br }}</span>
                             </div>
                         </div>
                         {% endfor %}
@@ -104,20 +99,64 @@
 </div>
 
 <style>
+.message-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.message-row-sent {
+    align-items: flex-end;
+}
+
+.message-row-received {
+    align-items: flex-start;
+}
+
+.message-meta {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 70%;
+}
+
+.message-row-sent .message-meta {
+    justify-content: flex-end;
+}
+
+.message-row-received .message-meta {
+    justify-content: flex-start;
+}
+
 .message-bubble {
-    /* Shadow handled by shadow-inner class */
+    display: table !important;
+    table-layout: auto !important;
+    max-width: 70% !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.message-content {
+    display: block;
 }
 
 .message-sent {
     background-color: var(--crimson);
     color: white;
-    border-bottom-right-radius: 4px !important;
+    border-bottom-right-radius: 0.25rem !important;
 }
 
 .message-received {
     background-color: white;
     color: #333;
-    border-bottom-left-radius: 4px !important;
+    border-bottom-left-radius: 0.25rem !important;
     border: 1px solid #dee2e6;
 }
 
@@ -128,7 +167,10 @@
 
 /* Responsive Message Container */
 @media (max-width: 767.98px) {
-    .message-container {
+    .message-bubble {
+        max-width: 85% !important;
+    }
+    .message-meta {
         max-width: 85% !important;
     }
 }

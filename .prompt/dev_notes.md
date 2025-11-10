@@ -2961,3 +2961,723 @@ Since 11/08/2025 1AM-2:30AM is in the past, a user should not be able to filter 
 - No linting errors introduced
 - Past date/time filtering prevented: Users can no longer filter for dates/times in the past
 - Time range window can be closed without selection: Users can close the window without selecting a time range
+
+### Interaction #119
+**User Prompt:**
+```
+Log all interactions at the end of @dev_notes.md. You should recognize the format there. Add a clear all filters button to this page under the "Filter" button. Currently the user has to clear applied filters one by one, I want to keep that but also allow the user to clear all at once.
+```
+
+**Agent Actions:**
+- Added "Clear All Filters" button to resources search page:
+  - Positioned directly under the "Filter" button in the page header
+  - Button uses `btn-outline-secondary` styling with X icon (`bi-x-circle`)
+  - Wrapped both buttons in flex column container for vertical alignment
+  - Button only displays when filters are active (conditional visibility based on filter parameters)
+- Implemented JavaScript handler for page-level "Clear All Filters" button:
+  - Added event listener for `clearAllFiltersPageBtn` button
+  - Redirects to search page with no filter parameters when clicked
+  - Uses `window.location.href` to navigate to clean search page
+- Conditional visibility logic:
+  - Button only shows when any filter is active (keyword, category, location, capacity, availability date/time, or non-default sort)
+  - Checks for: `keyword`, `category`, `location`, `capacity_min`, `capacity_max`, `available_date`, `available_start_time`, `available_end_time`, or non-default `sort_by`/`sort_order`
+- Users can now clear all filters at once by clicking the button, while still maintaining ability to clear individual filters
+- No linting errors introduced
+- "Clear All Filters" button now available on resources search page for quick filter reset
+
+### Interaction #120
+**User Prompt:**
+```
+We need to adjust this page to adjust the number of cards in a row so it displays each card properly with different size windows.
+```
+
+**Agent Actions:**
+- Updated responsive grid classes for admin dashboard cards in `src/views/admin/dashboard.html`:
+  - **Statistics Cards Row (4 cards)**: Changed from `col-md-3` to `col-12 col-sm-6 col-md-6 col-lg-3`
+    - Mobile (<576px): 1 card per row (full width)
+    - Small tablets (≥576px): 2 cards per row
+    - Medium tablets (≥768px): 2 cards per row
+    - Desktop (≥992px): 4 cards per row
+  - **Quick Links Row (4 cards)**: Changed from `col-md-3` to `col-12 col-sm-6 col-md-6 col-lg-3`
+    - Same responsive pattern as statistics cards
+  - **Third Row (2 cards - Data Restore & Resource Statistics)**: Changed from `col-md-3` to `col-12 col-sm-6 col-md-6`
+    - Mobile (<576px): 1 card per row (full width)
+    - Small tablets (≥576px): 2 cards per row
+    - Medium+ (≥768px): 2 cards per row (centered)
+- Responsive breakpoint behavior:
+  - Cards now properly adjust from 1 card per row on mobile to 2 cards per row on tablets to 4 cards per row on desktop
+  - Third row maintains 2 cards per row on medium+ screens for balanced layout
+- No linting errors introduced
+- Admin dashboard cards now display properly across all screen sizes with appropriate card count per row
+
+### Interaction #121
+**User Prompt:**
+```
+Log every interaction starting at the bottom of @dev_notes.md. Adapt the resource page filter modal to used for the user management page filter.
+```
+
+**Agent Actions:**
+- Adapted the filter modal pattern from the search page to the user management page
+- Updated `src/views/admin/users.html`:
+  - Replaced inline filter card with "Filter" button that opens a modal
+  - Added "Clear All Filters" button in page header (conditional visibility when filters are active)
+  - Created filter modal with user-specific filters:
+    - Search (name or email)
+    - Role (Student, Staff, Admin)
+    - Status (Active, Suspended)
+    - Show Deleted (checkbox toggle)
+  - Added active filters section to display current filter badges
+  - Modal structure matches search page pattern with crimson header and footer buttons
+- Added JavaScript functionality:
+  - `populateModalFields()`: Pre-populates modal fields when opened if filters are already applied
+  - `applyFilters()`: Submits form when "Apply" button is clicked
+  - `clearAllFilters()`: Clears all filters and redirects to clean users page
+  - `updateActiveFilterBadges()`: Displays active filter badges with remove functionality
+  - `createFilterBadge()`: Creates individual filter badges with remove links
+  - Event listeners for modal show, apply button, and clear all filters buttons
+- Filter modal now matches the pattern used on the search page:
+  - Modal opens from "Filter" button in page header
+  - Active filters displayed as removable badges below header
+  - "Clear All Filters" button available both in modal and on page
+  - Form submission handled via JavaScript
+- No linting errors introduced
+- User management page now uses consistent filter modal pattern matching the search page
+
+### Interaction #122
+**User Prompt:**
+```
+<span class="badge bg-crimson text-white d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Status: Suspended</span> I like this style, can we bring it to the resource search page?
+```
+
+**Agent Actions:**
+- Updated active filter badge styling on resource search page to match user management page style
+- Updated `createFilterBadge()` function in `src/views/search/index.html`:
+  - Changed badge class from `badge bg-secondary me-2` to `badge bg-crimson text-white d-inline-flex align-items-center gap-1`
+  - Updated styling from `font-size: 0.75rem; padding: 0.35em 0.65em; cursor: pointer;` to `font-size: 0.75rem; padding: 0.25rem 0.5rem;`
+  - Changed from click event listener to anchor link with remove functionality
+  - Badge now uses anchor tag with X icon for removal instead of click handler
+  - Moved filter removal logic into `createFilterBadge()` function to generate proper URL
+  - Badge structure now matches user management page: `<span>... <a href="..."><i class="bi bi-x"></i></a></span>`
+- Badge styling now consistent across both pages:
+  - Crimson background (`bg-crimson`) with white text
+  - Flexbox layout with gap spacing
+  - Consistent font size and padding
+  - Remove link with X icon inside badge
+- No linting errors introduced
+- Active filter badges on resource search page now match the style used on user management page
+
+### Interaction #123
+**User Prompt:**
+```
+That's great, can we increase the distance between each active filter?
+```
+
+**Agent Actions:**
+- Increased spacing between active filter badges on both resource search page and user management page
+- Updated `src/views/search/index.html`:
+  - Added `d-flex flex-wrap gap-3` classes to `activeFilterBadges` container for flexbox layout with gap spacing
+  - Added `margin-right: 0.5rem;` to badge styling in `createFilterBadge()` function for additional spacing
+- Updated `src/views/admin/users.html`:
+  - Added `d-flex flex-wrap gap-3` classes to `activeFilterBadges` container for consistency
+  - Added `margin-right: 0.5rem;` to badge styling in `createFilterBadge()` function for consistency
+- Spacing now uses both flexbox gap (`gap-3` = 1rem) and margin-right (`0.5rem`) for increased distance between badges
+- Both pages now have consistent spacing between active filter badges
+- No linting errors introduced
+- Active filter badges now have increased spacing for better visual separation
+
+### Interaction #124
+**User Prompt:**
+```
+Lets bring the fiter modal to the rest of the admin dashboard pages with filtering options.
+```
+
+**Agent Actions:**
+- Converted all admin dashboard pages with filtering options to use the filter modal pattern
+- Updated `src/views/admin/resources.html`:
+  - Replaced inline filter card with "Filter" button that opens a modal
+  - Added "Clear All Filters" button in page header (conditional visibility when filters are active)
+  - Created filter modal with all resource filters:
+    - Status (Draft, Published, Archived)
+    - Category (all categories)
+    - Featured (Yes/No)
+    - Search (keyword)
+    - Location (all locations)
+    - Owner (all owners)
+    - Operating Hours (24 Hours/Limited Hours)
+    - Sort By (Default, Most Booked, Top Rated, Recently Booked, Date Created, Title)
+    - Order (Ascending/Descending)
+  - Added active filters section to display current filter badges
+  - Added JavaScript for modal handling and active filter badges
+- Updated `src/views/admin/bookings.html`:
+  - Replaced inline filter card with "Filter" button that opens a modal
+  - Added "Clear All Filters" button in page header (conditional visibility when filters are active)
+  - Created filter modal with booking filters:
+    - Status (Approved, Cancelled, Completed)
+    - Resource (all resources)
+    - Requester (all users)
+  - Preserved section filter tabs (All, Upcoming, Previous, Canceled) as navigation tabs
+  - Added active filters section to display current filter badges
+  - Added JavaScript for modal handling and active filter badges
+- Updated `src/views/admin/logs.html`:
+  - Replaced inline filter card with "Filter" button that opens a modal
+  - Added "Clear All Filters" button in page header (conditional visibility when filters are active)
+  - Created filter modal with log filters:
+    - Admin (all admins)
+    - Action (all actions)
+    - Target Table (all tables)
+  - Preserved total logs display in header
+  - Added active filters section to display current filter badges
+  - Added JavaScript for modal handling and active filter badges
+- Updated `src/views/admin/statistics.html`:
+  - Replaced inline filter card with "Filter" button that opens a modal
+  - Added "Clear All Filters" button in page header (conditional visibility when filters are active)
+  - Created filter modal with statistics filters:
+    - Category (all categories)
+    - Location (all locations)
+    - Featured (Yes/No)
+    - Sort By (Bookings, Reviews, Rating, Title, Category, Location)
+    - Order (Ascending/Descending)
+  - Added active filters section to display current filter badges
+  - Added JavaScript for modal handling and active filter badges
+- All filter modals follow consistent pattern:
+  - Crimson header with white text
+  - Modal body with form fields organized in rows
+  - Modal footer with "Clear All Filters", "Cancel", and "Apply" buttons
+  - Active filter badges displayed below header with remove functionality
+  - JavaScript handles modal pre-population, form submission, and badge updates
+- All pages now have consistent filter modal pattern matching User Management and Search pages
+- No linting errors introduced
+- All admin dashboard pages with filtering options now use the filter modal pattern
+
+### Interaction #125
+**User Prompt:**
+```
+Why are the two filters in the screenshot always active?
+```
+
+**Agent Actions:**
+- Identified bug in filter badge logic: When URL parameters don't exist, `urlParams.get()` returns `null`, but the check `if (featured !== '')` evaluates to `true` for `null` values (since `null !== ''` is `true`)
+- This caused filter badges to appear even when filters weren't actually set in the URL
+- Fixed filter badge logic in all admin pages that use boolean-like filters ('0'/'1' values):
+  - Updated `src/views/admin/resources.html`:
+    - Changed `if (featured !== '')` to `if (featured !== null && featured !== '')` for Featured filter
+    - Changed `if (is24Hours !== '')` to `if (is24Hours !== null && is24Hours !== '')` for Operating Hours filter
+  - Updated `src/views/admin/users.html`:
+    - Changed `if (suspended !== '' && statusNames[suspended])` to `if (suspended !== null && suspended !== '' && statusNames[suspended])` for Status filter
+  - Updated `src/views/admin/statistics.html`:
+    - Changed `if (featured !== '')` to `if (featured !== null && featured !== '')` for Featured filter
+- Filter badges now only appear when filters are actually set in the URL (have '0' or '1' values), not when they're missing
+- No linting errors introduced
+- Filter badge logic now correctly identifies active filters across all admin pages
+
+### Interaction #126
+**User Prompt:**
+```
+Why does this page show "Clear All Filters" when no filters are applied? Every other page with filters only displays this button when there are filters applied.
+```
+
+**Agent Actions:**
+- Identified bug in conditional logic for "Clear All Filters" button on Resource Management page
+- Root cause: `sort_order` has a default value of `'desc'` in the controller (line 545), so it's always truthy
+- The condition `sort_by or sort_order` was always true because `sort_order` is always `'desc'` (a truthy string)
+- This caused "Clear All Filters" button to always appear even when no filters were actually set
+- Fixed conditional logic in `src/views/admin/resources.html`:
+  - Changed from `sort_by or sort_order` to `sort_by or (sort_order and sort_order != 'desc')`
+  - Now only shows "Clear All Filters" button when `sort_by` is set OR when `sort_order` is explicitly set to something other than the default 'desc'
+- Button now only appears when filters are actually applied, matching behavior of other admin pages
+- No linting errors introduced
+- "Clear All Filters" button now correctly shows/hides based on active filters
+
+### Interaction #127
+**User Prompt:**
+```
+Lets bring this filter modal to the "My Bookings" page. It should be the same but exclude the "Requester" field.
+```
+
+**Agent Actions:**
+- Added filter modal to "My Bookings" page (`src/views/bookings/index.html`) matching the Booking Management page pattern
+- Excluded "Requester" field from filter modal (users can only see their own bookings)
+- Updated controller (`src/controllers/bookings_controller.py`):
+  - Added `resource_id_filter` parameter handling
+  - Updated `list_bookings()` call to include `resource_id` parameter
+  - Added query to get list of resources the user has booked for filter dropdown
+  - Passed `resource_id_filter` and `resources_list` to template
+- Added filter modal with:
+  - Status dropdown (All Status, Approved, Cancelled, Completed)
+  - Resource dropdown (All Resources, plus resources the user has booked)
+  - Section filter preserved in hidden input (upcoming, previous, canceled, in_progress)
+- Added page header with "Filter" button and conditional "Clear All Filters" button
+- Added active filters section with removable badges
+- Updated section filter tabs to preserve filter parameters when navigating between sections
+- Added JavaScript for:
+  - Modal pre-population with current filter values
+  - Form submission on "Apply" button click
+  - Clear all filters functionality (both in modal and on page)
+  - Active filter badge display and removal
+  - Resource name mapping for badge display
+- Filter modal matches admin Booking Management page pattern but excludes "Requester" field
+- No linting errors introduced
+- "My Bookings" page now has consistent filter modal pattern with other pages
+
+### Interaction #128
+**User Prompt:**
+```
+The "Filter" button on the "My Bookings" page is placed a higher up compared to the "Filter" button on the "Booking Management" page. Can be bring it down a little to match the button on the "Booking Management" page?
+```
+
+**Agent Actions:**
+- Identified alignment difference: "Booking Management" page has a subtitle below the title, which positions the Filter button lower
+- "My Bookings" page only has a title, so the button was centered with the title using `align-items-center`
+- Changed flex container alignment in `src/views/bookings/index.html`:
+  - Changed from `align-items-center` to `align-items-end` (first attempt - didn't work)
+  - Reverted to `align-items-center` and added `margin-top: 0.5rem` to the button container div
+  - This pushes the button down to match the visual position on the Booking Management page
+- Filter button now appears at the same vertical position as on the Booking Management page
+- No linting errors introduced
+- Button alignment now matches Booking Management page
+
+### Interaction #130
+**User Prompt:**
+```
+These should at most be 3 to a row. Move admin logs to the bottom row.
+```
+
+**Agent Actions:**
+- Reorganized admin dashboard to show maximum 3 cards per row:
+  - **Row 1 (Statistics Cards)**: Changed from 4 cards to 3 cards (Total Users, Total Resources, Total Bookings Made)
+    - Updated all cards from `col-lg-3` to `col-lg-4` for 3 cards per row on large screens
+  - **Row 2 (Statistics Cards)**: Created new row with 1 card (Total Reviews)
+    - Moved Total Reviews card to its own row with `col-lg-4` class
+  - **Row 3 (Quick Links)**: Changed from 4 cards to 3 cards (User Management, Resource Management, Booking Management)
+    - Updated all cards from `col-lg-3` to `col-lg-4` for 3 cards per row on large screens
+    - Removed Admin Logs from this row
+  - **Row 4 (Bottom Row)**: Changed from 2 cards to 3 cards (Admin Logs, Data Restore, Resource Statistics)
+    - Moved Admin Logs card from Quick Links row to bottom row
+    - Updated all cards from `col-md-6` to `col-lg-4` for 3 cards per row on large screens
+- Final layout:
+  - Row 1: 3 statistics cards (Total Users, Total Resources, Total Bookings Made)
+  - Row 2: 1 statistics card (Total Reviews)
+  - Row 3: 3 quick link cards (User Management, Resource Management, Booking Management)
+  - Row 4: 3 cards (Admin Logs, Data Restore, Resource Statistics)
+- All rows now have maximum 3 cards per row on large screens (≥992px)
+- Admin Logs successfully moved to bottom row as requested
+- No linting errors introduced
+- Dashboard layout now displays maximum 3 cards per row with Admin Logs in bottom row
+
+### Interaction #131
+**User Prompt:**
+```
+Content currently on row 1 and 2 should all be on row 1. So 4 cards in row 1, 3 on row 2, 3 on row 3. However, they should adapt to the size of the window.
+```
+
+**Agent Actions:**
+- Reorganized admin dashboard layout to have 4 cards in row 1, 3 cards in row 2, and 3 cards in row 3:
+  - **Row 1 (Statistics Cards)**: Combined all 4 statistics cards into single row
+    - Moved Total Reviews card from separate row back to Row 1
+    - Updated all 4 cards to use `col-12 col-sm-6 col-md-6 col-lg-3` for responsive layout
+    - Displays 4 cards per row on large screens (≥992px), 2 cards per row on tablets, 1 card per row on mobile
+    - Removed separate "Statistics Cards Row 2" section
+  - **Row 2 (Quick Links)**: Maintained 3 cards (User Management, Resource Management, Booking Management)
+    - Cards use `col-12 col-sm-6 col-md-6 col-lg-4` for responsive layout
+    - Displays 3 cards per row on large screens (≥992px), 2 cards per row on tablets, 1 card per row on mobile
+  - **Row 3 (Bottom Row)**: Maintained 3 cards (Admin Logs, Data Restore, Resource Statistics)
+    - Cards use `col-12 col-sm-6 col-md-6 col-lg-4` for responsive layout
+    - Displays 3 cards per row on large screens (≥992px), 2 cards per row on tablets, 1 card per row on mobile
+- Responsive breakpoint behavior:
+  - Mobile (<576px): 1 card per row (full width) for all rows
+  - Small tablets (≥576px): 2 cards per row for all rows
+  - Medium tablets (≥768px): 2 cards per row for all rows
+  - Desktop (≥992px): 4 cards per row (Row 1), 3 cards per row (Rows 2 and 3)
+- All cards adapt to window size using Bootstrap responsive grid classes
+- No linting errors introduced
+- Dashboard layout now displays 4 cards in row 1, 3 cards in row 2, and 3 cards in row 3 with full responsive behavior
+
+### Interaction #132
+**User Prompt:**
+```
+When the window is this size, it should look like 3 rows of 2. Not 4 rows of 2,1,2,1.
+```
+
+**Agent Actions:**
+- Combined all dashboard cards into a single row container to allow natural flow:
+  - Merged all separate row containers (Statistics Cards, Quick Links, Bottom Row) into one unified row container
+  - All 10 cards now flow naturally in a single grid layout
+  - Cards maintain responsive classes: `col-12 col-sm-6 col-md-6 col-lg-3` (statistics) and `col-12 col-sm-6 col-md-6 col-lg-4` (quick links)
+- Responsive behavior at medium/tablet size (md breakpoint):
+  - All cards use `col-md-6` which displays 2 cards per row
+  - Cards flow naturally: first 6 cards form 3 rows of 2 cards each
+  - Remaining 4 cards form 2 additional rows of 2 cards each
+  - This eliminates the previous 4 rows with varying counts (2,1,2,1) pattern
+- Layout structure:
+  - Single unified row container for all cards
+  - Cards flow naturally without artificial row breaks
+  - At medium/tablet size: displays as multiple rows of 2 cards each (starting with 3 rows of 2)
+- No linting errors introduced
+- Dashboard cards now flow naturally and display as rows of 2 at medium/tablet window size
+
+### Interaction #133
+**User Prompt:**
+```
+Check add a review logic. I think there is HTML escaping
+```
+
+**Agent Actions:**
+- Identified double-escaping issue in review submission logic:
+  - `src/services/review_service.py` was using `html.escape(comment)` before storing comments in database (lines 18 and 87)
+  - Jinja2 templates automatically escape content when rendering for security
+  - This caused double-escaping: comments like "It's" were stored as "It&#x27;s" and then escaped again, displaying the HTML entity literally
+- Fixed double-escaping issue:
+  - Removed `html.escape(comment)` calls from `create_review()` function (line 18)
+  - Removed `html.escape(comment)` calls from `update_review()` function (line 87)
+  - Removed unused `import html` statement
+  - Added comments explaining that Jinja2 will handle escaping on output
+- Best practice followed:
+  - Store raw data in database (no escaping)
+  - Escape on output (Jinja2 handles this automatically)
+  - This prevents double-escaping and ensures proper display of special characters
+- No linting errors introduced
+- Review comments now display correctly without HTML entities showing literally (e.g., "It's" instead of "It&#x27;s")
+
+### Interaction #134
+**User Prompt:**
+```
+Why when i changed the .env file to have a booking min advance hours value of 0 it still required me to book an hour in advance? Reivew the logic.
+```
+
+**Agent Actions:**
+- Identified hardcoded frontend validation issue:
+  - `src/views/resources/detail.html` (lines 490-494) had hardcoded 1-hour advance validation in JavaScript
+  - `src/views/resources/detail_day_view_js.html` (lines 218-222) had hardcoded 1-hour advance validation in JavaScript
+  - Both used `60 * 60 * 1000` (1 hour in milliseconds) instead of reading from `BOOKING_MIN_ADVANCE_HOURS` config
+  - Frontend validation was blocking form submission before backend validation could run
+- Fixed hardcoded frontend validation:
+  - Updated `src/controllers/resources_controller.py`:
+    - Added `from src.utils.config import Config` import
+    - Passed `booking_min_advance_hours=Config.BOOKING_MIN_ADVANCE_HOURS` to template context
+  - Updated `src/views/resources/detail.html`:
+    - Replaced hardcoded `60 * 60 * 1000` with `{{ booking_min_advance_hours }} * 60 * 60 * 1000`
+    - Updated alert message to use dynamic value with proper singular/plural handling
+  - Updated `src/views/resources/detail_day_view_js.html`:
+    - Replaced hardcoded `60 * 60 * 1000` with `{{ booking_min_advance_hours }} * 60 * 60 * 1000`
+    - Updated alert message to use dynamic value with proper singular/plural handling
+- Backend validation was already correct:
+  - `src/services/booking_service.py` uses `Config.BOOKING_MIN_ADVANCE_HOURS` dynamically
+  - Issue was that frontend blocked submission before reaching backend
+- Additional note:
+  - Flask server must be restarted after changing `.env` file for Config class to reload new values
+  - Python modules are cached, so environment variable changes require server restart
+- No linting errors introduced
+- Frontend validation now respects `BOOKING_MIN_ADVANCE_HOURS` environment variable setting
+
+### Interaction #135
+**User Prompt:**
+```
+The boxes containing sent messages should adapt to the length of the message.
+```
+
+**Agent Actions:**
+- Identified issue: Message bubbles in messaging interface had fixed widths that created excess empty space for short messages
+- Fixed message bubble styling in `src/views/messages/thread.html`:
+  - Updated `.message-bubble` CSS class:
+    - Added `display: inline-block` to allow bubbles to shrink to content width
+    - Added `width: fit-content` to make bubbles adapt to content length
+    - Added `max-width: 100%` to prevent bubbles from exceeding container width
+    - Added `min-width: 0` to allow bubbles to shrink below default minimum
+  - Updated message container styling:
+    - Added `display: inline-block` to message container so it only takes up as much space as needed
+    - Kept `max-width: 70%` to prevent long messages from taking up entire screen
+  - Removed redundant inline styles from message bubble div (CSS class now handles sizing)
+- Message bubbles now adapt to content length:
+  - Short messages (e.g., "Howdy", "hi") display in compact bubbles without excess empty space
+  - Long messages still respect max-width constraint (70% of container)
+  - Bubbles shrink to fit content while maintaining proper padding and styling
+- Additional fixes applied:
+  - Simplified message container structure: removed flexbox wrapper and inline styles
+  - Changed `.message-bubble` from `display: inline-block` to `display: table` to force content-based width
+  - Updated `.message-container` to use `display: inline-block` with `max-width: 70%`
+  - Removed all flexbox-related styles that might prevent shrinking
+  - Removed redundant inline styles from message container
+  - Simplified HTML structure to remove unnecessary flex containers
+- Complete rework of message bubble structure:
+  - Restructured HTML: removed nested containers, simplified to `.message-row` with `.message-meta` and `.message-bubble`
+  - New CSS structure:
+    - `.message-row`: flexbox column container that aligns items left/right based on sender
+    - `.message-meta`: separate container for timestamp/name with max-width constraint
+    - `.message-bubble`: `display: inline-block` with `max-width: 70%` - naturally shrinks to content
+  - Removed all complex nested flex containers that were forcing widths
+  - Message bubble now directly controls its own width without wrapper constraints
+  - Updated responsive media query to match new structure
+- Message bubbles now adapt to content length:
+  - Short messages (e.g., "Howdy", "hi") display in compact bubbles without excess empty space
+  - Long messages still respect max-width constraint (70% of container)
+  - Bubbles shrink to fit content while maintaining proper padding and styling
+  - Using `display: inline-block` allows natural content-based width
+- No linting errors introduced
+- Message bubbles now display with appropriate width based on message content length
+
+### Interaction #136
+**User Prompt:**
+```
+Log all interactions in @dev_notes.md starting at the bottom. Consolidate the "View all reviews" and "Add review" button into one button since both of those buttons go to the same page. What do you think it should be named?
+```
+
+**Agent Actions:**
+- Identified redundant buttons on resource detail page:
+  - "View All Reviews" and "Add Review" buttons both navigate to the same route (`reviews.resource_reviews`)
+  - Both buttons appeared in two sections: when reviews exist (lines 156-169) and when no reviews exist (lines 177-184)
+- Consolidated both buttons into a single "Reviews" button:
+  - Replaced "View All Reviews" and "Add Review" buttons with single "Reviews" button
+  - Used crimson button style (`btn-crimson`) as primary action button
+  - Added star icon (`bi-star`) to indicate reviews
+  - Button displays review count when reviews exist: "Reviews (X)" format
+  - Button displays "Reviews" when no reviews exist
+  - Button is always visible (no authentication check needed since page handles auth for adding reviews)
+- Simplified button structure:
+  - Removed conditional logic for separate "View All Reviews" and "Add Review" buttons
+  - Single button handles both viewing and adding reviews (page itself handles showing add form to authenticated users)
+  - Cleaner UI with one primary action button instead of two redundant buttons
+- Button name rationale: "Reviews" was chosen as it's simple, clear, and encompasses both viewing existing reviews and adding new reviews
+- No linting errors introduced
+- Resource detail page now has cleaner UI with single consolidated "Reviews" button
+
+### Interaction #137
+**User Prompt:**
+```
+Why are there "**"s in Crimson's response?
+```
+
+**Agent Actions:**
+- Identified issue: AI assistant (Crimson) was returning markdown-formatted text (using `**text**` for bold), but the frontend was displaying it as plain text instead of rendering it as HTML
+- Root cause: `addMessage()` function in `src/static/js/chatbot.js` was only converting newlines to `<br>` tags, not converting markdown formatting to HTML
+- Fixed markdown rendering:
+  - Created `markdownToHtml()` function to convert markdown to HTML:
+    - Converts `**text**` to `<strong>text</strong>` (bold)
+    - Converts `*text*` to `<em>text</em>` (italic)
+    - Converts newlines to `<br>` tags
+    - Escapes HTML special characters first to prevent XSS attacks
+  - Updated `addMessage()` function to use markdown conversion for assistant messages:
+    - Assistant messages now use `markdownToHtml()` to render markdown formatting
+    - User messages remain plain text (no markdown conversion)
+    - Loading messages remain unchanged
+- Markdown conversion now applies to:
+  - New assistant messages received from API
+  - Assistant messages loaded from conversation history (via `displayHistory()`)
+- No linting errors introduced
+- Crimson's responses now display with proper bold/italic formatting instead of showing literal `**` characters
+
+### Interaction #138
+**User Prompt:**
+```
+I went to a new page but shouldn't the chat history persist?
+```
+
+**Agent Actions:**
+- Identified issue: Chat history was being saved to localStorage but not displayed when the chat widget was opened on a new page
+- Root cause: `openChat()` function was not calling `displayHistory()` to load and display the conversation history from localStorage
+- Fixed chat history persistence:
+  - Updated `openChat()` function to call `displayHistory()` when the chat widget is opened
+  - Moved `displayHistory()` function definition before `openChat()` for better code organization
+  - Removed redundant event listener that was attempting to call `displayHistory()` (now handled directly in `openChat()`)
+  - Removed duplicate `displayHistory()` function definition
+- Chat history now persists across page navigations:
+  - History is loaded from localStorage when page loads (via `loadHistory()` in `initChatbot()`)
+  - History is displayed when chat widget is opened (via `displayHistory()` in `openChat()`)
+  - History is saved to localStorage after each message (via `saveHistory()`)
+- No linting errors introduced
+- Chat history now properly persists and displays across page navigations
+
+### Interaction #139
+**User Prompt:**
+```
+Could we allow the user to review a resource as many times as they have had a completed booking for the resource?
+```
+
+**Agent Actions:**
+- Updated `init_db.py`:
+  - Removed `UNIQUE(resource_id, reviewer_id)` constraint from reviews table schema (line 122)
+  - Future database initializations will not have the constraint
+- Created migration script `migrations/migrate_remove_review_unique_constraint.py`:
+  - Safely removes UNIQUE constraint from existing databases if it exists
+  - Creates database backup before migration
+  - Preserves all existing review data by recreating table structure
+  - Recreates indexes after table recreation
+  - Handles case where constraint doesn't exist (skips migration)
+  - Ran migration successfully: confirmed constraint doesn't exist in current database (expected)
+- Updated `src/services/review_service.py`:
+  - Added `from dateutil.tz import tzutc` import for timezone handling
+  - Completely rewrote `create_review()` function with new logic:
+    - Counts completed bookings for user and resource (status='completed' OR status='approved' AND end_datetime < now)
+    - Counts existing reviews for user and resource
+    - Enforces limit: users can only leave as many reviews as they have completed bookings
+    - Validates booking_id if provided (ensures booking is completed and not already reviewed)
+    - Returns clear error messages when review limit is exceeded
+  - Updated function docstring to document new behavior
+- New review logic:
+  - Users can review a resource once per completed booking
+  - Example: If user has 3 completed bookings for MSIS Starter Pack, they can leave up to 3 reviews
+  - Each review can optionally be linked to a specific booking_id
+  - Prevents duplicate reviews for the same booking_id
+  - Validates that bookings are completed before allowing review
+- Migration script verified:
+  - Database backed up successfully
+  - No data lost during migration
+  - Constraint removal confirmed (constraint didn't exist, as expected)
+- No linting errors introduced
+- Review system now allows multiple reviews per resource based on completed bookings
+
+### Interaction #140
+**User Prompt:**
+```
+Log all interactions starting at the bottom of @dev_notes.md. Create a plan to review and refactor @AiDD-Final-Project---IU-Campus-Resource-Hub. I want all documentation files to be updated to reflect the current state of the web app.
+```
+
+**Agent Actions:**
+- Created comprehensive plan to review and update all documentation files (README.md, SETUP_STEPS.md, PRD_COMPLETE.md, ERD_AND_SCHEMA.md)
+- Plan includes reviewing features from interactions #100-139 and updating documentation to reflect current application state
+- Plan approved by user, proceeding with implementation
+- Updated README.md:
+  - Added profile image upload with cropping to User Authentication & Authorization feature
+  - Added resource-specific operating hours with 24-hour option to Resource Management feature
+  - Added availability date/time filtering with past date/time validation and clear all filters to Advanced Search & Filtering feature
+  - Added booking status tracking including "In Progress" status to Booking System feature
+  - Added adaptive message bubble sizing to Messaging System feature
+  - Updated Reviews & Ratings to mention multiple reviews per completed booking
+  - Updated AI Concierge to mention "Crimson" name, markdown rendering, and persistent chat history
+  - Updated Admin Dashboard to mention filter modals across all admin pages
+  - Updated Technology Stack to mention "Crimson" AI assistant with markdown rendering and persistent chat history
+- Updated SETUP_STEPS.md:
+  - Updated Core Features section with all recent features (filter modals, profile image cropping, booking status "In Progress", multiple reviews per completed booking, AI assistant "Crimson", past date/time validation, clear all filters, adaptive message bubble sizing)
+  - Updated Testing the Application section to include filter modals testing and "In Progress" status
+  - Updated Testing Checklist with all new features
+  - Added new features to Recent Improvements section (profile image upload with cropping, filter modals, booking status "In Progress", multiple reviews per completed booking, AI assistant "Crimson", past date/time validation, clear all filters, adaptive message bubble sizing)
+- Updated PRD_COMPLETE.md:
+  - Updated section 3.1 (User Management & Authentication) to document profile image upload with cropping
+  - Updated section 3.3 (Search & Discovery) to document past date/time validation, clear all filters, and new sort options (booking_count, avg_rating, recently_booked)
+  - Updated section 3.4 (Booking & Scheduling) to document "In Progress" status as computed display status
+  - Updated section 3.5 (Messaging System) to document adaptive message bubble sizing
+  - Updated section 3.6 (Reviews & Ratings) to document multiple reviews per completed booking (removed UNIQUE constraint)
+  - Updated section 3.7 (Admin Dashboard) to document filter modals across all admin pages
+  - Updated section 11.1 (AI Resource Concierge) to document "Crimson" name, markdown rendering, and persistent chat history
+- Updated ERD_AND_SCHEMA.md:
+  - Removed UNIQUE constraint on reviews table (users can leave multiple reviews per resource - one per completed booking)
+  - Updated Notes section to reflect multiple reviews per completed booking
+- Verified consistency across all documentation files:
+  - Test counts match (139 tests)
+  - Default credentials match (AdminUser1!, StaffUser1!, StudentUser1!)
+  - Feature descriptions are consistent
+  - Technology stack is consistent
+  - Security warnings are consistent
+- Verified database schema matches init_db.py:
+  - Operating hours fields (operating_hours_start, operating_hours_end, is_24_hours) documented
+  - Soft delete fields (deleted, deleted_at, deleted_by) documented
+  - Reviews table constraint removed (no UNIQUE constraint)
+- No linting errors introduced
+- All documentation files now accurately reflect current application state
+
+### Interaction #141
+**User Prompt:**
+```
+Can the .vs, migrations, logs, and archive folders be safely deleted?
+```
+
+**Agent Actions:**
+- Investigated folder contents and purpose:
+  - `.vs` folder: Visual Studio IDE settings (safe to delete, regenerated by IDE)
+  - `migrations` folder: Contains one migration script that has already been applied to init_db.py (safe to delete, historical)
+  - `logs` folder: Runtime log files (safe to delete, regenerated when app runs, already in .gitignore)
+  - `archive` folder: Historical archived files (safe to delete, no references in documentation)
+- Confirmed all four folders can be safely deleted
+- Added `.vs/` to `.gitignore` file in IDE section to prevent Visual Studio settings from being tracked by Git
+- No linting errors introduced
+
+### Interaction #142
+**User Prompt:**
+```
+Create a concise PRD file in context folder that is 1-2 pages log at most. log interactions in @dev_notes.md.
+```
+
+**Agent Actions:**
+- Created concise PRD file `docs/context/PRD.md` (1-2 pages):
+  - Product Overview with objectives
+  - Users & Roles (Students, Staff/Faculty, Administrators)
+  - Core Features summary (8 major feature areas)
+  - Technology Stack overview
+  - Key Requirements (Security, Database Schema, Validation Rules, Testing)
+  - Success Metrics
+  - Cross-references to PRD_COMPLETE.md for detailed specifications
+- Condensed 2,800+ line PRD_COMPLETE.md into concise 1-2 page overview
+- Maintained all essential information while removing detailed technical specifications
+- No linting errors introduced
+
+### Interaction #143
+**User Prompt:**
+```
+Reivew @dev_notes.md and determine the top 25 most impactful prompts/agent actions and add them to @golden_prompts.md. We want to log the most impactful prompts/agent actions that were key to the development of this web app.
+```
+
+**Agent Actions:**
+- Reviewed entire dev_notes.md file (142 interactions) to identify most impactful prompts/agent actions
+- Analyzed interactions by impact categories:
+  - Core Features & Architecture (major feature implementations)
+  - Code Quality & Refactoring (code improvements)
+  - UI/UX Improvements (design standardization)
+  - Search & Filtering Enhancements (feature additions)
+  - Bug Fixes & Error Handling (critical fixes)
+- Identified top 25 most impactful interactions based on:
+  - Architectural significance (soft delete, operating hours, etc.)
+  - Code quality improvements (refactoring, test implementation)
+  - User experience enhancements (filter modals, UI standardization)
+  - Feature completeness (profile images, availability filtering, etc.)
+  - Documentation and maintainability (ERD generation, documentation updates)
+- Updated golden_prompts.md with top 25 most impactful prompts:
+  - Organized by category (Core Features & Architecture, UI/UX Improvements, Search & Filtering, Bug Fixes)
+  - Included prompt text and impact description for each
+  - Highlighted key achievements and code improvements
+  - Maintained existing project creation prompt and notes
+- Top 25 interactions selected represent:
+  - Major feature implementations (soft delete, operating hours, profile images, filter modals)
+  - Significant code quality improvements (refactoring, test implementation)
+  - Comprehensive UI/UX standardization work
+  - Critical bug fixes and error handling
+  - Documentation and architecture improvements
+- No linting errors introduced
+- Golden prompts now serve as reference for most impactful development patterns
+
+### Interaction #144
+**User Prompt:**
+```
+Add the original interaction number from @dev_notes.md to the corresponding interaction in @golden_prompts.md. That way someone can look at @golden_prompts.md and find the prompt in @dev_notes.md.
+```
+
+**Agent Actions:**
+- Added interaction numbers from dev_notes.md to all 25 prompts in golden_prompts.md
+- Each prompt now includes "**Interaction #X** (see dev_notes.md)" line above the prompt text
+- Interaction numbers added:
+  - #3 (Database Schema Documentation)
+  - #11 (Code Refactoring - Initial)
+  - #58 (Code Refactoring - Advanced)
+  - #16 (Test Implementation)
+  - #21 (Soft Delete Implementation)
+  - #23 (Resource Ownership Reassignment)
+  - #36 (Data Restore Page)
+  - #60 (Resource-Specific Operating Hours)
+  - #45 (Profile Image Upload with Cropping)
+  - #84 (Availability Date/Time Filtering)
+  - #87 (Drag-and-Select Time Picker)
+  - #103 (Booking Status "In Progress")
+  - #106 (AI Assistant Named "Crimson")
+  - #124 (Filter Modals Across Admin Pages)
+  - #137 (Markdown Rendering in AI Responses)
+  - #138 (Chat History Persistence)
+  - #139 (Multiple Reviews Per Completed Booking)
+  - #109 (UI/UX Standardization)
+  - #100 (UI Standardization - Filter/Sort Boxes)
+  - #9 (Management Card Styling)
+  - #81 (Filter and Sort Options for Resources)
+  - #118 (Past Date/Time Validation)
+  - #119 (Clear All Filters Functionality)
+  - #10 (Fix Linting Errors)
+  - #140 (Documentation Review and Update)
+- Cross-referencing now allows users to easily find detailed interaction logs in dev_notes.md
+- No linting errors introduced
+- Golden prompts now include interaction numbers for easy cross-referencing

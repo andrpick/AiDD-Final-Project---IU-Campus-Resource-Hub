@@ -181,14 +181,14 @@ For detailed deployment instructions and scalability recommendations, see [SETUP
 
 The application includes the following core features:
 
-- **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing
-- **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, resource-specific operating hours, and admin-only archiving
-- **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, and capacity-based search
-- **Booking System**: Interactive calendar view with drag-and-select time selection, automatic approval, conflict detection, and calendar export (Google Calendar, Outlook, iCal)
-- **Messaging System**: Thread-based messaging with resource-specific threading, read/unread status tracking, and navbar notifications
-- **Reviews & Ratings**: Multiple reviews per user per resource with star ratings
-- **AI Concierge**: Chatbot widget with Google Gemini AI integration for natural language resource queries
-- **Admin Dashboard**: Comprehensive statistics, user management (including soft delete), resource management, booking management, and action logging
+- **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing and profile image upload with cropping
+- **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, resource-specific operating hours (with 24-hour operation option), and admin-only archiving
+- **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, capacity-based search, availability date/time filtering (with past date/time validation), and clear all filters functionality
+- **Booking System**: Interactive calendar view with drag-and-select time selection (12 AM - 11:59 PM), automatic approval, conflict detection, booking status tracking (including "In Progress" status), and calendar export (Google Calendar, Outlook, iCal)
+- **Messaging System**: Thread-based messaging with resource-specific threading, read/unread status tracking, navbar notifications, and adaptive message bubble sizing
+- **Reviews & Ratings**: Multiple reviews per user per resource (one review per completed booking) with star ratings
+- **AI Concierge "Crimson"**: Chatbot widget with Google Gemini AI integration for natural language resource queries, markdown rendering in responses, and persistent chat history across page navigations
+- **Admin Dashboard**: Comprehensive statistics, user management (including soft delete), resource management with filter modals, booking management with filter modals, and action logging with filter modals
 
 For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-features-overview). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
 
@@ -196,7 +196,7 @@ For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-fea
 
 - **Backend**: Flask 3.0.0+, SQLite (development), PostgreSQL (production-ready)
 - **Frontend**: Bootstrap 5, Jinja2 templating, JavaScript (ES6+)
-- **AI Integration**: Google Gemini API for natural language resource queries
+- **AI Integration**: Google Gemini API for natural language resource queries (AI assistant named "Crimson" with markdown rendering and persistent chat history)
 - **Utilities**: 
   - Python-dateutil (timezone handling)
   - bcrypt (password hashing)

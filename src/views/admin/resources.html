@@ -7,112 +7,153 @@
     <div class="col-12">
         <!-- Page Header -->
         <div class="mb-4">
-            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resource Management</h1>
-            <p class="text-muted mb-0">Manage resources and feature them on the homepage</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resource Management</h1>
+                    <p class="text-muted mb-0">Manage resources and feature them on the homepage</p>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
+                        <i class="bi bi-funnel me-2"></i> Filter
+                    </button>
+                    {% if status_filter or category_filter or featured_filter or keyword_filter or location_filter or owner_id_filter or is_24_hours_filter or sort_by or (sort_order and sort_order != 'desc') %}
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" id="clearAllFiltersPageBtn" style="font-weight: 500;">
+                        <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card bg-white border-0 mb-4">
-            <div class="card-body p-4">
-                <form method="GET" action="{{ url_for('admin.resources') }}" id="resourceFiltersForm">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Status</label>
-                            <select class="form-select form-select-sm" name="status" style="border-radius: 8px;">
-                                <option value="">All Status</option>
-                                <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-                                <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
-                                <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Category</label>
-                            <select class="form-select form-select-sm" name="category" style="border-radius: 8px;">
-                                <option value="">All Categories</option>
-                                {% for cat in categories_list %}
-                                <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
-                                    {{ cat|format_category }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Featured</label>
-                            <select class="form-select form-select-sm" name="featured" style="border-radius: 8px;">
-                                <option value="">All</option>
-                                <option value="1" {% if featured_filter == '1' %}selected{% endif %}>Featured</option>
-                                <option value="0" {% if featured_filter == '0' %}selected{% endif %}>Not Featured</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Search</label>
-                            <input type="text" 
-                                   class="form-control form-control-sm" 
-                                   name="keyword" 
-                                   value="{{ keyword_filter or '' }}" 
-                                   placeholder="Search by title or description..."
-                                   style="border-radius: 8px;">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Location</label>
-                            <select class="form-select form-select-sm" name="location" style="border-radius: 8px;">
-                                <option value="">All Locations</option>
-                                {% for loc in locations_list %}
-                                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>
-                                    {{ loc }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Owner</label>
-                            <select class="form-select form-select-sm" name="owner_id" style="border-radius: 8px;">
-                                <option value="">All Owners</option>
-                                {% for owner in owners_list %}
-                                <option value="{{ owner.user_id }}" {% if owner_id_filter == owner.user_id %}selected{% endif %}>
-                                    {{ owner.name }} ({{ owner.email }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Operating Hours</label>
-                            <select class="form-select form-select-sm" name="is_24_hours" style="border-radius: 8px;">
-                                <option value="">All</option>
-                                <option value="1" {% if is_24_hours_filter == '1' %}selected{% endif %}>24 Hours</option>
-                                <option value="0" {% if is_24_hours_filter == '0' %}selected{% endif %}>Limited Hours</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Sort By</label>
-                            <select class="form-select form-select-sm" name="sort_by" style="border-radius: 8px;">
-                                <option value="" {% if not sort_by %}selected{% endif %}>Default</option>
-                                <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Most Booked</option>
-                                <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Top Rated</option>
-                                <option value="recently_booked" {% if sort_by == 'recently_booked' %}selected{% endif %}>Recently Booked</option>
-                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date Created</option>
-                                <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Order</label>
-                            <select class="form-select form-select-sm" name="sort_order" style="border-radius: 8px;">
-                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
-                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
-                                    <i class="bi bi-funnel me-2"></i> Apply
-                                </button>
-                                <a href="{{ url_for('admin.resources') }}" class="btn btn-outline-secondary flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
-                                    <i class="bi bi-x-circle me-2"></i> Reset
-                                </a>
+        <!-- Active Filters Section -->
+        <div class="mb-3" id="activeFiltersSection" style="display: none;">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="text-muted small">Active filters:</span>
+                <div id="activeFilterBadges" class="d-flex flex-wrap gap-3"></div>
+            </div>
+        </div>
+
+        <!-- Filter Modal -->
+        <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-crimson text-white">
+                        <h5 class="modal-title" id="filterModalLabel">Filter Resources</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="GET" action="{{ url_for('admin.resources') }}" id="filterForm">
+                            <!-- First Row: Status, Category, Featured, Search -->
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_status" class="form-label small mb-1" style="font-weight: 500;">Status</label>
+                                    <select class="form-select form-select-sm" id="modal_status" name="status" style="border-radius: 8px;">
+                                        <option value="">All Status</option>
+                                        <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                                        <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
+                                        <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="modal_category" class="form-label small mb-1" style="font-weight: 500;">Category</label>
+                                    <select class="form-select form-select-sm" id="modal_category" name="category" style="border-radius: 8px;">
+                                        <option value="">All Categories</option>
+                                        {% for cat in categories_list %}
+                                        <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
+                                            {{ cat|format_category }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_featured" class="form-label small mb-1" style="font-weight: 500;">Featured</label>
+                                    <select class="form-select form-select-sm" id="modal_featured" name="featured" style="border-radius: 8px;">
+                                        <option value="">All</option>
+                                        <option value="1" {% if featured_filter == '1' %}selected{% endif %}>Featured</option>
+                                        <option value="0" {% if featured_filter == '0' %}selected{% endif %}>Not Featured</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="modal_keyword" class="form-label small mb-1" style="font-weight: 500;">Search</label>
+                                    <input type="text" 
+                                           class="form-control form-control-sm" 
+                                           id="modal_keyword"
+                                           name="keyword" 
+                                           value="{{ keyword_filter or '' }}" 
+                                           placeholder="Search by title or description..."
+                                           style="border-radius: 8px;">
+                                </div>
+                            </div>
+                            <!-- Second Row: Location, Owner, Operating Hours -->
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_location" class="form-label small mb-1" style="font-weight: 500;">Location</label>
+                                    <select class="form-select form-select-sm" id="modal_location" name="location" style="border-radius: 8px;">
+                                        <option value="">All Locations</option>
+                                        {% for loc in locations_list %}
+                                        <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>
+                                            {{ loc }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="modal_owner_id" class="form-label small mb-1" style="font-weight: 500;">Owner</label>
+                                    <select class="form-select form-select-sm" id="modal_owner_id" name="owner_id" style="border-radius: 8px;">
+                                        <option value="">All Owners</option>
+                                        {% for owner in owners_list %}
+                                        <option value="{{ owner.user_id }}" {% if owner_id_filter == owner.user_id %}selected{% endif %}>
+                                            {{ owner.name }} ({{ owner.email }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_is_24_hours" class="form-label small mb-1" style="font-weight: 500;">Operating Hours</label>
+                                    <select class="form-select form-select-sm" id="modal_is_24_hours" name="is_24_hours" style="border-radius: 8px;">
+                                        <option value="">All</option>
+                                        <option value="1" {% if is_24_hours_filter == '1' %}selected{% endif %}>24 Hours</option>
+                                        <option value="0" {% if is_24_hours_filter == '0' %}selected{% endif %}>Limited Hours</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="modal_sort_by" class="form-label small mb-1" style="font-weight: 500;">Sort By</label>
+                                    <select class="form-select form-select-sm" id="modal_sort_by" name="sort_by" style="border-radius: 8px;">
+                                        <option value="" {% if not sort_by %}selected{% endif %}>Default</option>
+                                        <option value="booking_count" {% if sort_by == 'booking_count' %}selected{% endif %}>Most Booked</option>
+                                        <option value="avg_rating" {% if sort_by == 'avg_rating' %}selected{% endif %}>Top Rated</option>
+                                        <option value="recently_booked" {% if sort_by == 'recently_booked' %}selected{% endif %}>Recently Booked</option>
+                                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Date Created</option>
+                                        <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="modal_sort_order" class="form-label small mb-1" style="font-weight: 500;">Order</label>
+                                    <select class="form-select form-select-sm" id="modal_sort_order" name="sort_order" style="border-radius: 8px;">
+                                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-2">Leave blank to see all resources</small>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="clearAllFiltersBtn">
+                            <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                        </button>
+                        <div class="ms-auto">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-crimson" id="applyFiltersBtn">
+                                <i class="bi bi-funnel me-2"></i> Apply
+                            </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -297,5 +338,215 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+// Category display names
+const categoryNames = {
+    'study_room': 'Study Room',
+    'lab_equipment': 'Lab Equipment',
+    'av_equipment': 'AV Equipment',
+    'event_space': 'Event Space',
+    'tutoring': 'Tutoring',
+    'other': 'Other'
+};
+
+// Status display names
+const statusNames = {
+    'draft': 'Draft',
+    'published': 'Published',
+    'archived': 'Archived'
+};
+
+// Sort display names
+const sortNames = {
+    'booking_count': 'Most Booked',
+    'avg_rating': 'Top Rated',
+    'recently_booked': 'Recently Booked',
+    'created_at': 'Date Created',
+    'title': 'Title'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Update active filter badges on page load
+    updateActiveFilterBadges();
+    
+    // Handle modal show event - pre-populate fields if filters are already applied
+    const filterModal = document.getElementById('filterModal');
+    if (filterModal) {
+        filterModal.addEventListener('show.bs.modal', function() {
+            populateModalFields();
+        });
+    }
+    
+    // Handle Apply button click
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            applyFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (in modal)
+    const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
+    if (clearAllFiltersBtn) {
+        clearAllFiltersBtn.addEventListener('click', function() {
+            clearAllFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (on page)
+    const clearAllFiltersPageBtn = document.getElementById('clearAllFiltersPageBtn');
+    if (clearAllFiltersPageBtn) {
+        clearAllFiltersPageBtn.addEventListener('click', function() {
+            window.location.href = "{{ url_for('admin.resources') }}";
+        });
+    }
+});
+
+// Pre-populate modal fields when opened (if filters are already applied)
+function populateModalFields() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    const status = urlParams.get('status') || '';
+    const modalStatus = document.getElementById('modal_status');
+    if (modalStatus) modalStatus.value = status;
+    
+    const category = urlParams.get('category') || '';
+    const modalCategory = document.getElementById('modal_category');
+    if (modalCategory) modalCategory.value = category;
+    
+    const featured = urlParams.get('featured') || '';
+    const modalFeatured = document.getElementById('modal_featured');
+    if (modalFeatured) modalFeatured.value = featured;
+    
+    const keyword = urlParams.get('keyword') || '';
+    const modalKeyword = document.getElementById('modal_keyword');
+    if (modalKeyword) modalKeyword.value = keyword;
+    
+    const location = urlParams.get('location') || '';
+    const modalLocation = document.getElementById('modal_location');
+    if (modalLocation) modalLocation.value = location;
+    
+    const ownerId = urlParams.get('owner_id') || '';
+    const modalOwnerId = document.getElementById('modal_owner_id');
+    if (modalOwnerId) modalOwnerId.value = ownerId;
+    
+    const is24Hours = urlParams.get('is_24_hours') || '';
+    const modalIs24Hours = document.getElementById('modal_is_24_hours');
+    if (modalIs24Hours) modalIs24Hours.value = is24Hours;
+    
+    const sortBy = urlParams.get('sort_by') || '';
+    const modalSortBy = document.getElementById('modal_sort_by');
+    if (modalSortBy) modalSortBy.value = sortBy;
+    
+    const sortOrder = urlParams.get('sort_order') || 'desc';
+    const modalSortOrder = document.getElementById('modal_sort_order');
+    if (modalSortOrder) modalSortOrder.value = sortOrder;
+}
+
+// Apply filters from modal
+function applyFilters() {
+    const form = document.getElementById('filterForm');
+    if (form) {
+        form.submit();
+    }
+}
+
+// Clear all filters
+function clearAllFilters() {
+    window.location.href = "{{ url_for('admin.resources') }}";
+}
+
+// Update active filter badges
+function updateActiveFilterBadges() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeFiltersSection = document.getElementById('activeFiltersSection');
+    const activeFilterBadges = document.getElementById('activeFilterBadges');
+    
+    if (!activeFiltersSection || !activeFilterBadges) return;
+    
+    const badges = [];
+    
+    // Status filter
+    const status = urlParams.get('status');
+    if (status && statusNames[status]) {
+        badges.push(createFilterBadge('Status', statusNames[status], 'status'));
+    }
+    
+    // Category filter
+    const category = urlParams.get('category');
+    if (category && categoryNames[category]) {
+        badges.push(createFilterBadge('Category', categoryNames[category], 'category'));
+    }
+    
+    // Featured filter
+    const featured = urlParams.get('featured');
+    if (featured !== null && featured !== '') {
+        badges.push(createFilterBadge('Featured', featured === '1' ? 'Yes' : 'No', 'featured'));
+    }
+    
+    // Keyword filter
+    const keyword = urlParams.get('keyword');
+    if (keyword) {
+        badges.push(createFilterBadge('Search', keyword, 'keyword'));
+    }
+    
+    // Location filter
+    const location = urlParams.get('location');
+    if (location) {
+        badges.push(createFilterBadge('Location', location, 'location'));
+    }
+    
+    // Owner filter
+    const ownerId = urlParams.get('owner_id');
+    if (ownerId) {
+        badges.push(createFilterBadge('Owner', 'Selected', 'owner_id'));
+    }
+    
+    // Operating Hours filter
+    const is24Hours = urlParams.get('is_24_hours');
+    if (is24Hours !== null && is24Hours !== '') {
+        badges.push(createFilterBadge('Operating Hours', is24Hours === '1' ? '24 Hours' : 'Limited Hours', 'is_24_hours'));
+    }
+    
+    // Sort filter (only if not default)
+    const sortBy = urlParams.get('sort_by');
+    const sortOrder = urlParams.get('sort_order');
+    if (sortBy && sortBy !== '' || sortOrder && sortOrder !== 'desc') {
+        const sortText = sortBy && sortNames[sortBy] ? sortNames[sortBy] : 'Default';
+        const orderText = sortOrder === 'asc' ? 'Ascending' : 'Descending';
+        badges.push(createFilterBadge('Sort', `${sortText} (${orderText})`, 'sort'));
+    }
+    
+    if (badges.length > 0) {
+        activeFilterBadges.innerHTML = badges.join('');
+        activeFiltersSection.style.display = 'block';
+    } else {
+        activeFiltersSection.style.display = 'none';
+    }
+}
+
+// Create filter badge
+function createFilterBadge(label, value, param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Handle special cases
+    if (param === 'sort') {
+        urlParams.delete('sort_by');
+        urlParams.delete('sort_order');
+    } else {
+        urlParams.delete(param);
+    }
+    
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    
+    return `<span class="badge bg-crimson text-white d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.15rem;">
+        ${label}: ${value}
+        <a href="${newUrl}" class="text-white text-decoration-none" style="cursor: pointer;" title="Remove filter">
+            <i class="bi bi-x"></i>
+        </a>
+    </span>`;
+}
+</script>
 {% endblock %}
 

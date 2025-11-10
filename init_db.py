@@ -118,8 +118,7 @@ def init_database():
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (resource_id) REFERENCES resources(resource_id),
             FOREIGN KEY (reviewer_id) REFERENCES users(user_id),
-            FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
-            UNIQUE(resource_id, reviewer_id)
+            FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
         )
     """)
     

@@ -1,12 +1,16 @@
 """
 Review and rating service.
 """
-import html
 from datetime import datetime, timedelta
+from dateutil.tz import tzutc
 from src.data_access.database import get_db_connection
 
 def create_review(resource_id, reviewer_id, rating, comment=None, booking_id=None):
-    """Create a review for a resource."""
+    """Create a review for a resource.
+    
+    Users can review a resource as many times as they have completed bookings for it.
+    Each review can optionally be linked to a specific booking_id.
+    """
     # Validate rating
     if not isinstance(rating, int) or rating < 1 or rating > 5:
         return {'success': False, 'error': 'Rating must be between 1 and 5'}
@@ -15,12 +19,50 @@ def create_review(resource_id, reviewer_id, rating, comment=None, booking_id=Non
     if comment:
         if len(comment) > 2000:
             return {'success': False, 'error': 'Comment must be less than 2000 characters'}
-        comment = html.escape(comment)
+        # Don't escape here - Jinja2 will handle escaping on output
     
-    # Validate booking if provided
-    if booking_id:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Count completed bookings for this user and resource
+        # A booking is considered completed if:
+        # 1. Status is 'completed', OR
+        # 2. Status is 'approved' AND end_datetime has passed
+        now = datetime.now(tzutc())
+        cursor.execute("""
+            SELECT COUNT(*) as completed_count
+            FROM bookings
+            WHERE resource_id = ?
+            AND requester_id = ?
+            AND (
+                status = 'completed'
+                OR (status = 'approved' AND end_datetime < ?)
+            )
+        """, (resource_id, reviewer_id, now.isoformat()))
+        
+        completed_bookings = cursor.fetchone()['completed_count']
+        
+        if completed_bookings == 0:
+            return {'success': False, 'error': 'You must have at least one completed booking for this resource to leave a review'}
+        
+        # Count existing reviews for this user and resource
+        cursor.execute("""
+            SELECT COUNT(*) as review_count
+            FROM reviews
+            WHERE resource_id = ? AND reviewer_id = ?
+        """, (resource_id, reviewer_id))
+        
+        existing_reviews = cursor.fetchone()['review_count']
+        
+        # Check if user has exceeded their review limit
+        if existing_reviews >= completed_bookings:
+            return {
+                'success': False, 
+                'error': f'You can only leave {completed_bookings} review(s) for this resource (one per completed booking). You have already left {existing_reviews} review(s).'
+            }
+        
+        # If booking_id is provided, validate it
+        if booking_id:
             cursor.execute("""
                 SELECT * FROM bookings
                 WHERE booking_id = ? AND requester_id = ? AND resource_id = ?
@@ -31,16 +73,31 @@ def create_review(resource_id, reviewer_id, rating, comment=None, booking_id=Non
                 return {'success': False, 'error': 'Invalid booking'}
             
             booking_dict = dict(booking)
-            # Check if booking is completed
-            if booking_dict['status'] != 'completed':
-                # Check if end_datetime has passed
+            
+            # Check if booking is completed (status='completed' or past end time)
+            is_completed = False
+            if booking_dict['status'] == 'completed':
+                is_completed = True
+            else:
                 end_dt = datetime.fromisoformat(booking_dict['end_datetime'].replace('Z', '+00:00'))
-                if end_dt > datetime.now():
-                    return {'success': False, 'error': 'Can only review completed bookings'}
-    
-    # Insert review (users can now review a resource multiple times)
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
+                if end_dt < now:
+                    is_completed = True
+            
+            if not is_completed:
+                return {'success': False, 'error': 'Can only review completed bookings'}
+            
+            # Check if this booking has already been reviewed
+            cursor.execute("""
+                SELECT COUNT(*) as review_count
+                FROM reviews
+                WHERE booking_id = ? AND reviewer_id = ?
+            """, (booking_id, reviewer_id))
+            
+            booking_review_count = cursor.fetchone()['review_count']
+            if booking_review_count > 0:
+                return {'success': False, 'error': 'This booking has already been reviewed'}
+        
+        # Insert review
         cursor.execute("""
             INSERT INTO reviews (resource_id, reviewer_id, booking_id, rating, comment)
             VALUES (?, ?, ?, ?, ?)
@@ -84,7 +141,7 @@ def update_review(review_id, reviewer_id, rating=None, comment=None):
         if comment is not None:
             if len(comment) > 2000:
                 return {'success': False, 'error': 'Comment must be less than 2000 characters'}
-            comment = html.escape(comment)
+            # Don't escape here - Jinja2 will handle escaping on output
             updates.append("comment = ?")
             values.append(comment)
         

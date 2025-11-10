@@ -42,10 +42,25 @@
             return;
         }
         
+        // Load conversation history on open
+        function displayHistory() {
+            chatBody.innerHTML = '';
+            if (conversationHistory.length === 0) {
+                addMessage('Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?', 'assistant');
+                conversationHistory.push({ role: 'assistant', content: 'Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?' });
+            } else {
+                conversationHistory.forEach(msg => {
+                    addMessage(msg.content, msg.role);
+                });
+            }
+            scrollToBottom();
+        }
+        
         // Open/close chatbot
         function openChat() {
             isOpen = true;
             chatWidget.classList.remove('d-none');
+            displayHistory(); // Display conversation history when opening
             chatInput.focus();
             scrollToBottom();
         }
@@ -76,6 +91,28 @@
             });
         }
         
+        // Convert markdown to HTML
+        function markdownToHtml(text) {
+            if (!text) return '';
+            
+            // Escape HTML first to prevent XSS
+            let html = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            
+            // Convert markdown bold (**text**)
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert markdown italic (*text*)
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            
+            // Convert newlines to <br>
+            html = html.replace(/\n/g, '<br>');
+            
+            return html;
+        }
+        
         // Add message to chat
         function addMessage(content, role, isLoading = false) {
             const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -88,7 +125,12 @@
             if (isLoading) {
                 messageBubble.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div><span>' + content + '</span>';
             } else {
-                messageBubble.innerHTML = content.replace(/\n/g, '<br>');
+                // Convert markdown to HTML for assistant messages, plain text for user messages
+                if (role === 'assistant') {
+                    messageBubble.innerHTML = markdownToHtml(content);
+                } else {
+                    messageBubble.innerHTML = content.replace(/\n/g, '<br>');
+                }
             }
             
             messageDiv.appendChild(messageBubble);
@@ -214,27 +256,6 @@
         });
         
         chatSendBtn.addEventListener('click', sendMessage);
-        
-        // Load conversation history on open
-        function displayHistory() {
-            chatBody.innerHTML = '';
-            if (conversationHistory.length === 0) {
-                addMessage('Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?', 'assistant');
-                conversationHistory.push({ role: 'assistant', content: 'Hello! I\'m Crimson, your AI assistant for the Indiana University Campus Resource Hub. How can I help you today?' });
-            } else {
-                conversationHistory.forEach(msg => {
-                    addMessage(msg.content, msg.role);
-                });
-            }
-            scrollToBottom();
-        }
-        
-        // Show history when opening
-        toggleBtn.addEventListener('click', function() {
-            if (!isOpen) {
-                displayHistory();
-            }
-        });
         
         // Initial display if widget is open (shouldn't happen, but just in case)
         if (!chatWidget.classList.contains('d-none')) {

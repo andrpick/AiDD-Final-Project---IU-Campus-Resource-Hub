@@ -287,7 +287,7 @@ erDiagram
 | updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Constraints:**
-- UNIQUE constraint on `(resource_id, reviewer_id)` to prevent multiple reviews per user per resource
+- No UNIQUE constraint on `(resource_id, reviewer_id)` - users can leave multiple reviews per resource (one review per completed booking)
 
 **Indexes:**
 - `idx_reviews_resource` on `resource_id` (for resource review aggregation)
@@ -437,7 +437,7 @@ All tables with timestamps use `DATETIME DEFAULT CURRENT_TIMESTAMP` for automati
 
 3. **Thread Management**: Messages use a `thread_id` for grouping, with additional `thread_read` table for tracking read status per user per thread.
 
-4. **Review Constraints**: The unique constraint on `(resource_id, reviewer_id)` ensures each user can only write one review per resource, but reviews can be updated.
+4. **Review Constraints**: Users can leave multiple reviews per resource (one review per completed booking). Each review can optionally link to a specific booking_id to prevent duplicate reviews for the same booking.
 
 5. **Capacity Field**: The `resources.capacity` field allows NULL values to support resources that don't have capacity limits (e.g., some equipment).
 

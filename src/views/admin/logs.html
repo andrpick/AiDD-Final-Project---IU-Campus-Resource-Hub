@@ -82,65 +82,95 @@
                     <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Admin Logs</h1>
                     <p class="text-muted mb-0">View admin action logs and audit trail</p>
                 </div>
-                {% if total %}
-                <div class="text-end">
-                    <div class="fw-bold" style="font-size: 1.5rem; color: #333;">{{ total }}</div>
-                    <div class="text-muted" style="font-size: 0.875rem;">Total Logs</div>
+                <div class="d-flex align-items-center gap-4">
+                    {% if total %}
+                    <div class="text-end">
+                        <div class="fw-bold" style="font-size: 1.5rem; color: #333;">{{ total }}</div>
+                        <div class="text-muted" style="font-size: 0.875rem;">Total Logs</div>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
+                            <i class="bi bi-funnel me-2"></i> Filter
+                        </button>
+                        {% if admin_id_filter or action_filter or target_table_filter %}
+                        <button type="button" class="btn btn-outline-secondary px-4 py-2" id="clearAllFiltersPageBtn" style="font-weight: 500;">
+                            <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endif %}
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card bg-white border-0 mb-4">
-            <div class="card-body p-4">
-                <form method="GET" action="{{ url_for('admin.logs') }}" id="logsFiltersForm">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Admin</label>
-                            <select class="form-select form-select-sm" name="admin_id" style="border-radius: 8px;">
-                                <option value="">All Admins</option>
-                                {% for admin in admins_list %}
-                                <option value="{{ admin.user_id }}" {% if admin_id_filter == admin.user_id %}selected{% endif %}>
-                                    {{ admin.name }} ({{ admin.email }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Action</label>
-                            <select class="form-select form-select-sm" name="action" style="border-radius: 8px;">
-                                <option value="">All Actions</option>
-                                {% for action_item in actions_list %}
-                                <option value="{{ action_item }}" {% if action_filter == action_item %}selected{% endif %}>
-                                    {{ action_item|replace('_', ' ')|title }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Target Table</label>
-                            <select class="form-select form-select-sm" name="target_table" style="border-radius: 8px;">
-                                <option value="">All Tables</option>
-                                {% for table in target_tables_list %}
-                                <option value="{{ table }}" {% if target_table_filter == table %}selected{% endif %}>
-                                    {{ table|replace('_', ' ')|title }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-crimson flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
-                                    <i class="bi bi-funnel me-2"></i> Apply
-                                </button>
-                                <a href="{{ url_for('admin.logs') }}" class="btn btn-outline-secondary flex-fill px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
-                                    <i class="bi bi-x-circle me-2"></i> Reset
-                                </a>
+        <!-- Active Filters Section -->
+        <div class="mb-3" id="activeFiltersSection" style="display: none;">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="text-muted small">Active filters:</span>
+                <div id="activeFilterBadges" class="d-flex flex-wrap gap-3"></div>
+            </div>
+        </div>
+
+        <!-- Filter Modal -->
+        <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-crimson text-white">
+                        <h5 class="modal-title" id="filterModalLabel">Filter Admin Logs</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="GET" action="{{ url_for('admin.logs') }}" id="filterForm">
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-4">
+                                    <label for="modal_admin_id" class="form-label small mb-1" style="font-weight: 500;">Admin</label>
+                                    <select class="form-select form-select-sm" id="modal_admin_id" name="admin_id" style="border-radius: 8px;">
+                                        <option value="">All Admins</option>
+                                        {% for admin in admins_list %}
+                                        <option value="{{ admin.user_id }}" {% if admin_id_filter == admin.user_id %}selected{% endif %}>
+                                            {{ admin.name }} ({{ admin.email }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="modal_action" class="form-label small mb-1" style="font-weight: 500;">Action</label>
+                                    <select class="form-select form-select-sm" id="modal_action" name="action" style="border-radius: 8px;">
+                                        <option value="">All Actions</option>
+                                        {% for action_item in actions_list %}
+                                        <option value="{{ action_item }}" {% if action_filter == action_item %}selected{% endif %}>
+                                            {{ action_item|replace('_', ' ')|title }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="modal_target_table" class="form-label small mb-1" style="font-weight: 500;">Target Table</label>
+                                    <select class="form-select form-select-sm" id="modal_target_table" name="target_table" style="border-radius: 8px;">
+                                        <option value="">All Tables</option>
+                                        {% for table in target_tables_list %}
+                                        <option value="{{ table }}" {% if target_table_filter == table %}selected{% endif %}>
+                                            {{ table|replace('_', ' ')|title }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
+                            <small class="text-muted d-block mt-2">Leave blank to see all logs</small>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="clearAllFiltersBtn">
+                            <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                        </button>
+                        <div class="ms-auto">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-crimson" id="applyFiltersBtn">
+                                <i class="bi bi-funnel me-2"></i> Apply
+                            </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -471,4 +501,125 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update active filter badges on page load
+    updateActiveFilterBadges();
+    
+    // Handle modal show event - pre-populate fields if filters are already applied
+    const filterModal = document.getElementById('filterModal');
+    if (filterModal) {
+        filterModal.addEventListener('show.bs.modal', function() {
+            populateModalFields();
+        });
+    }
+    
+    // Handle Apply button click
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            applyFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (in modal)
+    const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
+    if (clearAllFiltersBtn) {
+        clearAllFiltersBtn.addEventListener('click', function() {
+            clearAllFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (on page)
+    const clearAllFiltersPageBtn = document.getElementById('clearAllFiltersPageBtn');
+    if (clearAllFiltersPageBtn) {
+        clearAllFiltersPageBtn.addEventListener('click', function() {
+            window.location.href = "{{ url_for('admin.logs') }}";
+        });
+    }
+});
+
+// Pre-populate modal fields when opened (if filters are already applied)
+function populateModalFields() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    const adminId = urlParams.get('admin_id') || '';
+    const modalAdminId = document.getElementById('modal_admin_id');
+    if (modalAdminId) modalAdminId.value = adminId;
+    
+    const action = urlParams.get('action') || '';
+    const modalAction = document.getElementById('modal_action');
+    if (modalAction) modalAction.value = action;
+    
+    const targetTable = urlParams.get('target_table') || '';
+    const modalTargetTable = document.getElementById('modal_target_table');
+    if (modalTargetTable) modalTargetTable.value = targetTable;
+}
+
+// Apply filters from modal
+function applyFilters() {
+    const form = document.getElementById('filterForm');
+    if (form) {
+        form.submit();
+    }
+}
+
+// Clear all filters
+function clearAllFilters() {
+    window.location.href = "{{ url_for('admin.logs') }}";
+}
+
+// Update active filter badges
+function updateActiveFilterBadges() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeFiltersSection = document.getElementById('activeFiltersSection');
+    const activeFilterBadges = document.getElementById('activeFilterBadges');
+    
+    if (!activeFiltersSection || !activeFilterBadges) return;
+    
+    const badges = [];
+    
+    // Admin filter
+    const adminId = urlParams.get('admin_id');
+    if (adminId) {
+        badges.push(createFilterBadge('Admin', 'Selected', 'admin_id'));
+    }
+    
+    // Action filter
+    const action = urlParams.get('action');
+    if (action) {
+        const actionText = action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        badges.push(createFilterBadge('Action', actionText, 'action'));
+    }
+    
+    // Target Table filter
+    const targetTable = urlParams.get('target_table');
+    if (targetTable) {
+        const tableText = targetTable.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        badges.push(createFilterBadge('Target Table', tableText, 'target_table'));
+    }
+    
+    if (badges.length > 0) {
+        activeFilterBadges.innerHTML = badges.join('');
+        activeFiltersSection.style.display = 'block';
+    } else {
+        activeFiltersSection.style.display = 'none';
+    }
+}
+
+// Create filter badge
+function createFilterBadge(label, value, param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.delete(param);
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    
+    return `<span class="badge bg-crimson text-white d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.15rem;">
+        ${label}: ${value}
+        <a href="${newUrl}" class="text-white text-decoration-none" style="cursor: pointer;" title="Remove filter">
+            <i class="bi bi-x"></i>
+        </a>
+    </span>`;
+}
+</script>
 {% endblock %}

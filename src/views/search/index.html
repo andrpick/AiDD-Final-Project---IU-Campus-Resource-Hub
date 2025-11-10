@@ -11,9 +11,16 @@
                 <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">Resources</h1>
                 <p class="text-muted mb-0">Search and discover available campus resources</p>
             </div>
-            <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
-                <i class="bi bi-funnel me-2"></i> Filter
-            </button>
+            <div class="d-flex flex-column gap-2">
+                <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
+                    <i class="bi bi-funnel me-2"></i> Filter
+                </button>
+                {% if keyword or category or location or capacity_min or capacity_max or available_date or available_start_time or available_end_time or sort_by != 'created_at' or sort_order != 'desc' %}
+                <button type="button" class="btn btn-outline-secondary px-4 py-2" id="clearAllFiltersPageBtn" style="font-weight: 500;">
+                    <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -22,7 +29,7 @@
 <div class="mb-3" id="activeFiltersSection" style="display: none;">
     <div class="d-flex flex-wrap gap-2 align-items-center">
         <span class="text-muted small">Active filters:</span>
-        <div id="activeFilterBadges"></div>
+        <div id="activeFilterBadges" class="d-flex flex-wrap gap-3"></div>
     </div>
 </div>
 
@@ -368,11 +375,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle Clear All Filters button click
+    // Handle Clear All Filters button click (in modal)
     const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
     if (clearAllFiltersBtn) {
         clearAllFiltersBtn.addEventListener('click', function() {
             clearAllFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (on page)
+    const clearAllFiltersPageBtn = document.getElementById('clearAllFiltersPageBtn');
+    if (clearAllFiltersPageBtn) {
+        clearAllFiltersPageBtn.addEventListener('click', function() {
+            // Redirect to search page with no filter parameters
+            window.location.href = "{{ url_for('search.index') }}";
         });
     }
     
@@ -642,14 +658,36 @@ function updateActiveFilterBadges() {
 
 // Create filter badge element
 function createFilterBadge(type, text, value) {
-    const badge = document.createElement('span');
-    badge.className = 'badge bg-secondary me-2';
-    badge.style.cssText = 'font-size: 0.75rem; padding: 0.35em 0.65em; cursor: pointer;';
-    badge.innerHTML = `${text} <i class="bi bi-x-circle ms-1"></i>`;
+    const urlParams = new URLSearchParams(window.location.search);
     
-    badge.addEventListener('click', function() {
-        removeFilter(type, value);
-    });
+    // Remove the appropriate filter parameters
+    if (type === 'keyword') {
+        urlParams.delete('keyword');
+    } else if (type === 'category') {
+        urlParams.delete('category');
+    } else if (type === 'location') {
+        urlParams.delete('location');
+    } else if (type === 'capacity') {
+        urlParams.delete('capacity_min');
+        urlParams.delete('capacity_max');
+    } else if (type === 'availability') {
+        urlParams.delete('available_date');
+        urlParams.delete('available_start_time');
+        urlParams.delete('available_end_time');
+    } else if (type === 'sort') {
+        urlParams.delete('sort_by');
+        urlParams.delete('sort_order');
+    }
+    
+    // Reset to page 1 when removing filter
+    urlParams.delete('page');
+    
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    
+    const badge = document.createElement('span');
+    badge.className = 'badge bg-crimson text-white d-inline-flex align-items-center gap-1';
+    badge.style.cssText = 'font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.15rem;';
+    badge.innerHTML = `${text} <a href="${newUrl}" class="text-white text-decoration-none" style="cursor: pointer;" title="Remove filter"><i class="bi bi-x"></i></a>`;
     
     return badge;
 }

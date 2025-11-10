@@ -7,67 +7,104 @@
     <div class="col-12">
         <!-- Page Header -->
         <div class="mb-4">
-            <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">User Management</h1>
-            <p class="text-muted mb-0">Manage users, roles, and permissions</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1 fw-bold" style="font-size: 2rem; color: #333;">User Management</h1>
+                    <p class="text-muted mb-0">Manage users, roles, and permissions</p>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
+                        <i class="bi bi-funnel me-2"></i> Filter
+                    </button>
+                    {% if search_query or role_filter or suspended_filter is not none or include_deleted %}
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" id="clearAllFiltersPageBtn" style="font-weight: 500;">
+                        <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card bg-white border-0 mb-4">
-            <div class="card-body p-4">
-                <form method="GET" action="{{ url_for('admin.users') }}">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Search</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white" style="border-right: none;">
-                                    <i class="bi bi-search"></i>
-                                </span>
-                                <input type="text" class="form-control form-control-sm" name="search" 
-                                       placeholder="Search by name or email..." 
-                                       value="{{ search_query or '' }}"
-                                       style="border-left: none; border-radius: 0 8px 8px 0;">
+        <!-- Active Filters Section -->
+        <div class="mb-3" id="activeFiltersSection" style="display: none;">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="text-muted small">Active filters:</span>
+                <div id="activeFilterBadges" class="d-flex flex-wrap gap-3"></div>
+            </div>
+        </div>
+
+        <!-- Filter Modal -->
+        <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-crimson text-white">
+                        <h5 class="modal-title" id="filterModalLabel">Filter Users</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="GET" action="{{ url_for('admin.users') }}" id="filterForm">
+                            <!-- First Row: Search and Role -->
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_search" class="form-label small mb-1" style="font-weight: 500;">Search</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white" style="border-right: none;">
+                                            <i class="bi bi-search"></i>
+                                        </span>
+                                        <input type="text" class="form-control form-control-sm" id="modal_search" name="search" 
+                                               placeholder="Search by name or email..." 
+                                               value="{{ search_query or '' }}"
+                                               style="border-left: none; border-radius: 0 8px 8px 0;">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="modal_role" class="form-label small mb-1" style="font-weight: 500;">Role</label>
+                                    <select class="form-select form-select-sm" id="modal_role" name="role" style="border-radius: 8px;">
+                                        <option value="">All Roles</option>
+                                        <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Student</option>
+                                        <option value="staff" {% if role_filter == 'staff' %}selected{% endif %}>Staff</option>
+                                        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admin</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Role</label>
-                            <select class="form-select form-select-sm" name="role" style="border-radius: 8px;">
-                                <option value="">All Roles</option>
-                                <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Student</option>
-                                <option value="staff" {% if role_filter == 'staff' %}selected{% endif %}>Staff</option>
-                                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admin</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Status</label>
-                            <select class="form-select form-select-sm" name="suspended" style="border-radius: 8px;">
-                                <option value="" {% if suspended_filter is none %}selected{% endif %}>All Status</option>
-                                <option value="1" {% if suspended_filter == True %}selected{% endif %}>Suspended</option>
-                                <option value="0" {% if suspended_filter == False %}selected{% endif %}>Active</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1" style="color: #333; font-size: 0.875rem;">Show Deleted</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="include_deleted" value="1" 
-                                       id="includeDeleted" {% if include_deleted %}checked{% endif %}
-                                       onchange="this.form.submit()">
-                                <label class="form-check-label" for="includeDeleted" style="font-size: 0.875rem;">
-                                    Include deleted
-                                </label>
+                            
+                            <!-- Second Row: Status and Show Deleted -->
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label for="modal_suspended" class="form-label small mb-1" style="font-weight: 500;">Status</label>
+                                    <select class="form-select form-select-sm" id="modal_suspended" name="suspended" style="border-radius: 8px;">
+                                        <option value="" {% if suspended_filter is none %}selected{% endif %}>All Status</option>
+                                        <option value="1" {% if suspended_filter == True %}selected{% endif %}>Suspended</option>
+                                        <option value="0" {% if suspended_filter == False %}selected{% endif %}>Active</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1" style="font-weight: 500;">Show Deleted</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="include_deleted" value="1" 
+                                               id="modal_include_deleted" {% if include_deleted %}checked{% endif %}>
+                                        <label class="form-check-label" for="modal_include_deleted" style="font-size: 0.875rem;">
+                                            Include deleted
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-crimson w-100 px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
+                            
+                            <small class="text-muted d-block mt-2">Leave blank to see all users</small>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="clearAllFiltersBtn">
+                            <i class="bi bi-x-circle me-2"></i> Clear All Filters
+                        </button>
+                        <div class="ms-auto">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-crimson" id="applyFiltersBtn">
                                 <i class="bi bi-funnel me-2"></i> Apply
                             </button>
                         </div>
-                        <div class="col-md-2">
-                            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary w-100 px-3 py-2" style="font-weight: 500; font-size: 0.875rem;">
-                                <i class="bi bi-x-circle me-2"></i> Reset
-                            </a>
-                        </div>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -309,5 +346,154 @@
 
     </div>
 </div>
+
+<script>
+// Role display names
+const roleNames = {
+    'student': 'Student',
+    'staff': 'Staff',
+    'admin': 'Admin'
+};
+
+// Status display names
+const statusNames = {
+    '1': 'Suspended',
+    '0': 'Active'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Update active filter badges on page load
+    updateActiveFilterBadges();
+    
+    // Handle modal show event - pre-populate fields if filters are already applied
+    const filterModal = document.getElementById('filterModal');
+    if (filterModal) {
+        filterModal.addEventListener('show.bs.modal', function() {
+            populateModalFields();
+        });
+    }
+    
+    // Handle Apply button click
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            applyFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (in modal)
+    const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
+    if (clearAllFiltersBtn) {
+        clearAllFiltersBtn.addEventListener('click', function() {
+            clearAllFilters();
+        });
+    }
+    
+    // Handle Clear All Filters button click (on page)
+    const clearAllFiltersPageBtn = document.getElementById('clearAllFiltersPageBtn');
+    if (clearAllFiltersPageBtn) {
+        clearAllFiltersPageBtn.addEventListener('click', function() {
+            // Redirect to users page with no filter parameters
+            window.location.href = "{{ url_for('admin.users') }}";
+        });
+    }
+});
+
+// Pre-populate modal fields when opened (if filters are already applied)
+function populateModalFields() {
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Pre-populate search
+    const search = urlParams.get('search') || '';
+    const modalSearch = document.getElementById('modal_search');
+    if (modalSearch) modalSearch.value = search;
+    
+    // Pre-populate role
+    const role = urlParams.get('role') || '';
+    const modalRole = document.getElementById('modal_role');
+    if (modalRole) modalRole.value = role;
+    
+    // Pre-populate status
+    const suspended = urlParams.get('suspended') || '';
+    const modalSuspended = document.getElementById('modal_suspended');
+    if (modalSuspended) modalSuspended.value = suspended;
+    
+    // Pre-populate include deleted
+    const includeDeleted = urlParams.get('include_deleted') || '';
+    const modalIncludeDeleted = document.getElementById('modal_include_deleted');
+    if (modalIncludeDeleted) modalIncludeDeleted.checked = includeDeleted === '1';
+}
+
+// Apply filters from modal
+function applyFilters() {
+    const form = document.getElementById('filterForm');
+    if (form) {
+        form.submit();
+    }
+}
+
+// Clear all filters
+function clearAllFilters() {
+    // Redirect to users page with no filter parameters
+    window.location.href = "{{ url_for('admin.users') }}";
+}
+
+// Update active filter badges
+function updateActiveFilterBadges() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeFiltersSection = document.getElementById('activeFiltersSection');
+    const activeFilterBadges = document.getElementById('activeFilterBadges');
+    
+    if (!activeFiltersSection || !activeFilterBadges) return;
+    
+    const badges = [];
+    
+    // Search filter
+    const search = urlParams.get('search');
+    if (search) {
+        badges.push(createFilterBadge('Search', search, 'search'));
+    }
+    
+    // Role filter
+    const role = urlParams.get('role');
+    if (role && roleNames[role]) {
+        badges.push(createFilterBadge('Role', roleNames[role], 'role'));
+    }
+    
+    // Status filter
+    const suspended = urlParams.get('suspended');
+    if (suspended !== null && suspended !== '' && statusNames[suspended]) {
+        badges.push(createFilterBadge('Status', statusNames[suspended], 'suspended'));
+    }
+    
+    // Include deleted filter
+    const includeDeleted = urlParams.get('include_deleted');
+    if (includeDeleted === '1') {
+        badges.push(createFilterBadge('Show Deleted', 'Yes', 'include_deleted'));
+    }
+    
+    if (badges.length > 0) {
+        activeFilterBadges.innerHTML = badges.join('');
+        activeFiltersSection.style.display = 'block';
+    } else {
+        activeFiltersSection.style.display = 'none';
+    }
+}
+
+// Create filter badge
+function createFilterBadge(label, value, param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.delete(param);
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    
+    return `<span class="badge bg-crimson text-white d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.15rem;">
+        ${label}: ${value}
+        <a href="${newUrl}" class="text-white text-decoration-none" style="cursor: pointer;" title="Remove filter">
+            <i class="bi bi-x"></i>
+        </a>
+    </span>`;
+}
+</script>
 {% endblock %}
 

@@ -215,11 +215,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const end = new Date(endDateTimeInput.value);
             const now = new Date();
             
-            // Check if start is at least 1 hour in future
-            const minStart = new Date(now.getTime() + 60 * 60 * 1000);
+            // Check if start is at least configured advance hours in future
+            const bookingMinAdvanceHours = {{ booking_min_advance_hours }};
+            const minStart = new Date(now.getTime() + bookingMinAdvanceHours * 60 * 60 * 1000);
             if (start < minStart) {
                 e.preventDefault();
-                alert('Booking must be at least 1 hour in the future.');
+                const hourText = bookingMinAdvanceHours === 1 ? 'hour' : 'hours';
+                alert(`Booking must be at least ${bookingMinAdvanceHours} ${hourText} in the future.`);
                 return false;
             }
             

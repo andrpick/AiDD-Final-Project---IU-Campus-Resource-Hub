@@ -88,7 +88,7 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - User login/logout with session management
 - Password hashing using bcrypt (salt rounds: 12)
 - Role-based access control (Student, Staff, Admin)
-- Profile management (name, email, department, profile image)
+- Profile management (name, email, department, profile image with cropping)
 - User suspension system for administrators
 
 **Functionality:**
@@ -97,6 +97,10 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Role determines access to approval and management workflows
 - Suspended users cannot login or create content
 - Profile updates require authentication
+- Profile image upload with cropping functionality (all user types can upload profile pictures)
+- Profile images are cropped to 1:1 aspect ratio (perfect circle) before upload
+- Cropped images are automatically resized to 400x400px for optimal quality
+- Profile images stored in `uploads/profiles/` directory
 
 ### 3.2 Resource Management
 
@@ -128,9 +132,11 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 **Requirements:**
 - Keyword search across resource titles and descriptions (case-insensitive, partial match)
 - Filter by category, location, capacity (min/max), availability date/time
-- Sort options: relevance (when search keyword provided), created_at (newest/oldest), title (alphabetical), capacity, rating
+- Sort options: relevance (when search keyword provided), created_at (newest/oldest), title (alphabetical), capacity, rating, booking_count (most booked), avg_rating (top rated), recently_booked (most recent booking)
 - Pagination support (default 20 per page, max 100)
 - Availability checking against existing bookings
+- Past date/time validation (users cannot filter for past dates/times)
+- Clear all filters functionality (one-click reset of all active filters)
 
 **Functionality:**
 - Search uses LIKE queries with parameterized statements
@@ -138,6 +144,9 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Sort applies after filtering
 - Availability filter checks against approved and pending bookings
 - Results include resource metadata and availability status
+- Availability date/time filter validates that selected date/time is not in the past
+- Date picker prevents selection of past dates (min attribute set to today)
+- Clear all filters button appears when filters are active and resets all filter parameters
 
 ### 3.4 Booking & Scheduling
 
@@ -171,12 +180,20 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 ```
 approved → cancelled (by requester/admin)
 approved → completed (after booking end time passes)
+approved → in_progress (computed status when current time is between start and end times)
 ```
 
 **Status Values:**
 - `approved` - Booking has been created and approved automatically (default status)
+- `in_progress` - Computed status when current time is between start_datetime and end_datetime (displayed as "In Progress")
 - `cancelled` - Booking has been cancelled by requester or admin
 - `completed` - Booking has passed its end time (used for review eligibility)
+
+**Display Status:**
+- Bookings display "In Progress" when current time is between start and end times
+- "In Progress" is a computed status (not stored in database)
+- Database still stores 'approved', 'cancelled', or 'completed'
+- Display status is computed dynamically based on current time
 
 ### 3.5 Messaging System
 
@@ -194,25 +211,28 @@ approved → completed (after booking end time passes)
 - Unread count per thread
 - Users can only view threads they're part of
 - Message content sanitized for XSS
+- Message bubbles adapt to content length (short messages display in compact bubbles, long messages respect max-width constraint)
+- Message bubbles use inline-block display with max-width: 70% for optimal sizing
 
 ### 3.6 Reviews & Ratings
 
 **Requirements:**
 - 5-star rating system (1-5 integer)
 - Text review comments (optional, max 2000 characters)
-- One review per user per resource (enforced at database level)
+- Multiple reviews per user per resource (one review per completed booking)
 - Reviews can be linked to completed bookings (optional booking_id)
 - Aggregate rating calculation and display
 - Rating distribution statistics
 
 **Functionality:**
 - Users can submit reviews after booking completion (booking must have status 'completed' or past end time)
-- One review per user per resource constraint
+- Users can leave multiple reviews for a resource (one review per completed booking)
+- Example: If a user has 3 completed bookings for a resource, they can leave up to 3 reviews
+- Each review can optionally link to a specific booking_id (prevents duplicate reviews for same booking)
 - Reviews can be updated within 30 days
 - Users can delete their own reviews
 - Admins can delete any review
 - Aggregate stats: average_rating, total_reviews, rating_distribution (count per star level)
-- Reviews can optionally link to a completed booking_id
 
 ### 3.7 Admin Dashboard
 
@@ -238,6 +258,9 @@ approved → completed (after booking end time passes)
 - Change user roles (with constraints)
 - Delete users (with cascade: archive resources, cancel bookings)
 - View admin action logs with filtering
+- Filter modals across all admin pages (User Management, Resource Management, Booking Management, Admin Logs, Resource Statistics)
+- Filter modals provide consistent UI/UX with active filter badges and clear all filters functionality
+- Filter modals allow users to set multiple filter criteria before applying
 
 **Role Change Constraints:**
 - student → staff (allowed)
@@ -1569,12 +1592,14 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 ### 11.1 AI Resource Concierge
 
 **Purpose:**
-A context-aware assistant that answers natural-language questions about available campus resources using project data and context files.
+A context-aware assistant named "Crimson" that answers natural-language questions about available campus resources using project data and context files.
 
 **Interface:**
 - Natural language query input
 - Real-time or on-demand processing
 - Response in natural language with resource recommendations
+- Chatbot widget with persistent chat history across page navigations
+- Markdown rendering in AI responses (bold, italic formatting)
 
 **Context Grounding:**
 - Loads context files from `/docs/context/` directories:
@@ -1603,6 +1628,14 @@ A context-aware assistant that answers natural-language questions about availabl
 - Resource recommendations with details
 - Links to full resource pages
 - Summary statistics when requested
+- Markdown formatting support (bold with `**text**`, italic with `*text*`)
+- Markdown converted to HTML for display (bold → `<strong>`, italic → `<em>`)
+
+**Chat History:**
+- Chat history persists across page navigations using localStorage
+- History is loaded and displayed when chat widget is opened
+- History is saved after each message exchange
+- Conversation history includes both user messages and AI responses
 
 **Validation Requirements:**
 - All responses must be based on actual database content

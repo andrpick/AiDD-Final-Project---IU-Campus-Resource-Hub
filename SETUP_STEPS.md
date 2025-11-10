@@ -115,12 +115,14 @@ The AI Concierge uses Google Gemini for natural language resource queries:
 The application includes comprehensive features for resource management, booking, messaging, reviews, and administration. For a high-level overview, see [README.md](README.md#features). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
 
 **Core Features:**
-- Resource Management (CRUD, multiple images, operating hours, archiving)
-- Booking System (calendar view, conflict detection, automatic approval, calendar export)
-- Messaging System (thread-based, resource-specific threading, read/unread tracking)
-- Reviews & Ratings (multiple reviews per user per resource)
-- AI Concierge (Google Gemini integration, natural language queries)
-- Admin Dashboard (user management with soft delete, resource management, booking management, statistics)
+- Resource Management (CRUD, multiple images, resource-specific operating hours with 24-hour option, archiving)
+- Booking System (calendar view 12 AM - 11:59 PM, conflict detection, automatic approval, booking status tracking including "In Progress", calendar export)
+- Messaging System (thread-based, resource-specific threading, read/unread tracking, adaptive message bubble sizing)
+- Reviews & Ratings (multiple reviews per user per resource - one review per completed booking)
+- AI Concierge "Crimson" (Google Gemini integration, natural language queries, markdown rendering, persistent chat history)
+- Admin Dashboard (user management with soft delete, resource management with filter modals, booking management with filter modals, statistics with filter modals)
+- Profile Management (profile image upload with cropping for all user types)
+- Advanced Search & Filtering (availability date/time filtering with past date/time validation, clear all filters functionality)
 
 ### 5. Testing the Application
 
@@ -146,11 +148,16 @@ The application includes comprehensive features for resource management, booking
    - Edit users (change name, email, password, role, department, profile image, suspension status)
    - Suspend/unsuspend users
    - Change user roles
-   - Test Resource Management filtering (status, category, featured, location, owner, keyword search)
+   - Test Resource Management filtering with filter modals (status, category, featured, location, owner, keyword search, operating hours)
+   - Test User Management filtering with filter modals (search, role, status, show deleted)
+   - Test Booking Management filtering with filter modals (status, resource, requester)
+   - Test Admin Logs filtering with filter modals (admin, action, target table)
+   - Test Resource Statistics filtering with filter modals (category, location, featured, sort by)
    - Archive/unarchive resources
    - Feature/unfeature resources
-   - View booking management with section and status filtering
+   - View booking management with section and status filtering (including "In Progress" status)
    - Explore Resource Statistics with filtering and sorting
+   - Test "Clear All Filters" functionality on all admin pages
 
 ### 6. Testing Checklist
 
@@ -167,7 +174,14 @@ The application includes comprehensive features for resource management, booking
 - [x] Automatic booking approval for available slots (simplified workflow - no pending/rejected statuses)
 - [x] Booking calendar export (Google Calendar, Outlook, iCal)
 - [x] Admin booking management and override
-- [x] Review submission (multiple reviews per user per resource)
+- [x] Review submission (multiple reviews per user per resource - one review per completed booking)
+- [x] Profile image upload with cropping (all user types)
+- [x] Booking status "In Progress" (computed status for active bookings)
+- [x] Filter modals across admin pages (User Management, Resource Management, Booking Management, Admin Logs, Resource Statistics)
+- [x] Clear all filters functionality
+- [x] Past date/time validation for availability filtering
+- [x] AI Concierge "Crimson" with markdown rendering and persistent chat history
+- [x] Adaptive message bubble sizing
 - [x] Thread-based messaging with resource-specific threading
 - [x] Read/unread thread status tracking
 - [x] Mark threads as read/unread
@@ -371,6 +385,14 @@ python tests/run_tests.py
 - ✅ **Calendar Service**: `src/services/calendar_service.py` for booking calendar logic
 - ✅ **Environment Variables**: Complete `.env.example` template with all options
 - ✅ **Decorators**: `src/utils/decorators.py` for common decorators (admin_required, etc.)
+- ✅ **Profile Image Upload with Cropping**: All user types can upload profile pictures with 1:1 aspect ratio cropping
+- ✅ **Filter Modals**: Consistent filter modal pattern across all admin pages (User Management, Resource Management, Booking Management, Admin Logs, Resource Statistics)
+- ✅ **Booking Status "In Progress"**: Computed status for currently active bookings
+- ✅ **Multiple Reviews per Completed Booking**: Users can leave one review per completed booking for a resource
+- ✅ **AI Assistant "Crimson"**: Named AI assistant with markdown rendering and persistent chat history
+- ✅ **Past Date/Time Validation**: Availability filtering prevents selection of past dates/times
+- ✅ **Clear All Filters**: One-click reset of all active filters across all pages
+- ✅ **Adaptive Message Bubble Sizing**: Message bubbles adapt to content length for optimal display
 
 ### Documentation Updates
 - ✅ **Environment Variables**: See `.env.example` and README.md Environment Variables section
