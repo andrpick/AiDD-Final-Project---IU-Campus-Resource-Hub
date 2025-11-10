@@ -3681,3 +3681,21 @@ Add the original interaction number from @dev_notes.md to the corresponding inte
 - Cross-referencing now allows users to easily find detailed interaction logs in dev_notes.md
 - No linting errors introduced
 - Golden prompts now include interaction numbers for easy cross-referencing
+
+### Interaction #145
+**User Prompt:**
+```
+Note in @README.md that there is a new wireframes folder containing images of wireframes.
+```
+
+**Agent Actions:**
+- Added note about wireframes folder to Project Structure section in README.md
+- Documented `docs/wireframes/` folder containing wireframe images for key pages:
+  - Homepage.png
+  - Resource Listing Page.png
+  - Resource Detail Page.png
+  - User Dashboard.png
+  - Messaging Interface.png
+- Note added to Project Structure section after `uploads/` folder entry
+- No linting errors introduced
+- README.md now documents the wireframes folder location and contents

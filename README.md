@@ -176,6 +176,7 @@ For detailed deployment instructions and scalability recommendations, see [SETUP
 - `src/static/` - Static files (CSS, JS, images)
 - `tests/` - Test suite (139 tests, 100% passing)
 - `uploads/` - User-uploaded files
+- `docs/wireframes/` - Wireframe images for key pages (Homepage, Resource Listing, Resource Detail, User Dashboard, Messaging Interface)
 
 ## Features
 
