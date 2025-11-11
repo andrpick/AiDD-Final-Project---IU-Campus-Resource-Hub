@@ -5,6 +5,7 @@ Demonstrates complete booking process through the UI.
 import pytest
 from app import app
 from src.data_access.database import get_db_connection
+from src.utils.config import Config
 import os
 import tempfile
 from datetime import datetime, timedelta
@@ -129,19 +130,24 @@ def test_booking_flow_search_to_book(client):
     assert b'Book' in response.data or b'booking' in response.data.lower()
     
     # Step 3: Create booking
-    # Calculate future datetime (at least 1 hour from now) in EST/EDT
+    # Calculate future datetime (at least min_advance_hours from now) in configured timezone
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tz)
     
-    # Create booking during operating hours (10 AM - 11 AM tomorrow EST/EDT)
-    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    future_start_est = tomorrow
-    future_end_est = future_start_est + timedelta(hours=1)
+    # Create booking during operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
     
-    # Format for datetime-local input (controller expects EST/EDT)
-    start_str = future_start_est.strftime('%Y-%m-%dT%H:%M')
-    end_str = future_end_est.strftime('%Y-%m-%dT%H:%M')
+    tomorrow = (now + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start_local = tomorrow
+    future_end_local = future_start_local + timedelta(hours=1)
+    
+    # Format for datetime-local input (controller expects configured timezone)
+    start_str = future_start_local.strftime('%Y-%m-%dT%H:%M')
+    end_str = future_end_local.strftime('%Y-%m-%dT%H:%M')
     
     response = client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
@@ -173,18 +179,23 @@ def test_booking_conflict_detection(client):
     """Test that booking conflicts are detected and prevented."""
     client_obj, resource_id, student_id = client
     
-    # Create first booking in EST/EDT (controller expects EST/EDT)
+    # Create first booking in configured timezone
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tz)
     
-    # Create booking during operating hours (10 AM - 11 AM tomorrow EST/EDT)
-    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    future_start_est = tomorrow
-    future_end_est = future_start_est + timedelta(hours=1)
+    # Create booking during operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
     
-    start_str = future_start_est.strftime('%Y-%m-%dT%H:%M')
-    end_str = future_end_est.strftime('%Y-%m-%dT%H:%M')
+    tomorrow = (now + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start_local = tomorrow
+    future_end_local = future_start_local + timedelta(hours=1)
+    
+    start_str = future_start_local.strftime('%Y-%m-%dT%H:%M')
+    end_str = future_end_local.strftime('%Y-%m-%dT%H:%M')
     
     # First booking
     response1 = client_obj.post('/bookings/create', data={
@@ -195,12 +206,16 @@ def test_booking_conflict_detection(client):
     }, follow_redirects=True)
     assert response1.status_code == 200
     
-    # Try to create overlapping booking (same day, 10:30 AM - 11:30 AM EST/EDT)
-    overlap_start_est = future_start_est + timedelta(minutes=30)
-    overlap_end_est = overlap_start_est + timedelta(hours=1)
+    # Try to create overlapping booking (same day, overlaps with first booking)
+    overlap_start_local = future_start_local + timedelta(minutes=30)
+    overlap_end_local = overlap_start_local + timedelta(hours=1)
     
-    overlap_start_str = overlap_start_est.strftime('%Y-%m-%dT%H:%M')
-    overlap_end_str = overlap_end_est.strftime('%Y-%m-%dT%H:%M')
+    # Ensure end is within operating hours
+    if overlap_end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        overlap_end_local = overlap_end_local.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0)
+    
+    overlap_start_str = overlap_start_local.strftime('%Y-%m-%dT%H:%M')
+    overlap_end_str = overlap_end_local.strftime('%Y-%m-%dT%H:%M')
     
     response2 = client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
@@ -229,20 +244,25 @@ def test_view_my_bookings(client):
     """Test viewing bookings after creation."""
     client_obj, resource_id, student_id = client
     
-    # Create a booking first (in EST/EDT)
+    # Create a booking first (in configured timezone)
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tz)
     
-    # Create booking during operating hours (10 AM - 11 AM tomorrow EST/EDT)
-    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    future_start_est = tomorrow
-    future_end_est = future_start_est + timedelta(hours=1)
+    # Create booking during operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    tomorrow = (now + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start_local = tomorrow
+    future_end_local = future_start_local + timedelta(hours=1)
     
     client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
-        'start_datetime': future_start_est.strftime('%Y-%m-%dT%H:%M'),
-        'end_datetime': future_end_est.strftime('%Y-%m-%dT%H:%M'),
+        'start_datetime': future_start_local.strftime('%Y-%m-%dT%H:%M'),
+        'end_datetime': future_end_local.strftime('%Y-%m-%dT%H:%M'),
         'purpose': 'Test booking'
     }, follow_redirects=True)
     
@@ -263,54 +283,66 @@ def test_view_my_bookings(client):
 
 
 def test_booking_validation_min_duration(client):
-    """Test that bookings shorter than 29 minutes are rejected."""
+    """Test that bookings shorter than minimum duration are rejected."""
     client_obj, resource_id, student_id = client
     
-    # Use EST/EDT time (controller expects EST/EDT)
+    # Use configured timezone
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tz)
     
-    # Create booking during operating hours (10 AM - 11 AM tomorrow EST/EDT)
-    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    future_start_est = tomorrow
-    future_end_est = future_start_est + timedelta(minutes=15)  # Only 15 minutes
+    # Create booking during operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    tomorrow = (now + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start_local = tomorrow
+    future_end_local = future_start_local + timedelta(minutes=Config.BOOKING_MIN_DURATION_MINUTES - 10)  # Less than minimum
     
     response = client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
-        'start_datetime': future_start_est.strftime('%Y-%m-%dT%H:%M'),
-        'end_datetime': future_end_est.strftime('%Y-%m-%dT%H:%M'),
+        'start_datetime': future_start_local.strftime('%Y-%m-%dT%H:%M'),
+        'end_datetime': future_end_local.strftime('%Y-%m-%dT%H:%M'),
         'purpose': 'Too short booking'
     }, follow_redirects=True)
     
     # Should fail validation
     assert response.status_code == 200
-    assert b'29' in response.data or b'minimum' in response.data.lower() or b'error' in response.data.lower()
+    assert str(Config.BOOKING_MIN_DURATION_MINUTES).encode() in response.data or b'minimum' in response.data.lower() or b'error' in response.data.lower()
 
 
 def test_booking_validation_advance_booking(client):
-    """Test that bookings less than 1 hour in advance are rejected."""
+    """Test that bookings less than minimum advance time are rejected."""
     client_obj, resource_id, student_id = client
     
-    # Booking too soon (30 minutes from now) in EST/EDT
+    # Booking too soon (less than min_advance_hours from now) in configured timezone
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tz)
     
-    too_soon_est = now_est + timedelta(minutes=30)
-    # Ensure it's during operating hours (if current time + 30 mins is after 10 PM, use next day 10 AM)
-    if too_soon_est.hour >= 22:
-        too_soon_est = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    too_soon_end_est = too_soon_est + timedelta(hours=1)
+    min_advance_minutes = Config.BOOKING_MIN_ADVANCE_HOURS * 60
+    too_soon_local = now + timedelta(minutes=min_advance_minutes // 2)  # Half of required advance
+    
+    # Ensure it's during operating hours
+    if too_soon_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+        too_soon_local = too_soon_local.replace(hour=Config.BOOKING_OPERATING_HOURS_START, minute=0, second=0, microsecond=0)
+    elif too_soon_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+        too_soon_local = (now + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0)
+    
+    too_soon_end_local = too_soon_local + timedelta(hours=1)
+    if too_soon_end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        too_soon_end_local = too_soon_local.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0)
     
     response = client_obj.post('/bookings/create', data={
         'resource_id': resource_id,
-        'start_datetime': too_soon_est.strftime('%Y-%m-%dT%H:%M'),
-        'end_datetime': too_soon_end_est.strftime('%Y-%m-%dT%H:%M'),
+        'start_datetime': too_soon_local.strftime('%Y-%m-%dT%H:%M'),
+        'end_datetime': too_soon_end_local.strftime('%Y-%m-%dT%H:%M'),
         'purpose': 'Too soon booking'
     }, follow_redirects=True)
     
     # Should fail validation - check flash message or error
     assert response.status_code == 200
-    assert b'1 hour' in response.data or b'hour' in response.data.lower() or b'error' in response.data.lower() or b'Booking' in response.data
+    assert str(Config.BOOKING_MIN_ADVANCE_HOURS).encode() in response.data or b'hour' in response.data.lower() or b'error' in response.data.lower() or b'Booking' in response.data
 

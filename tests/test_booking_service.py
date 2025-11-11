@@ -12,6 +12,7 @@ from src.services.booking_service import (
     update_booking_status
 )
 from src.data_access.database import get_db_connection
+from src.utils.config import Config
 import os
 
 
@@ -81,8 +82,9 @@ def test_db():
                       ('Test User', 'test@example.com', 'hash', 'student'))
         cursor.execute("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
                       ('Resource Owner', 'owner@example.com', 'hash', 'staff'))
+        # Use Config values for operating hours to ensure tests work with any configuration
         cursor.execute("INSERT INTO resources (owner_id, title, category, location, status, operating_hours_start, operating_hours_end, is_24_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                      (2, 'Test Resource', 'study_room', 'Test Location', 'published', 8, 22, 0))
+                      (2, 'Test Resource', 'study_room', 'Test Location', 'published', Config.BOOKING_OPERATING_HOURS_START, Config.BOOKING_OPERATING_HOURS_END, 0))
         conn.commit()
     
     yield test_db_path
@@ -183,46 +185,75 @@ def test_check_conflicts_only_active_bookings(test_db):
 
 def test_validate_booking_datetime_past_time(test_db):
     """Test that bookings in the past are rejected."""
-    past_time = datetime.now(tzutc()) - timedelta(hours=1)
-    future_time = datetime.now(tzutc()) + timedelta(hours=2)
+    now = datetime.now(tzutc())
+    past_time = now - timedelta(hours=1)
+    future_time = now + timedelta(hours=Config.BOOKING_MIN_ADVANCE_HOURS + 1)
     
     valid, start_dt, end_dt, error = validate_booking_datetime(past_time, future_time)
     assert valid == False
-    assert "future" in error.lower() or "hour" in error.lower()
+    assert "future" in error.lower() or str(Config.BOOKING_MIN_ADVANCE_HOURS) in error or "hour" in error.lower()
 
 
 def test_validate_booking_datetime_too_soon(test_db):
-    """Test that bookings less than 1 hour in the future are rejected."""
-    soon_time = datetime.now(tzutc()) + timedelta(minutes=30)
-    later_time = datetime.now(tzutc()) + timedelta(hours=1)
+    """Test that bookings less than the minimum advance time are rejected."""
+    # The "too soon" validation happens BEFORE operating hours validation,
+    # so we can simply create a time that's less than min_advance hours away
+    # without worrying about operating hours
+    now = datetime.now(tzutc())
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    
+    # Create a time that's less than min_advance hours in the future
+    soon_time = now + timedelta(minutes=(min_advance_hours * 60) // 2)  # Half of required advance
+    later_time = soon_time + timedelta(hours=1)
+    
+    # Verify the time is actually less than min_advance hours away
+    time_diff = (soon_time - now).total_seconds() / 3600
+    assert time_diff < min_advance_hours, f"Test setup error: time is {time_diff} hours away, should be less than {min_advance_hours}"
     
     valid, start_dt, end_dt, error = validate_booking_datetime(soon_time, later_time)
     assert valid == False
-    assert "1 hour" in error or "hour" in error.lower()
+    assert str(Config.BOOKING_MIN_ADVANCE_HOURS) in error or "hour" in error.lower()
 
 
 def test_validate_booking_datetime_valid(test_db):
     """Test that valid bookings pass validation."""
     from dateutil.tz import gettz
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
     
-    # Create a booking during operating hours (10 AM - 11 AM tomorrow)
-    booking_date = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
-    future_start = booking_date.astimezone(tzutc())
+    # Create a booking during operating hours, at least min_advance_hours in the future
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    
+    # If booking hour would be outside operating hours, use a safe hour within operating hours
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    # Calculate future date (tomorrow or later if needed)
+    future_date = now_local + timedelta(days=1)
+    if future_date.hour >= Config.BOOKING_OPERATING_HOURS_END or future_date.hour < Config.BOOKING_OPERATING_HOURS_START:
+        future_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    else:
+        future_date = future_date.replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    
+    future_start = future_date.astimezone(tzutc())
     future_end = future_start + timedelta(hours=1)
     
-    # Ensure it's at least 1 hour in the future
-    now = datetime.now(tzutc())
-    if future_start <= now + timedelta(hours=1):
-        future_start = now + timedelta(hours=2)
+    # Ensure it's at least min_advance_hours in the future
+    if future_start <= now + timedelta(hours=min_advance_hours):
+        future_start = now + timedelta(hours=min_advance_hours + 1)
+        future_start_local = future_start.astimezone(tz)
         # Adjust to operating hours
-        future_start_est = future_start.astimezone(est_tz)
-        if future_start_est.hour < 8:
-            future_start = future_start.replace(hour=10, minute=0, second=0, microsecond=0).astimezone(tzutc())
-        elif future_start_est.hour >= 22:
-            future_start = (future_start + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        if future_start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            future_start = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif future_start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            future_start = (future_start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
         future_end = future_start + timedelta(hours=1)
+        # Ensure end is within operating hours
+        future_end_local = future_end.astimezone(tz)
+        if future_end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+            future_end = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     valid, start_dt, end_dt, error = validate_booking_datetime(future_start, future_end)
     assert valid == True
@@ -230,48 +261,95 @@ def test_validate_booking_datetime_valid(test_db):
 
 
 def test_validate_booking_datetime_duration_min(test_db):
-    """Test minimum booking duration (29 minutes)."""
-    future_start = datetime.now(tzutc()) + timedelta(hours=2)
-    future_end = datetime.now(tzutc()) + timedelta(hours=2, minutes=20)  # Only 20 minutes
+    """Test minimum booking duration."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
+    
+    # Create a booking time that's far enough in the future and within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    future_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start = future_date.astimezone(tzutc())
+    # Ensure it's at least min_advance_hours in the future
+    if future_start <= now + timedelta(hours=min_advance_hours):
+        future_start = now + timedelta(hours=min_advance_hours + 1)
+        future_start_local = future_start.astimezone(tz)
+        if future_start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            future_start = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif future_start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            future_start = (future_start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    
+    # Create end time that's less than minimum duration
+    future_end = future_start + timedelta(minutes=Config.BOOKING_MIN_DURATION_MINUTES - 10)  # Less than minimum
     
     valid, start_dt, end_dt, error = validate_booking_datetime(future_start, future_end)
     assert valid == False
-    assert "29" in error or "minimum" in error.lower()
+    assert str(Config.BOOKING_MIN_DURATION_MINUTES) in error or "minimum" in error.lower()
 
 
 def test_validate_booking_datetime_duration_max(test_db):
-    """Test maximum booking duration (8 hours)."""
-    future_start = datetime.now(tzutc()) + timedelta(hours=2)
-    future_end = datetime.now(tzutc()) + timedelta(hours=10)
+    """Test maximum booking duration."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
+    
+    # Create a booking time that's far enough in the future and within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START
+    
+    future_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    future_start = future_date.astimezone(tzutc())
+    # Ensure it's at least min_advance_hours in the future
+    if future_start <= now + timedelta(hours=min_advance_hours):
+        future_start = now + timedelta(hours=min_advance_hours + 1)
+        future_start_local = future_start.astimezone(tz)
+        if future_start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            future_start = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_START, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif future_start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            future_start = (future_start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    
+    # Create end time that exceeds maximum duration
+    future_end = future_start + timedelta(hours=Config.BOOKING_MAX_DURATION_HOURS + 1)
     
     valid, start_dt, end_dt, error = validate_booking_datetime(future_start, future_end)
     assert valid == False
-    assert "8" in error or "maximum" in error.lower()
+    assert str(Config.BOOKING_MAX_DURATION_HOURS) in error or "maximum" in error.lower()
 
 
 def test_validate_booking_datetime_operating_hours(test_db):
-    """Test operating hours constraint (8 AM - 10 PM EST)."""
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    """Test operating hours constraint."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
     
-    # Create booking outside operating hours (before 8 AM or after 10 PM)
-    # Book for 7 AM tomorrow (before operating hours)
-    booking_date = (now_est + timedelta(days=1)).replace(hour=7, minute=0, second=0, microsecond=0)
+    # Create booking outside operating hours (before start time)
+    # Book for 1 hour before operating hours start tomorrow
+    booking_hour = (Config.BOOKING_OPERATING_HOURS_START - 1) % 24
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
     
     future_start = booking_date.astimezone(tzutc())
     future_end = future_start + timedelta(hours=1)
     
-    # Ensure it's at least 1 hour in the future
-    now = datetime.now(tzutc())
-    if future_start <= now + timedelta(hours=1):
-        future_start = now + timedelta(days=1, hours=1)
-        booking_date = future_start.astimezone(est_tz).replace(hour=7, minute=0, second=0, microsecond=0)
+    # Ensure it's at least min_advance_hours in the future
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    if future_start <= now + timedelta(hours=min_advance_hours):
+        future_start = now + timedelta(days=1, hours=min_advance_hours + 1)
+        booking_date = future_start.astimezone(tz).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
         future_start = booking_date.astimezone(tzutc())
         future_end = future_start + timedelta(hours=1)
     
     valid, start_dt, end_dt, error = validate_booking_datetime(future_start, future_end)
     assert valid == False
-    assert "8:00 AM" in error or "8" in error
+    assert str(Config.BOOKING_OPERATING_HOURS_START) in error or f"{Config.BOOKING_OPERATING_HOURS_START:02d}" in error
 
 
 def test_create_booking_auto_approval(test_db):
@@ -279,24 +357,33 @@ def test_create_booking_auto_approval(test_db):
     from src.services.booking_service import create_booking
     from dateutil.tz import gettz
     
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
     
-    # Create a booking during operating hours (10 AM - 11 AM tomorrow)
-    booking_date = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    # Create a booking during operating hours, at least min_advance_hours in the future
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
     future_start = booking_date.astimezone(tzutc())
     future_end = future_start + timedelta(hours=1)
     
-    # Ensure it's at least 1 hour in the future
-    now = datetime.now(tzutc())
-    if future_start <= now + timedelta(hours=1):
-        future_start = now + timedelta(hours=2)
-        future_start_est = future_start.astimezone(est_tz)
-        if future_start_est.hour < 8:
-            future_start = future_start.replace(hour=10, minute=0, second=0, microsecond=0).astimezone(tzutc())
-        elif future_start_est.hour >= 22:
-            future_start = (future_start + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    # Ensure it's at least min_advance_hours in the future
+    if future_start <= now + timedelta(hours=min_advance_hours):
+        future_start = now + timedelta(hours=min_advance_hours + 1)
+        future_start_local = future_start.astimezone(tz)
+        if future_start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            future_start = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif future_start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            future_start = (future_start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
         future_end = future_start + timedelta(hours=1)
+        # Ensure end is within operating hours
+        future_end_local = future_end.astimezone(tz)
+        if future_end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+            future_end = future_start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     result = create_booking(
         resource_id=1,
@@ -319,19 +406,38 @@ def test_create_booking_with_conflict(test_db):
     from src.services.booking_service import create_booking
     from dateutil.tz import gettz
 
-    # Use EST/EDT times to ensure bookings are during operating hours (8 AM - 10 PM)
-    est_tz = gettz('America/New_York')
-    now_est = datetime.now(est_tz)
+    # Use configured timezone to ensure bookings are during operating hours
+    tz = gettz(Config.TIMEZONE)
+    now = datetime.now(tzutc())
+    now_local = datetime.now(tz)
     
-    # Create bookings tomorrow at 10 AM - 12 PM and 11 AM - 1 PM EST/EDT (overlapping)
-    tomorrow = (now_est + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END - 1:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
     
-    # First booking: 10 AM - 12 PM EST/EDT
-    start1_est = tomorrow
-    end1_est = tomorrow + timedelta(hours=2)
+    # Create bookings tomorrow (overlapping)
+    tomorrow = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    
+    # First booking: booking_hour - (booking_hour + 2)
+    start1_local = tomorrow
+    end1_local = tomorrow + timedelta(hours=2)
     # Convert to UTC for the function
-    start1 = start1_est.astimezone(tzutc())
-    end1 = end1_est.astimezone(tzutc())
+    start1 = start1_local.astimezone(tzutc())
+    end1 = end1_local.astimezone(tzutc())
+    
+    # Ensure first booking is at least min_advance_hours in the future
+    if start1 <= now + timedelta(hours=min_advance_hours):
+        start1 = now + timedelta(hours=min_advance_hours + 1)
+        start1_local = start1.astimezone(tz)
+        if start1_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            start1 = start1.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif start1_local.hour >= Config.BOOKING_OPERATING_HOURS_END - 1:
+            start1 = (start1 + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        end1 = start1 + timedelta(hours=2)
+        end1_local = end1.astimezone(tz)
+        if end1_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+            end1 = start1.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
 
     # Create first booking
     result1 = create_booking(
@@ -342,12 +448,17 @@ def test_create_booking_with_conflict(test_db):
     )
     assert result1['success'] == True
     
-    # Try to create overlapping booking: 11 AM - 1 PM EST/EDT (overlaps with 10 AM - 12 PM)
-    start2_est = tomorrow + timedelta(hours=1)  # 11 AM
-    end2_est = tomorrow + timedelta(hours=3)     # 1 PM
+    # Try to create overlapping booking (overlaps with first booking)
+    start2_local = start1.astimezone(tz) + timedelta(hours=1)
+    end2_local = start2_local + timedelta(hours=2)
     # Convert to UTC for the function
-    start2 = start2_est.astimezone(tzutc())
-    end2 = end2_est.astimezone(tzutc())
+    start2 = start2_local.astimezone(tzutc())
+    end2 = end2_local.astimezone(tzutc())
+    
+    # Ensure end is within operating hours
+    if end2_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        end2_local = end2_local.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0)
+        end2 = end2_local.astimezone(tzutc())
     
     result2 = create_booking(
         resource_id=1,
@@ -362,9 +473,30 @@ def test_create_booking_with_conflict(test_db):
 
 def test_booking_status_transition_approve(test_db):
     """Test that bookings can be updated (bookings are auto-approved on creation)."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
     now = datetime.now(tzutc())
-    start = now + timedelta(hours=2)
-    end = now + timedelta(hours=3)
+    now_local = datetime.now(tz)
+    
+    # Create booking time within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    start = booking_date.astimezone(tzutc())
+    if start <= now + timedelta(hours=min_advance_hours):
+        start = now + timedelta(hours=min_advance_hours + 1)
+        start_local = start.astimezone(tz)
+        if start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            start = start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            start = (start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    end = start + timedelta(hours=1)
+    end_local = end.astimezone(tz)
+    if end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        end = start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     # Create approved booking (default state - bookings are auto-approved)
     with get_db_connection() as conn:
@@ -392,9 +524,30 @@ def test_booking_status_transition_approve(test_db):
 
 def test_booking_status_transition_invalid_rejected(test_db):
     """Test that rejected status is no longer valid (simplified workflow)."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
     now = datetime.now(tzutc())
-    start = now + timedelta(hours=2)
-    end = now + timedelta(hours=3)
+    now_local = datetime.now(tz)
+    
+    # Create booking time within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    start = booking_date.astimezone(tzutc())
+    if start <= now + timedelta(hours=min_advance_hours):
+        start = now + timedelta(hours=min_advance_hours + 1)
+        start_local = start.astimezone(tz)
+        if start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            start = start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            start = (start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    end = start + timedelta(hours=1)
+    end_local = end.astimezone(tz)
+    if end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        end = start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     # Create approved booking (default state - bookings are auto-approved)
     with get_db_connection() as conn:
@@ -424,9 +577,30 @@ def test_booking_status_transition_invalid_rejected(test_db):
 
 def test_booking_status_transition_cancel(test_db):
     """Test status transition to cancelled."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
     now = datetime.now(tzutc())
-    start = now + timedelta(hours=2)
-    end = now + timedelta(hours=3)
+    now_local = datetime.now(tz)
+    
+    # Create booking time within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    start = booking_date.astimezone(tzutc())
+    if start <= now + timedelta(hours=min_advance_hours):
+        start = now + timedelta(hours=min_advance_hours + 1)
+        start_local = start.astimezone(tz)
+        if start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            start = start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            start = (start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    end = start + timedelta(hours=1)
+    end_local = end.astimezone(tz)
+    if end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        end = start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     # Create approved booking
     with get_db_connection() as conn:
@@ -454,9 +628,30 @@ def test_booking_status_transition_cancel(test_db):
 
 def test_booking_status_transition_invalid(test_db):
     """Test that invalid status transitions are rejected."""
+    from dateutil.tz import gettz
+    tz = gettz(Config.TIMEZONE)
     now = datetime.now(tzutc())
-    start = now + timedelta(hours=2)
-    end = now + timedelta(hours=3)
+    now_local = datetime.now(tz)
+    
+    # Create booking time within operating hours
+    min_advance_hours = Config.BOOKING_MIN_ADVANCE_HOURS
+    booking_hour = max(Config.BOOKING_OPERATING_HOURS_START + 1, (now_local.hour + min_advance_hours + 1) % 24)
+    if booking_hour >= Config.BOOKING_OPERATING_HOURS_END:
+        booking_hour = Config.BOOKING_OPERATING_HOURS_START + 1
+    
+    booking_date = (now_local + timedelta(days=1)).replace(hour=booking_hour, minute=0, second=0, microsecond=0)
+    start = booking_date.astimezone(tzutc())
+    if start <= now + timedelta(hours=min_advance_hours):
+        start = now + timedelta(hours=min_advance_hours + 1)
+        start_local = start.astimezone(tz)
+        if start_local.hour < Config.BOOKING_OPERATING_HOURS_START:
+            start = start.replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+        elif start_local.hour >= Config.BOOKING_OPERATING_HOURS_END:
+            start = (start + timedelta(days=1)).replace(hour=Config.BOOKING_OPERATING_HOURS_START + 1, minute=0, second=0, microsecond=0).astimezone(tzutc())
+    end = start + timedelta(hours=1)
+    end_local = end.astimezone(tz)
+    if end_local.hour > Config.BOOKING_OPERATING_HOURS_END:
+        end = start.replace(hour=Config.BOOKING_OPERATING_HOURS_END, minute=0, second=0, microsecond=0).astimezone(tzutc())
     
     # Create cancelled booking
     with get_db_connection() as conn:
