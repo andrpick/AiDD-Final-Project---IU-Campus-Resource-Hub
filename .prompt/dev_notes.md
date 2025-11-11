@@ -3715,3 +3715,31 @@ Log this interaction at the bottom of @dev_notes.md. Update @SETUP_STEPS.md and 
 - Updated the README Quick Start section to mirror the simplified setup flow, emphasize reviewing `.env.example`, and reduced redundancy between README and SETUP_STEPS.
 - Logged this interaction per project guidelines.
 - No linting errors introduced.
+
+### Interaction #147
+**User Prompt:**
+```
+Log all interactions at the bottom of @dev_notes.md. When a resource is deleted or archived and a message thread already exists for it, the thread should should have a warning saying that the resource has been archived or deleted. For example, I have archived Simon Skodjt Assembly Hall, for the message thread that already exists, it should provide a warning saying this resource has been archived and not allow more chats can be sent until it is unarchived or returns. At this point the user can leave the chat there or delete it.
+```
+
+**Agent Actions:**
+- Updated `src/controllers/messages_controller.py`:
+  - Modified `thread()` function to check if resource is archived (status == 'archived')
+  - Added `messaging_blocked` flag that is set to `True` when resource status is 'archived'
+  - Passed `messaging_blocked` flag to template context
+  - Updated `send()` function to check if resource is archived before allowing message sending
+  - Added validation that blocks message sending when resource is archived with clear error message
+  - Returns error flash message: "Cannot send messages for archived resources. The resource must be unarchived before messaging can continue."
+- Updated `src/views/messages/thread.html`:
+  - Added warning alert in thread header when `messaging_blocked` is True:
+    - Displays: "This resource has been archived. No new messages can be sent until the resource is unarchived. You can leave this conversation or delete it."
+    - Uses Bootstrap alert-warning styling with exclamation triangle icon
+  - Disabled message input form when `messaging_blocked` is True:
+    - Replaced message form with warning alert in card footer
+    - Alert states: "Messaging disabled: This resource has been archived. No new messages can be sent until the resource is unarchived."
+    - Users can still view existing messages but cannot send new ones
+- Server-side validation ensures messages cannot be sent even if form is manipulated client-side
+- UI provides clear visual feedback with warning alerts in both header and message input area
+- Users can leave the conversation or delete it as requested
+- No linting errors introduced
+- Message threads now properly warn users when associated resource is archived and block new message sending

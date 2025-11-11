@@ -71,17 +71,22 @@ def thread(thread_id):
     
     # Get resource info if resource_id exists
     resource = None
+    messaging_blocked = False
     if resource_id:
         from src.services.resource_service import get_resource
         resource_result = get_resource(resource_id)
         if resource_result['success']:
             resource = resource_result['data']
+            # Check if resource is archived (block messaging)
+            if resource.get('status') == 'archived':
+                messaging_blocked = True
     
     return render_template('messages/thread.html', 
                          messages=messages, 
                          other_user=other_user, 
                          thread_id=thread_id,
-                         resource=resource)
+                         resource=resource,
+                         messaging_blocked=messaging_blocked)
 
 @messages_bp.route('/send', methods=['POST'])
 @login_required
@@ -95,6 +100,19 @@ def send():
     if not receiver_id or not content:
         flash('Missing required fields.', 'error')
         return redirect(request.referrer or url_for('messages.index'))
+    
+    # Check if resource is archived (block messaging)
+    if resource_id:
+        from src.services.resource_service import get_resource
+        resource_result = get_resource(resource_id)
+        if resource_result['success']:
+            resource = resource_result['data']
+            if resource.get('status') == 'archived':
+                flash('Cannot send messages for archived resources. The resource must be unarchived before messaging can continue.', 'error')
+                if thread_id:
+                    return redirect(url_for('messages.thread', thread_id=thread_id))
+                else:
+                    return redirect(request.referrer or url_for('messages.index'))
     
     result = send_message(current_user.user_id, receiver_id, content, resource_id=resource_id)
     
