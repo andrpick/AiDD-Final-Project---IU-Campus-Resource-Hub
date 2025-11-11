@@ -1,6 +1,9 @@
 ## Reflection Prompts
 
 How did AI tools shape your design or coding decisions?
+- AI tools, specifically Cursor and Stitch were used for this project. Stitch was used to create wireframes and Cursor was the IDE of choice.
+- Without these tools and the tools within those tools, this project would have taken far longer and would not have nearly been as complete.
+- The project description was very detailed and a lot of the required elements dictated the general desgin of the web app. From a design standpoint, we adopted IU colors (Crimson and White) and their logo to brand this web app as Indiana University's Campus Resource Hub.
 
 What did you learn about verifying and improving AI-generated outputs?
 
@@ -3699,3 +3702,16 @@ Note in @README.md that there is a new wireframes folder containing images of wi
 - Note added to Project Structure section after `uploads/` folder entry
 - No linting errors introduced
 - README.md now documents the wireframes folder location and contents
+
+### Interaction #146
+**User Prompt:**
+```
+Log this interaction at the bottom of @dev_notes.md. Update @SETUP_STEPS.md and @README.md to be more concise and less redudant between files. The set up steps should essentially be create a virtual environment and install the dependencies in requirements.txt, create a .env file from the example file, and they should review it entirely to assess the features there, then run app.py and go to http://localhost:5000. Mention that they can go to view>command pallette>Python: Create Virtual Environment>venv>check requirements.txt for dependencies. 
+```
+
+**Agent Actions:**
+- Streamlined `SETUP_STEPS.md` into a concise five-step checklist focused on virtual environment creation, dependency installation, `.env` configuration review, running the app, and exploring references.
+- Highlighted the VS Code shortcut (`View → Command Palette → Python: Create Environment → Venv → requirements.txt`) alongside manual commands for creating a virtual environment.
+- Updated the README Quick Start section to mirror the simplified setup flow, emphasize reviewing `.env.example`, and reduced redundancy between README and SETUP_STEPS.
+- Logged this interaction per project guidelines.
+- No linting errors introduced.
