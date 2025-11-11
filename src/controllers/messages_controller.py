@@ -81,12 +81,27 @@ def thread(thread_id):
             if resource.get('status') == 'archived':
                 messaging_blocked = True
     
+    # Get booking statuses for messages with booking_id
+    booking_statuses = {}
+    if messages:
+        from src.services.booking_service import get_booking
+        booking_ids = set()
+        for message in messages:
+            if message.get('booking_id'):
+                booking_ids.add(message['booking_id'])
+        
+        for booking_id in booking_ids:
+            booking_result = get_booking(booking_id)
+            if booking_result['success']:
+                booking_statuses[booking_id] = booking_result['data'].get('status')
+    
     return render_template('messages/thread.html', 
                          messages=messages, 
                          other_user=other_user, 
                          thread_id=thread_id,
                          resource=resource,
-                         messaging_blocked=messaging_blocked)
+                         messaging_blocked=messaging_blocked,
+                         booking_statuses=booking_statuses)
 
 @messages_bp.route('/send', methods=['POST'])
 @login_required

@@ -21,6 +21,14 @@ def index():
     available_date = request.args.get('available_date', '').strip() or None
     available_start_time = request.args.get('available_start_time', '').strip() or None
     available_end_time = request.args.get('available_end_time', '').strip() or None
+    # Restricted filter
+    restricted_filter = request.args.get('restricted', '').strip() or None
+    restricted = None
+    if restricted_filter:
+        if restricted_filter.lower() == 'true' or restricted_filter == '1':
+            restricted = True
+        elif restricted_filter.lower() == 'false' or restricted_filter == '0':
+            restricted = False
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
     page = request.args.get('page', 1, type=int)
@@ -43,6 +51,7 @@ def index():
         available_date=available_date,
         available_start_time=available_start_time,
         available_end_time=available_end_time,
+        restricted=restricted,
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,
@@ -64,6 +73,7 @@ def index():
                              available_date=available_date,
                              available_start_time=available_start_time,
                              available_end_time=available_end_time,
+                             restricted=restricted_filter,
                              sort_by=sort_by,
                              sort_order=sort_order,
                              locations_list=locations_list)
@@ -81,6 +91,7 @@ def index():
                              available_date=available_date,
                              available_start_time=available_start_time,
                              available_end_time=available_end_time,
+                             restricted=restricted_filter,
                              sort_by=sort_by,
                              sort_order=sort_order,
                              locations_list=locations_list)

@@ -155,10 +155,18 @@ def validate_booking_datetime(start_datetime, end_datetime, resource_id=None):
     
     return True, start_dt, end_dt, "Valid"
 
-def create_booking(resource_id, requester_id, start_datetime, end_datetime):
+def create_booking(resource_id, requester_id, start_datetime, end_datetime, status='approved', request_reason=None):
     """
     Create a new booking request with transaction-level conflict checking.
     Uses a transaction to prevent race conditions where two users book the same slot simultaneously.
+    
+    Args:
+        resource_id: ID of the resource
+        requester_id: ID of the user requesting the booking
+        start_datetime: Start datetime (ISO string or datetime object)
+        end_datetime: End datetime (ISO string or datetime object)
+        status: Booking status ('approved' for non-restricted, 'pending' for restricted)
+        request_reason: Optional reason for booking request (for restricted resources)
     """
     # Validate datetime with resource-specific operating hours
     valid, start_dt, end_dt, msg = validate_booking_datetime(start_datetime, end_datetime, resource_id=resource_id)
@@ -170,39 +178,38 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # Lock the row/s to prevent concurrent bookings (SQLite handles this, but explicit is better)
-        # Re-check for conflicts within the transaction to prevent race conditions
-        # This ensures that between check and insert, no other booking was created
-        conflicts = check_conflicts(resource_id, start_dt, end_dt, cursor=cursor)
-        if conflicts:
-            logger.warning(f"Booking conflict detected for resource {resource_id}: {len(conflicts)} conflicts")
-            conn.rollback()
-            conflict_details = []
-            for conflict in conflicts:
-                conflict_details.append({
-                    'booking_id': conflict.get('booking_id'),
-                    'start': conflict.get('start_datetime'),
-                    'end': conflict.get('end_datetime'),
-                    'status': conflict.get('status')
-                })
-            return {
-                'success': False,
-                'error': 'Time slot conflicts with existing booking',
-                'conflicts': conflicts
-            }
+        # Only check conflicts for approved bookings (pending bookings don't block other bookings)
+        if status == 'approved':
+            # Lock the row/s to prevent concurrent bookings (SQLite handles this, but explicit is better)
+            # Re-check for conflicts within the transaction to prevent race conditions
+            # This ensures that between check and insert, no other booking was created
+            conflicts = check_conflicts(resource_id, start_dt, end_dt, cursor=cursor)
+            if conflicts:
+                logger.warning(f"Booking conflict detected for resource {resource_id}: {len(conflicts)} conflicts")
+                conn.rollback()
+                conflict_details = []
+                for conflict in conflicts:
+                    conflict_details.append({
+                        'booking_id': conflict.get('booking_id'),
+                        'start': conflict.get('start_datetime'),
+                        'end': conflict.get('end_datetime'),
+                        'status': conflict.get('status')
+                    })
+                return {
+                    'success': False,
+                    'error': 'Time slot conflicts with existing booking',
+                    'conflicts': conflicts
+                }
         
-        # If no conflicts, automatically approve the booking
-        status = 'approved'
-        
-        # Insert booking with auto-approval within the same transaction
+        # Insert booking with specified status
         cursor.execute("""
-            INSERT INTO bookings (resource_id, requester_id, start_datetime, end_datetime, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, (resource_id, requester_id, start_dt.isoformat(), end_dt.isoformat(), status))
+            INSERT INTO bookings (resource_id, requester_id, start_datetime, end_datetime, status, rejection_reason)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (resource_id, requester_id, start_dt.isoformat(), end_dt.isoformat(), status, request_reason))
         
         booking_id = cursor.lastrowid
         conn.commit()
-        logger.info(f"Created booking {booking_id} for resource {resource_id} by user {requester_id}")
+        logger.info(f"Created booking {booking_id} for resource {resource_id} by user {requester_id} with status {status}")
     
     return {'success': True, 'data': {'booking_id': booking_id}}
 
@@ -258,8 +265,8 @@ def get_booking(booking_id):
         return {'success': False, 'error': 'Booking not found'}
 
 def update_booking_status(booking_id, status, rejection_reason=None):
-    """Update booking status. Valid statuses: approved, cancelled, completed."""
-    if status not in ['approved', 'cancelled', 'completed']:
+    """Update booking status. Valid statuses: approved, cancelled, completed, pending, denied."""
+    if status not in ['approved', 'cancelled', 'completed', 'pending', 'denied']:
         logger.warning(f"Invalid booking status attempted: {status}")
         return {'success': False, 'error': 'Invalid status'}
     
@@ -304,7 +311,7 @@ def update_booking(booking_id, start_datetime=None, end_datetime=None, status=No
         new_end = end_dt.isoformat()
     
     # Validate status
-    if new_status not in ['approved', 'cancelled', 'completed']:
+    if new_status not in ['approved', 'cancelled', 'completed', 'pending', 'denied']:
         return {'success': False, 'error': 'Invalid status'}
     
     # Update booking

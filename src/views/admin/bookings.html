@@ -83,20 +83,25 @@
                    style="border-radius: 8px; font-weight: {% if not section_filter %}600{% else %}500{% endif %};">
                     All
                 </a>
+                <a href="{{ url_for('admin.bookings', section='pending', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'pending' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'pending' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-hourglass-split me-2"></i>Pending
+                </a>
                 <a href="{{ url_for('admin.bookings', section='upcoming', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
                    class="btn px-4 py-2 {% if section_filter == 'upcoming' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
                    style="border-radius: 8px; font-weight: {% if section_filter == 'upcoming' %}600{% else %}500{% endif %};">
                     <i class="bi bi-calendar-check me-2"></i>Upcoming
                 </a>
+                <a href="{{ url_for('admin.bookings', section='in_progress', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
+                   class="btn px-4 py-2 {% if section_filter == 'in_progress' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
+                   style="border-radius: 8px; font-weight: {% if section_filter == 'in_progress' %}600{% else %}500{% endif %};">
+                    <i class="bi bi-play-circle me-2"></i>In Progress
+                </a>
                 <a href="{{ url_for('admin.bookings', section='previous', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
                    class="btn px-4 py-2 {% if section_filter == 'previous' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
                    style="border-radius: 8px; font-weight: {% if section_filter == 'previous' %}600{% else %}500{% endif %};">
                     <i class="bi bi-clock-history me-2"></i>Previous
-                </a>
-                <a href="{{ url_for('admin.bookings', section='canceled', status=status_filter, resource_id=resource_id_filter, user_id=user_id_filter) }}" 
-                   class="btn px-4 py-2 {% if section_filter == 'canceled' %}bg-light border border-2 border-secondary text-dark fw-semibold{% else %}btn-outline-secondary{% endif %}" 
-                   style="border-radius: 8px; font-weight: {% if section_filter == 'canceled' %}600{% else %}500{% endif %};">
-                    <i class="bi bi-x-circle me-2"></i>Canceled
                 </a>
             </div>
         </div>
@@ -263,6 +268,207 @@
         </div>
         {% endif %}
 
+        {% if pending_bookings %}
+        <!-- Pending Bookings Section -->
+        <div class="mb-5">
+            <h2 class="mb-3 fw-bold" style="font-size: 1.75rem; color: #333;">
+                <i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Bookings
+            </h2>
+            <div class="table-responsive">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
+                    <thead style="background-color: #f8f9fa;">
+                        <tr>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Requester</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Start Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">End Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Status</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in pending_bookings %}
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td class="px-4 py-3">
+                                {% if booking.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" class="text-crimson fw-semibold" style="text-decoration: none;">
+                                    {{ booking.resource.title }}
+                                </a>
+                                {% else %}
+                                <span style="color: #333;">Resource #{{ booking.resource_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if booking.requester %}
+                                <div>
+                                    <div class="fw-semibold" style="color: #333;">{{ booking.requester.name }}</div>
+                                    <small class="text-muted">{{ booking.requester.email }}</small>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">User #{{ booking.requester_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.start_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.end_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.875rem;">
+                                    {{ display_status|title|replace('_', ' ') }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="dropstart">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                            id="actionsDropdown{{ booking.booking_id }}" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false"
+                                            style="border-radius: 8px;">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-standard" 
+                                        aria-labelledby="actionsDropdown{{ booking.booking_id }}"
+                                        style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                        {% if booking.status == 'pending' %}
+                                        <li>
+                                            <form method="POST" action="{{ url_for('admin.approve_booking_admin', booking_id=booking.booking_id) }}" class="d-inline">
+                                                <button type="submit" class="dropdown-item text-success" onclick="return confirm('Are you sure you want to approve this booking request?')">
+                                                    <i class="bi bi-check-circle me-2"></i> Approve
+                                                </button>
+                                            </form>
+                                        </li>
+                                        <li>
+                                            <form method="POST" action="{{ url_for('admin.deny_booking_admin', booking_id=booking.booking_id) }}" class="d-inline">
+                                                <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to deny this booking request?')">
+                                                    <i class="bi bi-x-circle me-2"></i> Deny
+                                                </button>
+                                            </form>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        {% endif %}
+                                        <li>
+                                            <a href="{{ url_for('admin.booking_detail', booking_id=booking.booking_id) }}" 
+                                               class="dropdown-item">
+                                                <i class="bi bi-pencil me-2 text-crimson"></i> Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" 
+                                               class="dropdown-item">
+                                                <i class="bi bi-eye me-2 text-primary"></i> View Details
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if in_progress_bookings %}
+        <!-- In Progress Bookings Section -->
+        <div class="mb-5">
+            <h2 class="mb-3 fw-bold" style="font-size: 1.75rem; color: #333;">
+                <i class="bi bi-play-circle me-2 text-primary"></i>In Progress Bookings
+            </h2>
+            <div class="table-responsive">
+                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
+                    <thead style="background-color: #f8f9fa;">
+                        <tr>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Requester</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Start Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">End Time</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Status</th>
+                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in in_progress_bookings %}
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td class="px-4 py-3">
+                                {% if booking.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" class="text-crimson fw-semibold" style="text-decoration: none;">
+                                    {{ booking.resource.title }}
+                                </a>
+                                {% else %}
+                                <span style="color: #333;">Resource #{{ booking.resource_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if booking.requester %}
+                                <div>
+                                    <div class="fw-semibold" style="color: #333;">{{ booking.requester.name }}</div>
+                                    <small class="text-muted">{{ booking.requester.email }}</small>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">User #{{ booking.requester_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.start_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3" style="color: #333;">
+                                {{ booking.end_datetime|format_datetime_est('short') }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="badge px-3 py-2 rounded-pill fw-semibold 
+                                    {% set display_status = booking|booking_display_status %}
+                                    {% if display_status == 'in_progress' %}bg-primary
+                                    {% elif display_status == 'approved' %}bg-success
+                                    {% elif display_status == 'completed' %}bg-info
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.875rem;">
+                                    {{ display_status|title|replace('_', ' ') }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="dropstart">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                            id="actionsDropdown{{ booking.booking_id }}" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false"
+                                            style="border-radius: 8px;">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-standard" 
+                                        aria-labelledby="actionsDropdown{{ booking.booking_id }}"
+                                        style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                        <li>
+                                            <a href="{{ url_for('admin.booking_detail', booking_id=booking.booking_id) }}" 
+                                               class="dropdown-item">
+                                                <i class="bi bi-pencil me-2 text-crimson"></i> Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" 
+                                               class="dropdown-item">
+                                                <i class="bi bi-eye me-2 text-primary"></i> View Details
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
         {% if previous_bookings %}
         <!-- Previous Bookings Section -->
         <div class="mb-5">
@@ -355,93 +561,7 @@
         </div>
         {% endif %}
 
-        {% if canceled_bookings %}
-        <!-- Canceled Bookings Section -->
-        <div class="mb-5">
-            <h2 class="mb-3 fw-bold" style="font-size: 1.75rem; color: #333;">
-                <i class="bi bi-x-circle me-2 text-secondary"></i>Canceled Bookings
-            </h2>
-            <div class="table-responsive">
-                <table class="table bg-white bookings-table shadow-table" style="border-radius: 8px;">
-                    <thead style="background-color: #f8f9fa;">
-                        <tr>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Resource</th>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Requester</th>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Start Time</th>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">End Time</th>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Status</th>
-                            <th class="px-4 py-3 fw-semibold" style="color: #333; border-bottom: 2px solid #dee2e6;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for booking in canceled_bookings %}
-                        <tr style="border-bottom: 1px solid #dee2e6;">
-                            <td class="px-4 py-3">
-                                {% if booking.resource %}
-                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" class="text-crimson fw-semibold" style="text-decoration: none;">
-                                    {{ booking.resource.title }}
-                                </a>
-                                {% else %}
-                                <span style="color: #333;">Resource #{{ booking.resource_id }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                {% if booking.requester %}
-                                <div>
-                                    <div class="fw-semibold" style="color: #333;">{{ booking.requester.name }}</div>
-                                    <small class="text-muted">{{ booking.requester.email }}</small>
-                                </div>
-                                {% else %}
-                                <span class="text-muted">User #{{ booking.requester_id }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3" style="color: #333;">
-                                {{ booking.start_datetime|format_datetime_est('short') }}
-                            </td>
-                            <td class="px-4 py-3" style="color: #333;">
-                                {{ booking.end_datetime|format_datetime_est('short') }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="badge px-3 py-2 rounded-pill fw-semibold bg-secondary" style="font-size: 0.875rem;">
-                                    {{ booking.status|title }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="dropstart">
-                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
-                                            id="actionsDropdown{{ booking.booking_id }}" 
-                                            data-bs-toggle="dropdown" 
-                                            aria-expanded="false"
-                                            style="border-radius: 8px;">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <ul class="dropdown-menu shadow-standard" 
-                                        aria-labelledby="actionsDropdown{{ booking.booking_id }}"
-                                        style="border-radius: 8px; border: 1px solid #dee2e6;">
-                                        <li>
-                                            <a href="{{ url_for('admin.booking_detail', booking_id=booking.booking_id) }}" 
-                                               class="dropdown-item">
-                                                <i class="bi bi-pencil me-2 text-crimson"></i> Edit
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" 
-                                               class="dropdown-item">
-                                                <i class="bi bi-eye me-2 text-primary"></i> View Details
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if not upcoming_bookings and not previous_bookings and not canceled_bookings %}
+        {% if not upcoming_bookings and not in_progress_bookings and not previous_bookings and not pending_bookings %}
         <!-- Empty State -->
         <div class="card bg-white border-0">
             <div class="card-body text-center py-5 d-flex flex-column align-items-center">

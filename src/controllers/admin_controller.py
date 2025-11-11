@@ -8,8 +8,8 @@ from src.services.admin_service import (
     change_user_role, delete_user, get_admin_logs, get_user, update_user, restore_user, get_deleted_users
 )
 from src.services.resource_service import list_resources, update_resource, get_resource, reassign_resource_ownership
-from src.services.booking_service import list_bookings, get_booking, update_booking
-from src.services.messaging_service import get_deleted_threads, restore_thread
+from src.services.booking_service import list_bookings, get_booking, update_booking, update_booking_status, check_conflicts
+from src.services.messaging_service import get_deleted_threads, restore_thread, send_message
 from src.utils.decorators import admin_required
 from src.utils.controller_helpers import categorize_bookings, log_admin_action, parse_bool_filter
 from src.utils.query_builder import QueryBuilder
@@ -769,7 +769,7 @@ def bookings():
     status_filter = request.args.get('status', '').strip() or None
     resource_id = request.args.get('resource_id', type=int)
     user_id = request.args.get('user_id', type=int)
-    section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
+    section_filter = request.args.get('section')  # 'upcoming', 'previous', 'pending', 'in_progress', or None for all
     
     # Get all bookings (ignore pagination for sectioning, but limit to reasonable amount)
     result = list_bookings(user_id=user_id, resource_id=resource_id, status=status_filter, limit=1000, offset=0)
@@ -782,10 +782,11 @@ def bookings():
         categorized = categorize_bookings(all_bookings, section_filter)
         upcoming_bookings = categorized['upcoming']
         previous_bookings = categorized['previous']
-        canceled_bookings = categorized['canceled']
+        in_progress_bookings = categorized.get('in_progress', [])
+        pending_bookings = categorized.get('pending', [])
         
         # Enrich with resource and user info
-        for booking in upcoming_bookings + previous_bookings + canceled_bookings:
+        for booking in upcoming_bookings + previous_bookings + in_progress_bookings + pending_bookings:
             resource_result = get_resource(booking['resource_id'])
             if resource_result['success']:
                 booking['resource'] = resource_result['data']
@@ -809,7 +810,8 @@ def bookings():
         return render_template('admin/bookings.html',
                              upcoming_bookings=upcoming_bookings,
                              previous_bookings=previous_bookings,
-                             canceled_bookings=canceled_bookings,
+                             in_progress_bookings=in_progress_bookings,
+                             pending_bookings=pending_bookings,
                              total=total,
                              status_filter=status_filter,
                              resource_id_filter=resource_id,
@@ -821,7 +823,8 @@ def bookings():
         return render_template('admin/bookings.html', 
                              upcoming_bookings=[],
                              previous_bookings=[],
-                             canceled_bookings=[],
+                             in_progress_bookings=[],
+                             pending_bookings=[],
                              total=0,
                              status_filter=status_filter,
                              resource_id_filter=resource_id,
@@ -926,4 +929,157 @@ def update_booking_admin(booking_id):
         flash(result['error'], 'error')
     
     return redirect(url_for('admin.booking_detail', booking_id=booking_id))
+
+@admin_bp.route('/bookings/<int:booking_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_booking_admin(booking_id):
+    """Approve a pending booking request (admin only)."""
+    result = get_booking(booking_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    booking = result['data']
+    
+    # Check if booking is pending
+    if booking['status'] != 'pending':
+        flash('This booking is not pending approval.', 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    # Get resource to check ownership
+    resource_result = get_resource(booking['resource_id'])
+    if not resource_result['success']:
+        flash('Resource not found.', 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    resource = resource_result['data']
+    
+    # Check for conflicts before approving
+    conflicts = check_conflicts(booking['resource_id'], booking['start_datetime'], booking['end_datetime'], exclude_booking_id=booking_id)
+    if conflicts:
+        flash('Cannot approve: This time slot conflicts with an existing approved booking.', 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    # Update booking status to approved
+    update_result = update_booking_status(booking_id, 'approved')
+    
+    if update_result['success']:
+        # Send automated message to message thread indicating admin approval
+        from src.models.user import User
+        from dateutil import parser
+        from dateutil.tz import gettz
+        est_tz = gettz('America/New_York')
+        
+        requester = User.get(booking['requester_id'])
+        owner = User.get(resource['owner_id'])
+        
+        if requester:
+            start_dt = parser.parse(booking['start_datetime'])
+            end_dt = parser.parse(booking['end_datetime'])
+            start_dt_est = start_dt.astimezone(est_tz)
+            end_dt_est = end_dt.astimezone(est_tz)
+            
+            date_str = start_dt_est.strftime('%B %d, %Y')
+            start_time_str = start_dt_est.strftime('%I:%M %p').lstrip('0')
+            end_time_str = end_dt_est.strftime('%I:%M %p').lstrip('0')
+            
+            # Message to requester
+            message_content = f"This booking was approved by an administrator.\n\nBooking Request for {resource['title']}\n\nRequester: {requester.name}\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nYour booking is now confirmed."
+            
+            send_message(
+                sender_id=current_user.user_id,
+                receiver_id=booking['requester_id'],
+                content=message_content,
+                resource_id=booking['resource_id'],
+                booking_id=booking_id
+            )
+            
+            # Message to resource owner to notify them admin approved
+            if owner and owner.user_id != current_user.user_id:
+                owner_message = f"This booking was approved by an administrator.\n\nBooking Request for {resource['title']}\n\nRequester: {requester.name}\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nBooking ID: {booking_id}\n\nThe booking has been approved and no further action is required."
+                
+                send_message(
+                    sender_id=current_user.user_id,
+                    receiver_id=resource['owner_id'],
+                    content=owner_message,
+                    resource_id=booking['resource_id'],
+                    booking_id=booking_id
+                )
+        
+        # Log admin action
+        log_admin_action(current_user.user_id, 'approve_booking', 'bookings', booking_id, f"Approved booking request for resource {resource['title']}")
+        
+        flash('Booking request approved successfully!', 'success')
+    else:
+        flash(update_result.get('error', 'Error approving booking request.'), 'error')
+    
+    return redirect(url_for('admin.bookings'))
+
+@admin_bp.route('/bookings/<int:booking_id>/deny', methods=['POST'])
+@login_required
+@admin_required
+def deny_booking_admin(booking_id):
+    """Deny a pending booking request (admin only)."""
+    result = get_booking(booking_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    booking = result['data']
+    
+    # Check if booking is pending
+    if booking['status'] != 'pending':
+        flash('This booking is not pending approval.', 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    # Get resource to check ownership
+    resource_result = get_resource(booking['resource_id'])
+    if not resource_result['success']:
+        flash('Resource not found.', 'error')
+        return redirect(url_for('admin.bookings'))
+    
+    resource = resource_result['data']
+    
+    # Update booking status to denied
+    update_result = update_booking_status(booking_id, 'denied')
+    
+    if update_result['success']:
+        # Send notification message to requester
+        from src.models.user import User
+        from dateutil import parser
+        from dateutil.tz import gettz
+        est_tz = gettz('America/New_York')
+        
+        requester = User.get(booking['requester_id'])
+        if requester:
+            start_dt = parser.parse(booking['start_datetime'])
+            end_dt = parser.parse(booking['end_datetime'])
+            start_dt_est = start_dt.astimezone(est_tz)
+            end_dt_est = end_dt.astimezone(est_tz)
+            
+            date_str = start_dt_est.strftime('%B %d, %Y')
+            start_time_str = start_dt_est.strftime('%I:%M %p').lstrip('0')
+            end_time_str = end_dt_est.strftime('%I:%M %p').lstrip('0')
+            
+            message_content = f"Your booking request for {resource['title']} has been denied by an administrator.\n\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nIf you have questions, please contact the resource owner or administrator."
+            
+            send_message(
+                sender_id=current_user.user_id,
+                receiver_id=booking['requester_id'],
+                content=message_content,
+                resource_id=booking['resource_id'],
+                booking_id=booking_id
+            )
+        
+        # Log admin action
+        log_admin_action(current_user.user_id, 'deny_booking', 'bookings', booking_id, f"Denied booking request for resource {resource['title']}")
+        
+        flash('Booking request denied successfully!', 'success')
+    else:
+        flash(update_result.get('error', 'Error denying booking request.'), 'error')
+    
+    return redirect(url_for('admin.bookings'))
 

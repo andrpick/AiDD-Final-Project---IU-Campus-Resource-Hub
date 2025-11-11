@@ -15,7 +15,7 @@
                 <button type="button" class="btn btn-crimson px-4 py-2" data-bs-toggle="modal" data-bs-target="#filterModal" style="font-weight: 500;">
                     <i class="bi bi-funnel me-2"></i> Filter
                 </button>
-                {% if keyword or category or location or capacity_min or capacity_max or available_date or available_start_time or available_end_time or sort_by != 'created_at' or sort_order != 'desc' %}
+                {% if keyword or category or location or capacity_min or capacity_max or restricted or available_date or available_start_time or available_end_time or sort_by != 'created_at' or sort_order != 'desc' %}
                 <button type="button" class="btn btn-outline-secondary px-4 py-2" id="clearAllFiltersPageBtn" style="font-weight: 500;">
                     <i class="bi bi-x-circle me-2"></i> Clear All Filters
                 </button>
@@ -79,6 +79,16 @@
                         <div class="col-md-3">
                             <label for="modal_capacity_max" class="form-label small mb-1" style="font-weight: 500;">Max Capacity</label>
                             <input type="number" class="form-control form-control-sm" id="modal_capacity_max" name="capacity_max" value="{{ capacity_max or '' }}" min="1" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-md-6">
+                            <label for="modal_restricted" class="form-label small mb-1" style="font-weight: 500;">Restricted Status</label>
+                            <select class="form-select form-select-sm" id="modal_restricted" name="restricted">
+                                <option value="">All Resources</option>
+                                <option value="true" {% if restricted == 'true' %}selected{% endif %}>Restricted Only</option>
+                                <option value="false" {% if restricted == 'false' %}selected{% endif %}>Non-Restricted Only</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -248,6 +258,11 @@
                             <i class="bi bi-people"></i> Capacity: {{ resource.capacity }}<br>
                             {% endif %}
                             <span class="badge bg-crimson">{{ resource.category|format_category }}</span>
+                            {% if resource.restricted %}
+                            <span class="badge bg-warning text-dark ms-2" title="Bookings require manual approval from the resource owner">
+                                <i class="bi bi-shield-lock me-1"></i>Requires Approval
+                            </span>
+                            {% endif %}
                             {% if resource.avg_rating %}
                             <br><i class="bi bi-star-fill text-warning"></i> {{ "%.1f"|format(resource.avg_rating) }}
                             {% endif %}
@@ -264,15 +279,15 @@
         <nav aria-label="Search pagination" class="mt-4">
             <ul class="pagination justify-content-center">
                 {% if page > 1 %}
-                <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if restricted %}&restricted={{ restricted }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Previous</a></li>
                 {% endif %}
                 {% for p in range(1, total_pages + 1) %}
                 <li class="page-item {% if p == page %}active{% endif %}">
-                    <a class="page-link" href="?page={{ p }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">{{ p }}</a>
+                    <a class="page-link" href="?page={{ p }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if restricted %}&restricted={{ restricted }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">{{ p }}</a>
                 </li>
                 {% endfor %}
                 {% if page < total_pages %}
-                <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{% if keyword %}&keyword={{ keyword }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if capacity_min %}&capacity_min={{ capacity_min }}{% endif %}{% if capacity_max %}&capacity_max={{ capacity_max }}{% endif %}{% if restricted %}&restricted={{ restricted }}{% endif %}{% if available_date %}&available_date={{ available_date }}{% endif %}{% if available_start_time %}&available_start_time={{ available_start_time }}{% endif %}{% if available_end_time %}&available_end_time={{ available_end_time }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Next</a></li>
                 {% endif %}
             </ul>
         </nav>
@@ -468,6 +483,11 @@ function populateModalFields() {
     if (modalCapacityMin) modalCapacityMin.value = capacityMin;
     if (modalCapacityMax) modalCapacityMax.value = capacityMax;
     
+    // Pre-populate restricted filter
+    const restricted = urlParams.get('restricted') || '';
+    const modalRestricted = document.getElementById('modal_restricted');
+    if (modalRestricted) modalRestricted.value = restricted;
+    
     // Pre-populate date
     const availableDate = urlParams.get('available_date') || '';
     const modalAvailableDate = document.getElementById('modal_available_date');
@@ -612,6 +632,15 @@ function updateActiveFilterBadges() {
         badgesContainer.appendChild(badge);
     }
     
+    // Restricted filter
+    const restricted = urlParams.get('restricted');
+    if (restricted) {
+        hasActiveFilters = true;
+        const restrictedText = restricted === 'true' ? 'Restricted Only' : 'Non-Restricted Only';
+        const badge = createFilterBadge('restricted', `Restricted: ${restrictedText}`, restricted);
+        badgesContainer.appendChild(badge);
+    }
+    
     // Availability date/time filter
     const availableDate = urlParams.get('available_date');
     const availableStartTime = urlParams.get('available_start_time');
@@ -670,6 +699,8 @@ function createFilterBadge(type, text, value) {
     } else if (type === 'capacity') {
         urlParams.delete('capacity_min');
         urlParams.delete('capacity_max');
+    } else if (type === 'restricted') {
+        urlParams.delete('restricted');
     } else if (type === 'availability') {
         urlParams.delete('available_date');
         urlParams.delete('available_start_time');
@@ -705,6 +736,8 @@ function removeFilter(type, value) {
     } else if (type === 'capacity') {
         urlParams.delete('capacity_min');
         urlParams.delete('capacity_max');
+    } else if (type === 'restricted') {
+        urlParams.delete('restricted');
     } else if (type === 'availability') {
         urlParams.delete('available_date');
         urlParams.delete('available_start_time');
@@ -870,6 +903,10 @@ function clearAllFilters() {
     const modalCapacityMax = document.getElementById('modal_capacity_max');
     if (modalCapacityMin) modalCapacityMin.value = '';
     if (modalCapacityMax) modalCapacityMax.value = '';
+    
+    // Clear restricted filter
+    const modalRestricted = document.getElementById('modal_restricted');
+    if (modalRestricted) modalRestricted.value = '';
     
     // Clear date (set to today)
     const modalAvailableDate = document.getElementById('modal_available_date');

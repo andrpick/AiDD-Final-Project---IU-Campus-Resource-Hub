@@ -46,7 +46,8 @@ def convert_24_to_12_hour(hour_24):
 
 def create_resource(owner_id, title, description, category, location, capacity=None,
                    images=None, availability_rules=None, status='draft',
-                   operating_hours_start=None, operating_hours_end=None, is_24_hours=False):
+                   operating_hours_start=None, operating_hours_end=None, is_24_hours=False,
+                   restricted=False):
     """Create a new resource."""
     # Validate inputs
     if not title or len(title) < 5 or len(title) > 200:
@@ -105,9 +106,9 @@ def create_resource(owner_id, title, description, category, location, capacity=N
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO resources (owner_id, title, description, category, location, capacity, images, availability_rules, status, operating_hours_start, operating_hours_end, is_24_hours)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (owner_id, title, description, category, location, capacity, images_json, availability_rules_json, status, operating_hours_start, operating_hours_end, 1 if is_24_hours else 0))
+            INSERT INTO resources (owner_id, title, description, category, location, capacity, images, availability_rules, status, operating_hours_start, operating_hours_end, is_24_hours, restricted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (owner_id, title, description, category, location, capacity, images_json, availability_rules_json, status, operating_hours_start, operating_hours_end, 1 if is_24_hours else 0, 1 if restricted else 0))
         
         resource_id = cursor.lastrowid
     
@@ -210,10 +211,10 @@ def update_resource(resource_id, owner_id=None, **kwargs):
     values = []
     
     for key, value in kwargs.items():
-        if key in ['title', 'description', 'category', 'location', 'capacity', 'status', 'featured', 'operating_hours_start', 'operating_hours_end', 'is_24_hours']:
+        if key in ['title', 'description', 'category', 'location', 'capacity', 'status', 'featured', 'operating_hours_start', 'operating_hours_end', 'is_24_hours', 'restricted']:
             update_fields.append(f"{key} = ?")
-            # Convert boolean to int for is_24_hours
-            if key == 'is_24_hours':
+            # Convert boolean to int for is_24_hours and restricted
+            if key == 'is_24_hours' or key == 'restricted':
                 values.append(1 if value else 0)
             else:
                 values.append(value)

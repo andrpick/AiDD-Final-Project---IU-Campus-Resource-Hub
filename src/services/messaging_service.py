@@ -22,8 +22,8 @@ def generate_thread_id(user1_id, user2_id, resource_id=None):
     # Ensure positive integer
     return abs(thread_id) % (10 ** 10)
 
-def send_message(sender_id, receiver_id, content, resource_id=None):
-    """Send a message between two users, optionally about a specific resource.
+def send_message(sender_id, receiver_id, content, resource_id=None, booking_id=None):
+    """Send a message between two users, optionally about a specific resource or booking.
     
     When a new message is sent, the thread is automatically marked as unread for the receiver
     (if it doesn't exist in thread_read, it defaults to unread).
@@ -33,6 +33,7 @@ def send_message(sender_id, receiver_id, content, resource_id=None):
         receiver_id: User ID of the receiver
         content: Message content
         resource_id: Optional resource ID to group messages by resource
+        booking_id: Optional booking ID to link message to a booking request
     """
     if sender_id == receiver_id:
         return {'success': False, 'error': 'Cannot send message to yourself'}
@@ -50,9 +51,9 @@ def send_message(sender_id, receiver_id, content, resource_id=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO messages (thread_id, sender_id, receiver_id, content, resource_id)
-            VALUES (?, ?, ?, ?, ?)
-        """, (thread_id, sender_id, receiver_id, content, resource_id))
+            INSERT INTO messages (thread_id, sender_id, receiver_id, content, resource_id, booking_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (thread_id, sender_id, receiver_id, content, resource_id, booking_id))
         
         message_id = cursor.lastrowid
         

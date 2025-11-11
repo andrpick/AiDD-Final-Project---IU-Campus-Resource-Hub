@@ -3743,3 +3743,192 @@ Log all interactions at the bottom of @dev_notes.md. When a resource is deleted 
 - Users can leave the conversation or delete it as requested
 - No linting errors introduced
 - Message threads now properly warn users when associated resource is archived and block new message sending
+
+### Interaction #148
+**User Prompt:**
+```
+Log the interaction and I'd like to change the "Canceled" button and those corresponding bookings to now call under "Previous" bookings with the same status of canceled. So "Previous" Bookings contain "Completed", "Denied", and "Cancelled" booking statuses. Change the order of the buttons to "All", "Pending", "Upcoming", "In Progress", and "Previous".
+```
+
+**Agent Actions:**
+- Updated `categorize_bookings()` function in `src/utils/controller_helpers.py` to move cancelled bookings to the `previous_bookings` list instead of a separate `canceled_bookings` list
+- Updated function documentation to reflect that previous bookings now include completed, denied, and cancelled statuses
+- Removed the 'canceled' section filter option from the categorization function
+- Updated the bookings index template (`src/views/bookings/index.html`) to:
+  - Remove the "Canceled" tab button
+  - Reorder the tab buttons to: "All", "Pending", "Upcoming", "In Progress", "Previous"
+  - Remove the entire "Canceled Bookings Section" from the template
+  - Update the empty state check to exclude `canceled_bookings` and include `pending_bookings`
+  - Add explicit handling for 'cancelled' status in status badge display (bg-secondary styling)
+- Updated `src/controllers/bookings_controller.py` to:
+  - Remove `canceled_bookings` from the categorization result extraction
+  - Remove `canceled_bookings` from the resource enrichment loop
+  - Remove `canceled_bookings` from both template render calls (success and error cases)
+- Logged this interaction in `.prompt/dev_notes.md` as Interaction #148
+- All changes maintain backward compatibility and properly categorize cancelled bookings under "Previous" section
+- Status badges now properly display cancelled bookings with secondary styling
+
+### Interaction #149
+**User Prompt:**
+```
+does this mean I need to run the migration scripts?
+```
+
+**Agent Actions:**
+- Confirmed that migration scripts needed to be run to update the database schema
+- Ran three migration scripts in sequence:
+  1. `migrations/migrate_add_restricted_field.py` - Added 'restricted' column to resources table
+  2. `migrations/migrate_add_booking_statuses.py` - Updated bookings table to include 'pending' and 'denied' statuses
+  3. `migrations/migrate_add_booking_id_to_messages.py` - Added 'booking_id' column to messages table
+- All migrations completed successfully with database backups created
+- Database schema now matches the codebase requirements
+
+### Interaction #150
+**User Prompt:**
+```
+There seems to be HTML escaping in the message.
+```
+
+**Agent Actions:**
+- Identified that `<br>` tags from `nl2br` filter were being HTML-escaped, showing as literal text instead of rendering as line breaks
+- Updated `src/views/messages/thread.html` to add `|safe` filter to message content: `{{ message.content|nl2br|safe }}`
+- This allows the `<br>` tags created by `nl2br` to render as HTML instead of being escaped
+- Also updated booking request message formatting in `src/controllers/bookings_controller.py` to use `\n` instead of triple-quoted strings for consistency
+- Updated approval and denial message formatting for consistency
+- Messages now display with proper line breaks instead of literal `<br>` tags
+
+### Interaction #151
+**User Prompt:**
+```
+For resources that are restricted, they should now include a note on the listing page that the resource is restricted and bookings require manual approval from the resource owner. You should also be able to filter the resource listings by whether it is restricted.
+```
+
+**Agent Actions:**
+- Updated `src/services/search_service.py`:
+  - Added `restricted` parameter to `search_resources()` function signature
+  - Added SQL condition to filter by restricted status when parameter is provided (handles None, True, False)
+- Updated `src/controllers/search_controller.py`:
+  - Extracted `restricted` parameter from request args
+  - Converted string values ('true'/'false') to boolean or None
+  - Passed `restricted` parameter to `search_resources()` function
+  - Included `restricted` in template context for filter persistence
+- Updated `src/views/search/index.html`:
+  - Added restricted filter dropdown in filter modal with options: "All Resources", "Restricted Only", "Non-Restricted Only"
+  - Added visual indicator on resource cards: yellow badge with shield-lock icon and "Requires Approval" text when `resource.restricted` is True
+  - Updated all pagination links (Previous, page numbers, Next) to preserve restricted filter parameter
+  - Updated "Clear All Filters" button condition to include restricted filter
+  - Updated `clearAllFilters()` JavaScript function to clear restricted filter dropdown
+  - Updated `populateModalFields()` function to pre-populate restricted filter from URL parameters
+  - Updated `updateActiveFilterBadges()` function to display restricted filter badge in active filters section
+  - Updated `createFilterBadge()` and `removeFilter()` functions to handle restricted filter type
+- All changes maintain backward compatibility and work seamlessly with existing filters
+- Restricted resources now clearly indicate approval requirements and can be filtered in search results
+
+### Interaction #152
+**User Prompt:**
+```
+If safe to do so, remove the migration scripts folder as it shouldn't be needed and remove the db backups.
+```
+
+**Agent Actions:**
+- Verified that migrations had been successfully executed and database schema was updated
+- Removed `migrations/` folder containing:
+  - `migrate_add_restricted_field.py`
+  - `migrate_add_booking_statuses.py`
+  - `migrate_add_booking_id_to_messages.py`
+- Removed three database backup files:
+  - `campus_resource_hub.db.backup_20251111_122014`
+  - `campus_resource_hub.db.backup_20251111_122017`
+  - `campus_resource_hub.db.backup_20251111_122019`
+- Confirmed that main database file (`campus_resource_hub.db`) remains intact with all schema changes applied
+- Cleanup completed safely as migrations were already executed and backups were temporary safety copies
+
+### Interaction #153
+**User Prompt:**
+```
+Log all interactions at the bottom @dev_notes.md. This is the error that occurs when attempting to go to the booking management page on the admin account.
+```
+
+**Agent Actions:**
+- Identified `KeyError: 'canceled'` error in `src/controllers/admin_controller.py` when accessing admin bookings page
+- Root cause: After Interaction #148, `categorize_bookings()` function was updated to move cancelled bookings to `previous_bookings` instead of separate `canceled_bookings` list, but admin controller still tried to access `categorized['canceled']` which no longer exists
+- Fixed `src/controllers/admin_controller.py`:
+  - Removed line trying to access `categorized['canceled']` (line 785)
+  - Updated to extract `in_progress_bookings` and `pending_bookings` from categorized results using `.get()` method for safety
+  - Updated enrichment loop to include all booking categories: `upcoming_bookings + previous_bookings + in_progress_bookings + pending_bookings`
+  - Removed `canceled_bookings` from both `render_template()` calls (success and error cases)
+  - Updated comment to reflect new section filter options: 'upcoming', 'previous', 'pending', 'in_progress'
+- Fixed `src/views/admin/bookings.html`:
+  - Removed "Canceled" tab button from section filter tabs
+  - Added "Pending" tab button with hourglass icon (positioned between "All" and "Upcoming")
+  - Added "In Progress" tab button with play-circle icon (positioned between "Upcoming" and "Previous")
+  - Reordered tabs to match user bookings page: "All", "Pending", "Upcoming", "In Progress", "Previous"
+  - Removed entire "Canceled Bookings" section (lines 358-442)
+  - Added "Pending Bookings" section with warning icon styling
+  - Added "In Progress Bookings" section with primary icon styling
+  - Updated empty state check to include all booking categories: `not upcoming_bookings and not in_progress_bookings and not previous_bookings and not pending_bookings`
+- Admin bookings page now matches user bookings page structure with consistent tab ordering and booking categorization
+- Cancelled bookings now appear in "Previous" section as intended (per Interaction #148)
+- No linting errors introduced
+- Admin bookings page now loads correctly without KeyError
+
+### Interaction #154
+**User Prompt:**
+```
+From the booking management page, for pending bookings, the admin user should be able to approve bookings just like the resource owner is able to. If the admin approves a booking over the resource owner, the message thread should contain an automated message sent by no one in particular saying this booking was approved by an admin user. The resource owner will not need to approve or deny it in that case and the normal process should continue from there.
+```
+
+**Agent Actions:**
+- Added admin approval/deny routes to `src/controllers/admin_controller.py`:
+  - Created `approve_booking_admin()` route at `/admin/bookings/<int:booking_id>/approve`
+  - Created `deny_booking_admin()` route at `/admin/bookings/<int:booking_id>/deny`
+  - Both routes protected with `@admin_required` decorator
+  - Both routes check if booking exists and is pending before processing
+  - Approve route checks for conflicts using `check_conflicts()` before approving
+  - Both routes update booking status using `update_booking_status()`
+  - Both routes log admin actions using `log_admin_action()`
+- Implemented automated message logic for admin approval:
+  - When admin approves, sends message to requester with content: "This booking was approved by an administrator."
+  - Includes booking details (date, time, resource name) in message
+  - Also sends message to resource owner notifying them admin approved (so they don't need to approve)
+  - Owner message states: "The booking has been approved and no further action is required."
+  - Messages sent using `send_message()` with `booking_id` parameter to link to booking
+- Added approve/deny buttons to admin bookings template:
+  - Added Approve and Deny buttons to dropdown menu in "Pending Bookings" section
+  - Buttons only appear for pending bookings (check `booking.status == 'pending'`)
+  - Approve button uses green text (`text-success`) with check-circle icon
+  - Deny button uses red text (`text-danger`) with x-circle icon
+  - Both buttons have confirmation dialogs before submitting
+  - Buttons positioned at top of dropdown menu with divider before Edit/View Details options
+- Updated imports in `src/controllers/admin_controller.py`:
+  - Added `update_booking_status` and `check_conflicts` to booking_service imports
+  - Added `send_message` to messaging_service imports
+- Resource owner approval prevention:
+  - Existing logic already prevents double approval (booking status changes from 'pending' to 'approved')
+  - Resource owner won't see approve/deny buttons after admin approval (buttons only show for pending bookings)
+  - No changes needed to existing approve route in bookings_controller.py
+- No linting errors introduced
+- Admin users can now approve/deny pending bookings directly from booking management page
+- Automated messages notify both requester and resource owner when admin approves
+
+### Interaction #155
+**User Prompt:**
+```
+There should not be "Approve" or "Deny" buttons when approved by the admin user.
+```
+
+**Agent Actions:**
+- Updated `src/controllers/messages_controller.py`:
+  - Added logic to fetch booking statuses for all messages with `booking_id`
+  - Collects unique booking IDs from messages in the thread
+  - Fetches booking status for each booking ID using `get_booking()`
+  - Creates `booking_statuses` dictionary mapping `booking_id` to `status`
+  - Passes `booking_statuses` dictionary to template context
+- Updated `src/views/messages/thread.html`:
+  - Added condition to check booking status before showing approve/deny buttons
+  - Changed condition from: `message.booking_id and message.sender_id != current_user.user_id and resource and (resource.owner_id == current_user.user_id or current_user.is_admin())`
+  - To: `message.booking_id and message.sender_id != current_user.user_id and resource and (resource.owner_id == current_user.user_id or current_user.is_admin()) and booking_statuses.get(message.booking_id) == 'pending'`
+  - Buttons now only appear when booking status is 'pending'
+  - Buttons are hidden when booking is already approved, denied, cancelled, or completed
+- No linting errors introduced
+- Approve/Deny buttons now correctly hidden when booking has been approved by admin or resource owner

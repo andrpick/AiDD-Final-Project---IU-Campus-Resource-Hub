@@ -49,6 +49,7 @@ def init_database():
             operating_hours_start INTEGER NOT NULL DEFAULT 8 CHECK(operating_hours_start >= 0 AND operating_hours_start <= 23),
             operating_hours_end INTEGER NOT NULL DEFAULT 22 CHECK(operating_hours_end >= 0 AND operating_hours_end <= 23),
             is_24_hours BOOLEAN DEFAULT 0,
+            restricted BOOLEAN DEFAULT 0,
             status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published', 'archived')),
             featured BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -65,7 +66,7 @@ def init_database():
             requester_id INTEGER NOT NULL,
             start_datetime DATETIME NOT NULL,
             end_datetime DATETIME NOT NULL,
-            status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed')),
+            status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed', 'pending', 'denied')),
             rejection_reason TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -82,13 +83,15 @@ def init_database():
             sender_id INTEGER NOT NULL,
             receiver_id INTEGER NOT NULL,
             resource_id INTEGER,
+            booking_id INTEGER,
             content TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             read BOOLEAN DEFAULT 0,
             deleted BOOLEAN DEFAULT 0,
             FOREIGN KEY (sender_id) REFERENCES users(user_id),
             FOREIGN KEY (receiver_id) REFERENCES users(user_id),
-            FOREIGN KEY (resource_id) REFERENCES resources(resource_id)
+            FOREIGN KEY (resource_id) REFERENCES resources(resource_id),
+            FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
         )
     """)
     

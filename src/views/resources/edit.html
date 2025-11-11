@@ -99,6 +99,15 @@
                         <small class="form-text text-muted">Select the hours when this resource is available for booking. Times outside these hours will be blocked.</small>
                     </div>
                     <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="restricted" name="restricted" {% if resource.restricted %}checked{% endif %}>
+                            <label class="form-check-label" for="restricted">
+                                <strong>Restricted Resource</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">If checked, bookings for this resource require manual approval from the resource owner or admin.</small>
+                    </div>
+                    <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
                             <option value="draft" {% if resource.status == 'draft' %}selected{% endif %}>Draft</option>

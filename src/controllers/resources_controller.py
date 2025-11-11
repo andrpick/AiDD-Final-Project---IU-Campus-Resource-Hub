@@ -139,6 +139,9 @@ def create():
                 operating_hours_start = convert_12_to_24_hour(start_hour, start_am_pm)
                 operating_hours_end = convert_12_to_24_hour(end_hour, end_am_pm)
         
+        # Restricted resource flag
+        restricted = request.form.get('restricted') == 'on'
+        
         # Handle multiple image uploads
         uploaded_files = request.files.getlist('image')
         upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -159,7 +162,8 @@ def create():
             status=status,
             operating_hours_start=operating_hours_start,
             operating_hours_end=operating_hours_end,
-            is_24_hours=is_24_hours
+            is_24_hours=is_24_hours,
+            restricted=restricted
         )
         
         if result['success']:
@@ -215,6 +219,9 @@ def edit(resource_id):
                 operating_hours_start = convert_12_to_24_hour(start_hour, start_am_pm)
                 operating_hours_end = convert_12_to_24_hour(end_hour, end_am_pm)
         
+        # Restricted resource flag
+        restricted = request.form.get('restricted') == 'on'
+        
         # Owners can archive their own resources, admins can archive any resource
         if status == 'archived':
             has_permission, error_response = check_resource_permission(
@@ -233,7 +240,8 @@ def edit(resource_id):
             'status': status,
             'operating_hours_start': operating_hours_start,
             'operating_hours_end': operating_hours_end,
-            'is_24_hours': is_24_hours
+            'is_24_hours': is_24_hours,
+            'restricted': restricted
         }
         
         # Handle multiple image uploads and removals

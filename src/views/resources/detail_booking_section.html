@@ -115,6 +115,7 @@
         <div class="bg-white p-4 rounded-3" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <form method="POST" action="{{ url_for('bookings.create') }}" id="bookingForm">
             <input type="hidden" name="resource_id" value="{{ resource.resource_id }}">
+            <input type="hidden" name="request_reason" id="request_reason" value="">
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label for="start_datetime" class="form-label fw-semibold" style="color: #333;">Start Time</label>
@@ -142,6 +143,36 @@
             </div>
         </form>
         </div>
+        
+        <!-- Booking Request Reason Modal (for restricted resources) -->
+        {% if resource.restricted %}
+        <div class="modal fade" id="bookingRequestModal" tabindex="-1" aria-labelledby="bookingRequestModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-crimson text-white">
+                        <h5 class="modal-title" id="bookingRequestModalLabel">
+                            <i class="bi bi-shield-lock me-2"></i>Booking Request Required
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">This resource requires approval from the owner. Please provide a brief reason for your booking request.</p>
+                        <div class="mb-3">
+                            <label for="request_reason_text" class="form-label">Why are you requesting this resource? *</label>
+                            <textarea class="form-control" id="request_reason_text" rows="4" placeholder="Please explain why you need to book this resource..." required maxlength="500"></textarea>
+                            <small class="form-text text-muted">Maximum 500 characters</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-crimson" id="submitBookingRequest">
+                            <i class="bi bi-send me-2"></i>Submit Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
         {% else %}
         <!-- Month View with Day Selection -->
         <div class="bg-white p-4 rounded-3 mb-4 shadow-standard">
@@ -236,4 +267,56 @@
     </div>
     {% endif %}
 </div>
+
+{% if resource.restricted %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookingForm = document.getElementById('bookingForm');
+    const bookingRequestModal = new bootstrap.Modal(document.getElementById('bookingRequestModal'));
+    const requestReasonText = document.getElementById('request_reason_text');
+    const requestReasonHidden = document.getElementById('request_reason');
+    const submitBookingRequestBtn = document.getElementById('submitBookingRequest');
+    
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            // Check if resource is restricted (modal exists)
+            if (document.getElementById('bookingRequestModal')) {
+                e.preventDefault();
+                
+                // Show modal
+                bookingRequestModal.show();
+            }
+            // If not restricted, form submits normally
+        });
+    }
+    
+    if (submitBookingRequestBtn) {
+        submitBookingRequestBtn.addEventListener('click', function() {
+            const reason = requestReasonText.value.trim();
+            
+            if (!reason) {
+                alert('Please provide a reason for your booking request.');
+                return;
+            }
+            
+            if (reason.length > 500) {
+                alert('Reason must be 500 characters or less.');
+                return;
+            }
+            
+            // Set the hidden field value
+            requestReasonHidden.value = reason;
+            
+            // Hide modal
+            bookingRequestModal.hide();
+            
+            // Submit the form
+            if (bookingForm) {
+                bookingForm.submit();
+            }
+        });
+    }
+});
+</script>
+{% endif %}
 

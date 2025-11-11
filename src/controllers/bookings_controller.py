@@ -35,10 +35,10 @@ def index():
         upcoming_bookings = categorized['upcoming']
         in_progress_bookings = categorized['in_progress']
         previous_bookings = categorized['previous']
-        canceled_bookings = categorized['canceled']
+        pending_bookings = categorized['pending']
         
         # Enrich with resource info
-        for booking in upcoming_bookings + in_progress_bookings + previous_bookings + canceled_bookings:
+        for booking in upcoming_bookings + in_progress_bookings + previous_bookings + pending_bookings:
             resource_result = get_resource(booking['resource_id'])
             if resource_result['success']:
                 booking['resource'] = resource_result['data']
@@ -60,7 +60,7 @@ def index():
                              upcoming_bookings=upcoming_bookings,
                              in_progress_bookings=in_progress_bookings,
                              previous_bookings=previous_bookings,
-                             canceled_bookings=canceled_bookings,
+                             pending_bookings=pending_bookings,
                              page=1,
                              total_pages=1,
                              total=total,
@@ -73,7 +73,7 @@ def index():
                              upcoming_bookings=[],
                              in_progress_bookings=[],
                              previous_bookings=[],
-                             canceled_bookings=[],
+                             pending_bookings=[],
                              page=1, 
                              total_pages=0, 
                              total=0,
@@ -126,11 +126,67 @@ def create():
         flash('Resource is not available for booking.', 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
     
-    result = create_booking(resource_id, current_user.user_id, start_datetime, end_datetime)
+    # Check if resource is restricted
+    is_restricted = resource.get('restricted', False)
+    request_reason = request.form.get('request_reason', '').strip() or None
+    
+    # If restricted, require request_reason
+    if is_restricted and not request_reason:
+        flash('Please provide a reason for your booking request.', 'error')
+        return redirect(url_for('resources.detail', resource_id=resource_id))
+    
+    # Create booking with appropriate status
+    booking_status = 'pending' if is_restricted else 'approved'
+    result = create_booking(resource_id, current_user.user_id, start_datetime, end_datetime, 
+                          status=booking_status, request_reason=request_reason)
     
     if result['success']:
-        flash('Booking created successfully! The time slot is confirmed.', 'success')
-        return redirect(url_for('bookings.detail', booking_id=result['data']['booking_id']))
+        booking_id = result['data']['booking_id']
+        
+        # If restricted, send approval request message to resource owner
+        if is_restricted:
+            from src.services.messaging_service import send_message
+            from src.models.user import User
+            
+            # Get resource owner
+            owner = User.get(resource['owner_id'])
+            if owner:
+                # Format booking details for message
+                from dateutil import parser
+                from dateutil.tz import gettz
+                est_tz = gettz('America/New_York')
+                
+                start_dt = parser.parse(start_datetime)
+                end_dt = parser.parse(end_datetime)
+                start_dt_est = start_dt.astimezone(est_tz)
+                end_dt_est = end_dt.astimezone(est_tz)
+                
+                # Format date/time for display
+                date_str = start_dt_est.strftime('%B %d, %Y')
+                start_time_str = start_dt_est.strftime('%I:%M %p').lstrip('0')
+                end_time_str = end_dt_est.strftime('%I:%M %p').lstrip('0')
+                
+                message_content = f"Booking Request for {resource['title']}\n\nRequester: {current_user.name}\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nReason: {request_reason}\n\nBooking ID: {booking_id}\n\nPlease approve or deny this request."
+                
+                # Send message to resource owner with booking_id link
+                message_result = send_message(
+                    sender_id=current_user.user_id,
+                    receiver_id=resource['owner_id'],
+                    content=message_content,
+                    resource_id=resource_id,
+                    booking_id=booking_id
+                )
+                
+                if message_result['success']:
+                    flash('Booking request submitted! The resource owner will be notified and will review your request.', 'success')
+                else:
+                    flash('Booking request created, but there was an issue notifying the resource owner.', 'warning')
+            else:
+                flash('Booking request created, but resource owner could not be found.', 'warning')
+        else:
+            flash('Booking created successfully! The time slot is confirmed.', 'success')
+        
+        return redirect(url_for('bookings.detail', booking_id=booking_id))
     else:
         flash(result['error'], 'error')
         return redirect(url_for('resources.detail', resource_id=resource_id))
@@ -165,6 +221,148 @@ def detail(booking_id):
     resource = resource_result['data'] if resource_result['success'] else None
     
     return render_template('bookings/detail.html', booking=booking, resource=resource)
+
+@bookings_bp.route('/<int:booking_id>/approve', methods=['POST'])
+@login_required
+def approve(booking_id):
+    """Approve a pending booking request. Only resource owner or admin can approve."""
+    result = get_booking(booking_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    booking = result['data']
+    
+    # Check if booking is pending
+    if booking['status'] != 'pending':
+        flash('This booking is not pending approval.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    # Get resource to check ownership
+    resource_result = get_resource(booking['resource_id'])
+    if not resource_result['success']:
+        flash('Resource not found.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    resource = resource_result['data']
+    
+    # Permission check: Only resource owner or admin can approve
+    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
+        flash('Only the resource owner or administrator can approve booking requests.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    # Check for conflicts before approving
+    conflicts = check_conflicts(booking['resource_id'], booking['start_datetime'], booking['end_datetime'], exclude_booking_id=booking_id)
+    if conflicts:
+        flash('Cannot approve: This time slot conflicts with an existing approved booking.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    # Update booking status to approved
+    update_result = update_booking_status(booking_id, 'approved')
+    
+    if update_result['success']:
+        # Send confirmation message to requester
+        from src.services.messaging_service import send_message
+        from src.models.user import User
+        
+        requester = User.get(booking['requester_id'])
+        if requester:
+            from dateutil import parser
+            from dateutil.tz import gettz
+            est_tz = gettz('America/New_York')
+            
+            start_dt = parser.parse(booking['start_datetime'])
+            end_dt = parser.parse(booking['end_datetime'])
+            start_dt_est = start_dt.astimezone(est_tz)
+            end_dt_est = end_dt.astimezone(est_tz)
+            
+            date_str = start_dt_est.strftime('%B %d, %Y')
+            start_time_str = start_dt_est.strftime('%I:%M %p').lstrip('0')
+            end_time_str = end_dt_est.strftime('%I:%M %p').lstrip('0')
+            
+            message_content = f"Your booking request for {resource['title']} has been approved!\n\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nYour booking is now confirmed."
+            
+            send_message(
+                sender_id=current_user.user_id,
+                receiver_id=booking['requester_id'],
+                content=message_content,
+                resource_id=booking['resource_id']
+            )
+        
+        flash('Booking request approved successfully!', 'success')
+    else:
+        flash(update_result.get('error', 'Error approving booking request.'), 'error')
+    
+    return redirect(request.referrer or url_for('bookings.index'))
+
+@bookings_bp.route('/<int:booking_id>/deny', methods=['POST'])
+@login_required
+def deny(booking_id):
+    """Deny a pending booking request. Only resource owner or admin can deny."""
+    result = get_booking(booking_id)
+    
+    if not result['success']:
+        flash(result['error'], 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    booking = result['data']
+    
+    # Check if booking is pending
+    if booking['status'] != 'pending':
+        flash('This booking is not pending approval.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    # Get resource to check ownership
+    resource_result = get_resource(booking['resource_id'])
+    if not resource_result['success']:
+        flash('Resource not found.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    resource = resource_result['data']
+    
+    # Permission check: Only resource owner or admin can deny
+    if resource['owner_id'] != current_user.user_id and not current_user.is_admin():
+        flash('Only the resource owner or administrator can deny booking requests.', 'error')
+        return redirect(request.referrer or url_for('bookings.index'))
+    
+    # Update booking status to denied
+    update_result = update_booking_status(booking_id, 'denied')
+    
+    if update_result['success']:
+        # Send notification message to requester
+        from src.services.messaging_service import send_message
+        from src.models.user import User
+        
+        requester = User.get(booking['requester_id'])
+        if requester:
+            from dateutil import parser
+            from dateutil.tz import gettz
+            est_tz = gettz('America/New_York')
+            
+            start_dt = parser.parse(booking['start_datetime'])
+            end_dt = parser.parse(booking['end_datetime'])
+            start_dt_est = start_dt.astimezone(est_tz)
+            end_dt_est = end_dt.astimezone(est_tz)
+            
+            date_str = start_dt_est.strftime('%B %d, %Y')
+            start_time_str = start_dt_est.strftime('%I:%M %p').lstrip('0')
+            end_time_str = end_dt_est.strftime('%I:%M %p').lstrip('0')
+            
+            message_content = f"Your booking request for {resource['title']} has been denied.\n\nDate: {date_str}\nTime: {start_time_str} - {end_time_str}\n\nUnfortunately, your booking request could not be approved at this time."
+            
+            send_message(
+                sender_id=current_user.user_id,
+                receiver_id=booking['requester_id'],
+                content=message_content,
+                resource_id=booking['resource_id']
+            )
+        
+        flash('Booking request denied.', 'info')
+    else:
+        flash(update_result.get('error', 'Error denying booking request.'), 'error')
+    
+    return redirect(request.referrer or url_for('bookings.index'))
 
 @bookings_bp.route('/<int:booking_id>/cancel', methods=['POST'])
 @login_required

@@ -10,7 +10,7 @@ from dateutil import parser
 def search_resources(keyword=None, category=None, location=None, capacity_min=None,
                     capacity_max=None, available_from=None, available_to=None,
                     available_date=None, available_start_time=None, available_end_time=None,
-                    sort_by='created_at', sort_order='desc', page=1, page_size=20):
+                    restricted=None, sort_by='created_at', sort_order='desc', page=1, page_size=20):
     """Search resources with filters and sorting."""
     # Validate pagination
     page = max(1, int(page))
@@ -45,6 +45,11 @@ def search_resources(keyword=None, category=None, location=None, capacity_min=No
     if capacity_max:
         conditions.append("r.capacity <= ?")
         values.append(int(capacity_max))
+    
+    # Restricted filter
+    if restricted is not None:
+        conditions.append("r.restricted = ?")
+        values.append(1 if restricted else 0)
     
     # Availability filter - check date and time range
     availability_filter_applied = False

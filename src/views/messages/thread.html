@@ -66,8 +66,22 @@
                                 </small>
                             </div>
                             <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %}">
-                                <span class="message-content">{{ message.content|nl2br }}</span>
+                                <span class="message-content">{{ message.content|nl2br|safe }}</span>
                             </div>
+                            {% if message.booking_id and message.sender_id != current_user.user_id and resource and (resource.owner_id == current_user.user_id or current_user.is_admin()) and booking_statuses.get(message.booking_id) == 'pending' %}
+                            <div class="mt-2 d-flex gap-2">
+                                <form method="POST" action="{{ url_for('bookings.approve', booking_id=message.booking_id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Are you sure you want to approve this booking request?')">
+                                        <i class="bi bi-check-circle me-1"></i>Approve
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('bookings.deny', booking_id=message.booking_id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to deny this booking request?')">
+                                        <i class="bi bi-x-circle me-1"></i>Deny
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
