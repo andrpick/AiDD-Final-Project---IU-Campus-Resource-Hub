@@ -205,6 +205,18 @@ For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-fea
 
 For complete technology stack details, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md#13-technology-stack).
 
+## AI Integration & Collaboration
+
+This project was developed using an AI-first approach, integrating AI tools throughout the design, development, and testing phases. **Stitch** was utilized during the design phase to accelerate wireframing, rapidly translating textual requirements into visual layouts while maintaining strategic control over the Indiana University branding and visual identity. **Cursor** served as the primary IDE during implementation, with its embedded AI capabilities significantly accelerating coding and debugging cycles.
+
+The AI Concierge feature "Crimson" demonstrates context-aware AI integration, using Google Gemini API to answer natural language questions about campus resources. The concierge loads context from project documentation files (`/docs/context/`) including PRD, ERD, and technical specifications, ensuring responses are grounded in actual project data rather than fabricated information. This implementation includes automated tests verifying that AI outputs align with factual database content.
+
+Ethical considerations were prioritized throughout development. All AI interactions were meticulously logged in `.prompt/dev_notes.md` with clear attribution, maintaining academic integrity and professional accountability. We established that while AI accelerates development, human oversight remains essential—all AI-generated code underwent rigorous review for security vulnerabilities, architectural adherence, and integration quality. The team maintained full accountability for the final product, balancing AI assistance with manual coding to preserve fundamental programming skills.
+
+Key lessons learned include the importance of iterative prompt refinement, the necessity of comprehensive verification processes, and the value of maintaining transparency in AI-assisted development. This approach enabled delivery of a more comprehensive and polished product than would have been feasible using traditional methods alone, while ensuring quality, security, and maintainability standards were met.
+
+For detailed AI interaction logs and reflection, see [.prompt/dev_notes.md](.prompt/dev_notes.md) and [.prompt/golden_prompts.md](.prompt/golden_prompts.md).
+
 ## Testing
 
 The application includes a comprehensive test suite with **139 tests** (100% pass rate) covering unit tests, integration tests, end-to-end tests, and security tests.
