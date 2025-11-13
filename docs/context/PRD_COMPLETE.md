@@ -163,28 +163,38 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Resources can operate 24 hours a day (is_24_hours flag)
 - Advance booking requirement (must be at least 1 hour in future)
 - Calendar export to Google Calendar, Outlook, and iCal formats
-- Email notifications or simulated notifications for booking confirmations and changes
+- Email notifications (simulated/logged) for booking confirmations and changes
+  - Implemented via `notification_service.py`
+  - Notifications are logged to application logs (simulated email sending)
+  - Functions: `send_booking_confirmation()`, `send_booking_status_change()`, `send_booking_approval()`, `send_booking_rejection()`
+  - Integrated into booking creation and status update workflows
 
 **Functionality:**
 - Only authenticated users can request bookings
-- Bookings are automatically approved when created (no pending/rejected statuses)
+- Bookings are automatically approved when created for non-restricted resources
+- Restricted resources require owner/staff/admin approval (status: 'pending')
 - Conflict detection prevents overlapping bookings
 - Booking requester or admin can cancel bookings
+- Owner/staff/admin can approve or deny pending bookings
 - Completed bookings (past end time) are eligible for reviews
 - Calendar displays all time slots from 12 AM to 11:59 PM
 - Slots outside operating hours are displayed but marked as unavailable (grayed out)
 - For 24-hour resources, all slots are available for booking
-- Email notifications or simulated notifications sent for booking confirmations and status changes
+- Email notifications (simulated/logged) sent for booking confirmations and status changes
 
 **Booking Status Flow:**
 ```
+pending → approved (by owner/staff/admin)
+pending → denied (by owner/staff/admin)
 approved → cancelled (by requester/admin)
 approved → completed (after booking end time passes)
 approved → in_progress (computed status when current time is between start and end times)
 ```
 
 **Status Values:**
-- `approved` - Booking has been created and approved automatically (default status)
+- `approved` - Booking has been created and approved automatically (default status for non-restricted resources)
+- `pending` - Booking request pending approval (for restricted resources requiring owner/staff/admin approval)
+- `denied` - Booking request has been denied by owner/staff/admin
 - `in_progress` - Computed status when current time is between start_datetime and end_datetime (displayed as "In Progress")
 - `cancelled` - Booking has been cancelled by requester or admin
 - `completed` - Booking has passed its end time (used for review eligibility)
@@ -192,7 +202,7 @@ approved → in_progress (computed status when current time is between start and
 **Display Status:**
 - Bookings display "In Progress" when current time is between start and end times
 - "In Progress" is a computed status (not stored in database)
-- Database still stores 'approved', 'cancelled', or 'completed'
+- Database stores: 'approved', 'pending', 'denied', 'cancelled', or 'completed'
 - Display status is computed dynamically based on current time
 
 ### 3.5 Messaging System
@@ -339,6 +349,7 @@ CREATE TABLE resources (
     operating_hours_start INTEGER NOT NULL DEFAULT 8 CHECK(operating_hours_start >= 0 AND operating_hours_start <= 23),
     operating_hours_end INTEGER NOT NULL DEFAULT 22 CHECK(operating_hours_end >= 0 AND operating_hours_end <= 23),
     is_24_hours BOOLEAN DEFAULT 0,
+    restricted BOOLEAN DEFAULT 0,
     status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published', 'archived')),
     featured BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -353,6 +364,8 @@ CREATE TABLE resources (
 - `capacity` can be NULL or greater than 0
 - `operating_hours_start` must be between 0 and 23 (inclusive)
 - `operating_hours_end` must be between 0 and 23 (inclusive)
+- `is_24_hours` defaults to 0 (false)
+- `restricted` defaults to 0 (false) - when true, bookings require owner/staff/admin approval (status: 'pending')
 - `status` defaults to 'draft'
 - `images` stored as JSON array string
 - `availability_rules` stored as JSON object string
@@ -365,7 +378,7 @@ CREATE TABLE bookings (
     requester_id INTEGER NOT NULL,
     start_datetime DATETIME NOT NULL,
     end_datetime DATETIME NOT NULL,
-    status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed')),
+    status TEXT DEFAULT 'approved' CHECK(status IN ('approved', 'cancelled', 'completed', 'pending', 'denied')),
     rejection_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -388,12 +401,16 @@ CREATE TABLE messages (
     thread_id INTEGER NOT NULL,
     sender_id INTEGER NOT NULL,
     receiver_id INTEGER NOT NULL,
+    resource_id INTEGER,
+    booking_id INTEGER,
     content TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     read BOOLEAN DEFAULT 0,
     deleted BOOLEAN DEFAULT 0,
     FOREIGN KEY (sender_id) REFERENCES users(user_id),
-    FOREIGN KEY (receiver_id) REFERENCES users(user_id)
+    FOREIGN KEY (receiver_id) REFERENCES users(user_id),
+    FOREIGN KEY (resource_id) REFERENCES resources(resource_id),
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
 );
 ```
 
@@ -401,6 +418,8 @@ CREATE TABLE messages (
 - `sender_id` and `receiver_id` must reference existing users
 - `sender_id` cannot equal `receiver_id`
 - `thread_id` generated deterministically from user IDs
+- `resource_id` optional - links message to a resource (for resource-specific conversations)
+- `booking_id` optional - links message to a booking (for booking-related messages)
 - `read` and `deleted` default to 0 (false)
 - Soft delete used (deleted flag, not hard delete)
 
@@ -417,8 +436,7 @@ CREATE TABLE reviews (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (resource_id) REFERENCES resources(resource_id),
     FOREIGN KEY (reviewer_id) REFERENCES users(user_id),
-    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
-    UNIQUE(resource_id, reviewer_id)
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
 );
 ```
 
@@ -427,7 +445,7 @@ CREATE TABLE reviews (
 - `booking_id` optional but must reference existing booking if provided
 - `rating` must be integer between 1 and 5
 - `comment` max 2000 characters
-- `UNIQUE(resource_id, reviewer_id)` enforces one review per user per resource
+- **No UNIQUE constraint** on `(resource_id, reviewer_id)` - allows multiple reviews per user per resource (one review per completed booking)
 
 #### admin_logs
 ```sql
@@ -474,7 +492,9 @@ CREATE INDEX idx_reviews_reviewer ON reviews(reviewer_id);
 - **users** → **admin_logs** (1:N via admin_id)
 - **resources** → **bookings** (1:N via resource_id)
 - **resources** → **reviews** (1:N via resource_id)
+- **resources** → **messages** (1:N via resource_id, optional)
 - **bookings** → **reviews** (1:N via booking_id, optional)
+- **bookings** → **messages** (1:N via booking_id, optional)
 
 ---
 
@@ -1163,8 +1183,9 @@ When admin deletes a user, the system performs a **soft delete** (not a hard del
 - Used to verify review eligibility (reviewer must have completed a booking for the resource)
 
 **Uniqueness:**
-- One review per user per resource enforced at database level
-- UNIQUE constraint: (resource_id, reviewer_id)
+- Multiple reviews per user per resource allowed (one review per completed booking)
+- No UNIQUE constraint on (resource_id, reviewer_id) - users can leave multiple reviews for the same resource
+- Each review can optionally link to a specific booking_id to prevent duplicate reviews for the same booking
 
 **Update Window:**
 - Reviews can be updated within 30 days of creation
@@ -1260,10 +1281,12 @@ cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
 ### 9.4 CSRF (Cross-Site Request Forgery) Protection
 
 **Flask-WTF Integration:**
+- CSRF protection initialized via `CSRFProtect(app)` in `app.py`
 - CSRF tokens required for all POST requests
-- Form submissions include CSRF token
-- Token validation on server side
+- All forms include CSRF token: `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>`
+- Token validation on server side (automatic via Flask-WTF)
 - Use Flask-WTF for token generation and validation
+- **Status:** Fully implemented across all forms (auth, resources, bookings, messages, reviews, admin)
 
 ### 9.5 Password Security
 
@@ -1602,13 +1625,14 @@ A context-aware assistant named "Crimson" that answers natural-language question
 - Markdown rendering in AI responses (bold, italic formatting)
 
 **Context Grounding:**
-- Loads context files from `/docs/context/` directories:
-  - `/docs/context/APA/` - Agility, Processes & Automation artifacts
-  - `/docs/context/DT/` - Design Thinking artifacts (personas, journey maps)
-  - `/docs/context/PM/` - Product Management materials (PRDs, OKRs)
-  - `/docs/context/shared/` - Common context files
-- References PRD for product understanding
-- Uses context to inform responses and recommendations
+- Loads context files from `/docs/context/` directory via `load_context_files()` function
+- Currently loads:
+  - `PRD.md` - High-level Product Requirements Document (first 2000 chars)
+  - `ERD_AND_SCHEMA.md` - Database schema information (first 1500 chars)
+  - `PRD_COMPLETE.md` - AI Feature Specifications section (Section 11)
+- Context is appended to system prompt in `query_concierge()` function
+- Context files loaded on-demand when AI Concierge processes queries
+- **Status:** Fully implemented - AI Concierge uses project documentation for context-aware responses
 
 **Query Processing:**
 1. Parse natural language query

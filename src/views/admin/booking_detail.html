@@ -15,6 +15,7 @@
         <div class="card bg-white border-0 mb-4">
             <div class="card-body p-4">
                 <form method="POST" action="{{ url_for('admin.update_booking_admin', booking_id=booking.booking_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <!-- Booking ID -->
                     <div class="mb-4">
                         <label class="fw-semibold mb-2 d-block" style="color: #333; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Booking ID</label>

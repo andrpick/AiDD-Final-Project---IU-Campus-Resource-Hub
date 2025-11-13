@@ -71,11 +71,13 @@
                             {% if message.booking_id and message.sender_id != current_user.user_id and resource and (resource.owner_id == current_user.user_id or current_user.is_admin()) and booking_statuses.get(message.booking_id) == 'pending' %}
                             <div class="mt-2 d-flex gap-2">
                                 <form method="POST" action="{{ url_for('bookings.approve', booking_id=message.booking_id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Are you sure you want to approve this booking request?')">
                                         <i class="bi bi-check-circle me-1"></i>Approve
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('bookings.deny', booking_id=message.booking_id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to deny this booking request?')">
                                         <i class="bi bi-x-circle me-1"></i>Deny
                                     </button>
@@ -102,6 +104,7 @@
                     </div>
                 {% else %}
                     <form method="POST" action="{{ url_for('messages.send') }}" id="messageForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="receiver_id" value="{{ other_user.user_id if other_user else '' }}">
                         <input type="hidden" name="thread_id" value="{{ thread_id }}">
                         {% if resource %}

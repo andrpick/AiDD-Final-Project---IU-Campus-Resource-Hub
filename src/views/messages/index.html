@@ -66,12 +66,14 @@
                                         <div class="d-flex gap-1">
                                             {% if thread.is_unread %}
                                                 <form method="POST" action="{{ url_for('messages.mark_thread_read_route', thread_id=thread.thread_id) }}" class="d-inline thread-action-form">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="btn btn-sm btn-crimson" title="Mark thread as read">
                                                         <i class="bi bi-check-circle me-1"></i>Mark Read
                                                     </button>
                                                 </form>
                                             {% else %}
                                                 <form method="POST" action="{{ url_for('messages.mark_thread_unread_route', thread_id=thread.thread_id) }}" class="d-inline thread-action-form">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="btn btn-sm btn-outline-crimson" title="Mark thread as unread">
                                                         <i class="bi bi-envelope me-1"></i>Mark Unread
                                                     </button>
@@ -79,6 +81,7 @@
                                             {% endif %}
                                             <form method="POST" action="{{ url_for('messages.delete_thread_route', thread_id=thread.thread_id) }}" 
                                                   class="d-inline thread-action-form">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete thread">
                                                     <i class="bi bi-trash"></i>
                                                 </button>

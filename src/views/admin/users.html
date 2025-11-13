@@ -170,6 +170,7 @@
                                             <!-- Restore option for deleted users -->
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.restore_user_route', user_id=user.user_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item text-success" 
                                                             onclick="return confirm('Restore this user? Note: Email, name, and password were anonymized and will need to be manually restored.')">
                                                         <i class="bi bi-arrow-counterclockwise me-2"></i> Restore User
@@ -188,6 +189,7 @@
                                             {% if user.suspended %}
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.unsuspend', user_id=user.user_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="bi bi-check-circle me-2 text-success"></i> Unsuspend
                                                     </button>
@@ -212,6 +214,7 @@
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.delete', user_id=user.user_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item text-danger" 
                                                             onclick="return confirm('Are you sure? This will delete the user and cascade effects.')">
                                                         <i class="bi bi-trash me-2"></i> Delete
@@ -256,6 +259,7 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form method="POST" action="{{ url_for('admin.suspend', user_id=user.user_id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="modal-body p-4">
                             <div class="mb-4">
                                 <div class="d-flex align-items-center mb-3">
@@ -303,6 +307,7 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form method="POST" action="{{ url_for('admin.change_role', user_id=user.user_id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="modal-body p-4">
                             <div class="mb-4">
                                 <div class="d-flex align-items-center mb-3">

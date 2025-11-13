@@ -12,7 +12,7 @@ reviews_bp = Blueprint('reviews', __name__, url_prefix='/reviews')
 def resource_reviews(resource_id):
     """List reviews for a resource."""
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     offset = (page - 1) * page_size
     
     result = get_resource_reviews(resource_id, limit=page_size, offset=offset)

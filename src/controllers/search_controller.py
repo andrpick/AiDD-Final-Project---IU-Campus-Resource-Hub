@@ -32,7 +32,7 @@ def index():
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     
     # Get unique locations for dropdown
     with get_db_connection() as conn:

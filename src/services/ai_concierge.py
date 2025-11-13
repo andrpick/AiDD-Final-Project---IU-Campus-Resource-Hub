@@ -23,8 +23,56 @@ except ImportError:
     GEMINI_AVAILABLE = False
     genai = None
 
-# Note: Context loading functionality was removed as it was unused.
-# The AI assistant now uses get_resource_context() which queries the database directly.
+def load_context_files():
+    """
+    Load context files from /docs/context/ directory.
+    Returns a string containing relevant context from PRD, ERD, and other documentation.
+    """
+    context_parts = []
+    base_path = os.path.join(os.path.dirname(__file__), '..', '..', 'docs', 'context')
+    
+    # Load PRD.md (high-level overview)
+    prd_path = os.path.join(base_path, 'PRD.md')
+    if os.path.exists(prd_path):
+        try:
+            with open(prd_path, 'r', encoding='utf-8') as f:
+                prd_content = f.read()
+                # Extract key sections (first 2000 chars for brevity)
+                context_parts.append(f"=== Product Requirements Document (PRD) ===\n{prd_content[:2000]}...\n")
+        except Exception as e:
+            logger.warning(f"Could not load PRD.md: {e}")
+    
+    # Load ERD_AND_SCHEMA.md (database schema information)
+    erd_path = os.path.join(base_path, 'ERD_AND_SCHEMA.md')
+    if os.path.exists(erd_path):
+        try:
+            with open(erd_path, 'r', encoding='utf-8') as f:
+                erd_content = f.read()
+                # Extract schema information (first 1500 chars)
+                context_parts.append(f"=== Database Schema ===\n{erd_content[:1500]}...\n")
+        except Exception as e:
+            logger.warning(f"Could not load ERD_AND_SCHEMA.md: {e}")
+    
+    # Load PRD_COMPLETE.md (detailed technical specs - extract key sections)
+    prd_complete_path = os.path.join(base_path, 'PRD_COMPLETE.md')
+    if os.path.exists(prd_complete_path):
+        try:
+            with open(prd_complete_path, 'r', encoding='utf-8') as f:
+                prd_complete_content = f.read()
+                # Extract AI Feature Specifications section
+                if '## 11. AI Feature Specifications' in prd_complete_content:
+                    ai_section_start = prd_complete_content.find('## 11. AI Feature Specifications')
+                    ai_section_end = prd_complete_content.find('## 12.', ai_section_start)
+                    if ai_section_end == -1:
+                        ai_section_end = ai_section_start + 2000
+                    ai_section = prd_complete_content[ai_section_start:ai_section_end]
+                    context_parts.append(f"=== AI Feature Specifications ===\n{ai_section}\n")
+        except Exception as e:
+            logger.warning(f"Could not load PRD_COMPLETE.md: {e}")
+    
+    if context_parts:
+        return "\n".join(context_parts)
+    return ""
 
 def parse_query(query):
     """Parse natural language query to extract search parameters."""
@@ -617,6 +665,12 @@ def query_concierge(user_query, conversation_history=None):
         
         # Get resource context
         system_context = get_resource_context()
+        
+        # Load context files from /docs/context/ directory
+        context_files_content = load_context_files()
+        if context_files_content:
+            system_context += f"\n\n=== Project Documentation Context ===\n{context_files_content}\n"
+            system_context += "\nNote: The above context comes from project documentation files in /docs/context/. Use this information to better understand the system architecture, requirements, and database schema when answering user questions."
         
         # Determine what type of query this is
         # Check if user is asking for statistics or specific resource information

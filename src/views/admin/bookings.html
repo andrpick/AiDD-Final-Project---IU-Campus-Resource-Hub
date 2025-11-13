@@ -340,6 +340,7 @@
                                         {% if booking.status == 'pending' %}
                                         <li>
                                             <form method="POST" action="{{ url_for('admin.approve_booking_admin', booking_id=booking.booking_id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="dropdown-item text-success" onclick="return confirm('Are you sure you want to approve this booking request?')">
                                                     <i class="bi bi-check-circle me-2"></i> Approve
                                                 </button>
@@ -347,6 +348,7 @@
                                         </li>
                                         <li>
                                             <form method="POST" action="{{ url_for('admin.deny_booking_admin', booking_id=booking.booking_id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to deny this booking request?')">
                                                     <i class="bi bi-x-circle me-2"></i> Deny
                                                 </button>

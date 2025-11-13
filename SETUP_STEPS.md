@@ -104,17 +104,19 @@ The AI Concierge uses Google Gemini for natural language resource queries:
 
 ### 4. Key Features Overview
 
-The application includes comprehensive features for resource management, booking, messaging, reviews, and administration. For a high-level overview, see [README.md](README.md#features). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
+The application includes comprehensive features for resource management, booking, messaging, reviews, and administration. 
 
 **Core Features:**
-- Resource Management (CRUD, multiple images, resource-specific operating hours with 24-hour option, archiving)
-- Booking System (calendar view 12 AM - 11:59 PM, conflict detection, automatic approval, booking status tracking including "In Progress", calendar export)
-- Messaging System (thread-based, resource-specific threading, read/unread tracking, adaptive message bubble sizing)
-- Reviews & Ratings (multiple reviews per user per resource - one review per completed booking)
-- AI Concierge "Crimson" (Google Gemini integration, natural language queries, markdown rendering, persistent chat history)
-- Admin Dashboard (user management with soft delete, resource management with filter modals, booking management with filter modals, statistics with filter modals)
-- Profile Management (profile image upload with cropping for all user types)
-- Advanced Search & Filtering (availability date/time filtering with past date/time validation, clear all filters functionality)
+- User Authentication & Authorization (role-based access, CSRF protection, secure password hashing)
+- Resource Management (CRUD, multiple images, resource-specific operating hours, archiving)
+- Booking System (calendar view, conflict detection, automatic approval, status tracking, calendar export, email notifications)
+- Messaging System (thread-based messaging, read/unread tracking, notifications)
+- Reviews & Ratings (multiple reviews per user per resource)
+- AI Concierge "Crimson" (Google Gemini integration, natural language queries, context-aware responses)
+- Admin Dashboard (user/resource/booking management, statistics, action logging)
+- Advanced Search & Filtering (keyword, category, location, capacity, availability filtering)
+
+For a high-level overview, see [README.md](README.md#features). For complete technical specifications and business rules, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md). For API endpoint documentation, see [API.md](API.md).
 
 ### 5. Testing the Application
 
@@ -188,8 +190,10 @@ The application includes comprehensive features for resource management, booking
 - [x] SQL injection prevention (parameterized queries)
 - [x] XSS prevention (input sanitization)
 - [x] Authorization checks (role-based access)
-- [x] CSRF protection (Flask-WTF)
+- [x] CSRF protection (Flask-WTF) - All forms protected with CSRF tokens
 - [x] Password hashing (bcrypt)
+
+For detailed security requirements and implementation, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md#9-security-requirements).
 
 ### 7. Deployment Preparation
 

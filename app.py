@@ -3,6 +3,7 @@ Flask application entry point for Indiana University Campus Resource Hub.
 """
 from flask import Flask, render_template
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -41,6 +42,9 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Please log in to access this page.'
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
 
 # User loader for Flask-Login
 @login_manager.user_loader

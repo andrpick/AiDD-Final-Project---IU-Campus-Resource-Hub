@@ -230,6 +230,7 @@
                                             {% if resource.featured %}
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.unfeature_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="bi bi-star me-2 text-secondary"></i> Unfeature
                                                     </button>
@@ -238,6 +239,7 @@
                                             {% else %}
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.feature_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="bi bi-star-fill me-2 text-primary"></i> Feature
                                                     </button>
@@ -247,6 +249,7 @@
                                             {% if resource.status == 'archived' %}
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.unarchive_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="bi bi-arrow-counterclockwise me-2 text-success"></i> Unarchive
                                                     </button>
@@ -255,6 +258,7 @@
                                             {% else %}
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.archive_resource', resource_id=resource.resource_id) }}" class="d-inline w-100">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="dropdown-item" 
                                                             onclick="return confirm('Are you sure you want to archive this resource?')">
                                                         <i class="bi bi-archive me-2 text-warning"></i> Archive

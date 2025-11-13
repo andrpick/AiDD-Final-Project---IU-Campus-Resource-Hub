@@ -163,63 +163,47 @@ For detailed deployment instructions and scalability recommendations, see [SETUP
 - `src/controllers/` - Flask blueprints (route handlers)
 - `src/models/` - Data models
 - `src/services/` - Business logic layer
-  - `calendar_service.py` - Calendar processing utilities
 - `src/data_access/` - Database access layer
 - `src/utils/` - Utility modules
-  - `config.py` - Centralized configuration management
-  - `exceptions.py` - Custom exception classes
-  - `logging_config.py` - Logging configuration
-  - `datetime_utils.py` - Datetime utilities
-  - `json_utils.py` - JSON parsing utilities
-  - `html_utils.py` - HTML sanitization utilities
-  - `decorators.py` - Common decorators
-  - `controller_helpers.py` - Reusable controller helper functions (permission checks, image handling)
-  - `query_builder.py` - Fluent SQL query builder for dynamic queries
 - `src/views/` - Jinja2 templates
 - `src/static/` - Static files (CSS, JS, images)
 - `tests/` - Test suite (139 tests, 100% passing)
 - `uploads/` - User-uploaded files
-- `docs/wireframes/` - Wireframe images for key pages (Homepage, Resource Listing, Resource Detail, User Dashboard, Messaging Interface)
+- `docs/` - Documentation
+  - `wireframes/` - Wireframe images for key pages
+  - `context/` - Project context files (PRD, ERD, etc.)
+- `.prompt/` - AI development notes and prompts
+
+For detailed project structure and architecture information, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md#6-architecture--folder-structure).
 
 ## Features
 
 The application includes the following core features:
 
-- **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing and profile image upload with cropping
-- **Resource Management**: Full CRUD operations with multiple image uploads, optional capacity constraints, resource-specific operating hours (with 24-hour operation option), and admin-only archiving
-- **Advanced Search & Filtering**: Keyword search, category filtering, location filtering, capacity-based search, availability date/time filtering (with past date/time validation), and clear all filters functionality
-- **Booking System**: Interactive calendar view with drag-and-select time selection (12 AM - 11:59 PM), automatic approval, conflict detection, booking status tracking (including "In Progress" status), and calendar export (Google Calendar, Outlook, iCal)
-- **Messaging System**: Thread-based messaging with resource-specific threading, read/unread status tracking, navbar notifications, and adaptive message bubble sizing
-- **Reviews & Ratings**: Multiple reviews per user per resource (one review per completed booking) with star ratings
-- **AI Concierge "Crimson"**: Chatbot widget with Google Gemini AI integration for natural language resource queries, markdown rendering in responses, and persistent chat history across page navigations
-- **Admin Dashboard**: Comprehensive statistics, user management (including soft delete), resource management with filter modals, booking management with filter modals, and action logging with filter modals
+- **User Authentication & Authorization**: Role-based access control (Student, Staff, Admin) with secure password hashing and CSRF protection
+- **Resource Management**: Full CRUD operations with multiple image uploads, resource-specific operating hours, and admin archiving
+- **Advanced Search & Filtering**: Keyword search, category/location/capacity filtering, availability date/time filtering
+- **Booking System**: Calendar-based booking with conflict detection, automatic approval, status tracking, and calendar export
+- **Messaging System**: Thread-based messaging with read/unread tracking and notifications
+- **Reviews & Ratings**: Multiple reviews per user per resource with star ratings
+- **AI Concierge "Crimson"**: Chatbot widget with Google Gemini AI integration for natural language resource queries
+- **Admin Dashboard**: Comprehensive statistics, user/resource/booking management, and action logging
+- **Email Notifications**: Simulated email notifications for booking confirmations and status changes (logged)
 
-For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-features-overview). For complete technical specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md).
+For detailed feature descriptions, see [SETUP_STEPS.md](SETUP_STEPS.md#4-key-features-overview). For complete technical specifications and API documentation, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md) and [API.md](API.md).
 
 ## Technology Stack
 
 - **Backend**: Flask 3.0.0+, SQLite (development), PostgreSQL (production-ready)
 - **Frontend**: Bootstrap 5, Jinja2 templating, JavaScript (ES6+)
-- **AI Integration**: Google Gemini API for natural language resource queries (AI assistant named "Crimson" with markdown rendering and persistent chat history)
-- **Utilities**: 
-  - Python-dateutil (timezone handling)
-  - bcrypt (password hashing)
-  - python-dotenv (environment variable management)
-  - Custom utility modules for datetime, JSON, HTML processing
+- **AI Integration**: Google Gemini API for natural language resource queries
+- **Security**: Flask-WTF (CSRF protection), bcrypt (password hashing)
+- **Utilities**: Python-dateutil, python-dotenv, custom utility modules
 - **Configuration**: Environment variable-based configuration system
 - **Logging**: Structured logging with file rotation
 - **Styling**: Custom CSS with Indiana University branding (Crimson #990000, White)
-  - Clean, modern design with Bootstrap 5 framework
-  - **Standardized Shadow Utility Classes**: Consistent shadow effects across all pages
-    - `.shadow-standard`: `0 4px 12px rgba(0,0,0,0.15)` - Used for cards and general elements
-    - `.shadow-table`: `0 4px 12px rgba(0,0,0,0.15)` - Used for tables
-    - `.shadow-inner`: `0 1px 3px rgba(0,0,0,0.1)` - Used for inner elements (dashboard stat boxes)
-  - **Responsive Design**: Mobile-first approach with comprehensive breakpoints
-    - Mobile (max-width: 767.98px): Time picker, message thread, chatbot widget, tables, filter/sort boxes
-    - Tablet (max-width: 991.98px): Weekly calendar, time picker, tables
-    - Desktop (min-width: 992px): Container max-width settings
-  - **Standardized Button Hover Effects**: All buttons have consistent 0.2s transitions for background-color, border-color, and color
-  - **UI Standardization**: Consistent filter/sort boxes, form inputs, buttons, and labels across all pages for a cohesive user experience
+
+For complete technology stack details, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md#13-technology-stack).
 
 ## Testing
 
@@ -230,18 +214,17 @@ The application includes a comprehensive test suite with **139 tests** (100% pas
 python tests/run_tests.py
 ```
 
-For detailed testing information, see [SETUP_STEPS.md](SETUP_STEPS.md#-testing).
+For detailed testing information, see [SETUP_STEPS.md](SETUP_STEPS.md#-testing). For testing requirements and specifications, see [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md#12-testing-requirements).
 
-## Code Quality & Refactoring
+## Documentation
 
-The codebase has been refactored to improve maintainability and reduce duplication:
-
-- **Controller Helpers** (`src/utils/controller_helpers.py`): Centralized functions for permission checking, image upload handling, and service result processing
-- **Query Builder** (`src/utils/query_builder.py`): Fluent API for building dynamic SQL queries programmatically
-- **Reduced Code Duplication**: Image upload logic consolidated from ~50 duplicated lines to reusable functions
-- **Standardized Patterns**: Consistent permission checks and error handling across controllers
-
-For detailed information about the codebase structure, see the Project Structure section above.
+- **[SETUP_STEPS.md](SETUP_STEPS.md)** - Detailed setup instructions and feature overview
+- **[API.md](API.md)** - API endpoint documentation
+- **[docs/context/PRD.md](docs/context/PRD.md)** - High-level Product Requirements Document (1-2 pages)
+- **[docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md)** - Complete technical specification (comprehensive)
+- **[docs/context/ERD_AND_SCHEMA.md](docs/context/ERD_AND_SCHEMA.md)** - Database schema and ERD reference
+- **[docs/wireframes/](docs/wireframes/)** - UI wireframes for key pages
+- **[.prompt/dev_notes.md](.prompt/dev_notes.md)** - AI development interaction log
 
 ## Environment Variables
 
@@ -254,4 +237,13 @@ cp .env.example .env
 **Required:** Set `SECRET_KEY` (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
 
 For complete environment variable documentation, see `.env.example` and [SETUP_STEPS.md](SETUP_STEPS.md#1-initial-setup).
+
+---
+
+## Additional Resources
+
+- **API Documentation**: See [API.md](API.md) for endpoint specifications and request/response examples
+- **Database Schema**: See [docs/context/ERD_AND_SCHEMA.md](docs/context/ERD_AND_SCHEMA.md) for database structure reference
+- **Complete Technical Specs**: See [docs/context/PRD_COMPLETE.md](docs/context/PRD_COMPLETE.md) for comprehensive requirements and implementation details
+- **AI Development Log**: See [.prompt/dev_notes.md](.prompt/dev_notes.md) for AI tool usage and reflection
 

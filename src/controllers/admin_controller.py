@@ -46,7 +46,7 @@ def statistics():
     
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     offset = (page - 1) * page_size
     
     result = get_statistics(category_filter=category_filter, location_filter=location_filter, 
@@ -263,7 +263,7 @@ def users():
     search = request.args.get('search', '').strip() or None
     include_deleted = request.args.get('include_deleted', '').strip() == '1'
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     offset = (page - 1) * page_size
     
     result = list_users(role=role, suspended=suspended, department=department,
@@ -526,7 +526,7 @@ def resources():
     from src.data_access.database import get_db_connection
     
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     offset = (page - 1) * page_size
     
     # Get filter parameters

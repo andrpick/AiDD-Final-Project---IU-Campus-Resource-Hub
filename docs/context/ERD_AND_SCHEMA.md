@@ -17,6 +17,7 @@ erDiagram
     resources ||--o{ reviews : "receives"
     resources ||--o{ messages : "references"
     bookings ||--o{ reviews : "generates"
+    bookings ||--o{ messages : "references"
 
     users {
         INTEGER user_id PK
@@ -48,6 +49,7 @@ erDiagram
         INTEGER operating_hours_start
         INTEGER operating_hours_end
         BOOLEAN is_24_hours
+        BOOLEAN restricted
         TEXT status
         BOOLEAN featured
         DATETIME created_at
@@ -72,6 +74,7 @@ erDiagram
         INTEGER sender_id FK
         INTEGER receiver_id FK
         INTEGER resource_id FK
+        INTEGER booking_id FK
         TEXT content
         DATETIME timestamp
         BOOLEAN read
@@ -167,6 +170,7 @@ erDiagram
 | operating_hours_start | INTEGER | NOT NULL DEFAULT 8, CHECK | Start hour (0-23) for resource availability |
 | operating_hours_end | INTEGER | NOT NULL DEFAULT 22, CHECK | End hour (0-23) for resource availability |
 | is_24_hours | BOOLEAN | DEFAULT 0 | Whether resource operates 24 hours a day |
+| restricted | BOOLEAN | DEFAULT 0 | Whether bookings require approval (true = pending status, false = auto-approved) |
 | status | TEXT | DEFAULT 'draft', CHECK | Status: 'draft', 'published', or 'archived' |
 | featured | BOOLEAN | DEFAULT 0 | Whether resource is featured/promoted |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Resource creation timestamp |
@@ -198,7 +202,7 @@ erDiagram
 | requester_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to users.user_id (person making booking) |
 | start_datetime | DATETIME | NOT NULL | Booking start date and time |
 | end_datetime | DATETIME | NOT NULL | Booking end date and time |
-| status | TEXT | DEFAULT 'approved', CHECK | Status: 'approved', 'cancelled', or 'completed' |
+| status | TEXT | DEFAULT 'approved', CHECK | Status: 'approved', 'cancelled', 'completed', 'pending', or 'denied' |
 | rejection_reason | TEXT | NULL | Reason for rejection (if applicable) |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Booking creation timestamp |
 | updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
@@ -232,6 +236,7 @@ erDiagram
 | sender_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to users.user_id (message sender) |
 | receiver_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to users.user_id (message receiver) |
 | resource_id | INTEGER | NULL, FOREIGN KEY | Reference to resources.resource_id (optional context) |
+| booking_id | INTEGER | NULL, FOREIGN KEY | Reference to bookings.booking_id (optional context for booking-related messages) |
 | content | TEXT | NOT NULL | Message content/text |
 | timestamp | DATETIME | DEFAULT CURRENT_TIMESTAMP | Message send timestamp |
 | read | BOOLEAN | DEFAULT 0 | Whether message has been read by receiver |
@@ -244,6 +249,7 @@ erDiagram
 - Many-to-One with `users` (sender_id)
 - Many-to-One with `users` (receiver_id)
 - Many-to-One with `resources` (resource_id)
+- Many-to-One with `bookings` (booking_id)
 
 ---
 
@@ -446,4 +452,8 @@ All tables with timestamps use `DATETIME DEFAULT CURRENT_TIMESTAMP` for automati
 7. **Soft Delete**: User accounts use soft delete (`deleted`, `deleted_at`, `deleted_by`) to preserve data integrity. Deleted users have anonymized PII (email set to NULL, name set to '[Deleted User]') but records remain in database for referential integrity.
 
 8. **Operating Hours**: Resources have configurable operating hours (`operating_hours_start`, `operating_hours_end`) in 24-hour format (0-23). Resources can be marked as 24-hour operation (`is_24_hours`), which overrides operating hours constraints. Operating hours are required fields set by resource owners/admins.
+
+9. **Restricted Resources**: The `restricted` field (BOOLEAN, default 0) determines booking approval workflow. When `restricted = 1`, bookings require owner/staff/admin approval (status: 'pending'). When `restricted = 0`, bookings are automatically approved (status: 'approved').
+
+10. **Booking Statuses**: The `bookings.status` field supports five values: 'approved' (auto-approved or approved), 'pending' (awaiting approval), 'denied' (rejected), 'cancelled' (cancelled by requester/admin), and 'completed' (past end time). The 'in_progress' status is computed dynamically when current time is between start and end times.
 

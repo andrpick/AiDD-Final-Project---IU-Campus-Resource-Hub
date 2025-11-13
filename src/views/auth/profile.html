@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h3 class="mb-4 fw-semibold" style="color: #333;">Update Profile Picture</h3>
             
             <form method="POST" action="{{ url_for('auth.update_profile', user_id=user.user_id) }}" enctype="multipart/form-data" id="profileImageForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-4">
                     <label for="profile_image" class="form-label fw-semibold" style="color: #333;">
                         Upload Profile Image

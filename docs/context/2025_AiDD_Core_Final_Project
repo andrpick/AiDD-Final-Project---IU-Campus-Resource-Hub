@@ -14,6 +14,8 @@ ________________________________________
 By completing this project students will be able to:
 •	Design and implement a relational schema supporting users, resources, bookings, messages, and reviews.
 •	Build RESTful server endpoints with secure authentication and authorization.
+•	Implement secure server endpoints (routes) using Flask with authentication and authorization.
+Routes may render Jinja templates (traditional MVC pattern) or return JSON responses (RESTful API style), depending on team design choice.
 •	Create responsive UI pages for browsing, booking, and managing resources using Flask + Jinja.
 •	Implement server‑side validation, input sanitization, and basic security hardening (CSRF, XSS protection).
 •	Demonstrate effective team collaboration, version control (Git branching + PRs), and documented AI usage in development (optional in later iterations). GitHub should be used for all major changes to the project.
@@ -55,12 +57,13 @@ o	Aggregate rating calculation and top‑rated badges.
 o	Admin dashboard to manage users, resources, bookings, and moderate reviews.
 8.	Documentation & Local Runbook
 o	README with setup + run instructions, requirements.txt, and database migration steps.
-Optional Advanced Features (Top Projects)
+Pick one Advanced Features (aka Top Projects)
 •	Calendar sync with Google Calendar (OAuth) or iCal export.
 •	Waitlist features for fully booked resources.
 •	Role‑based analytics: usage reports by department or resource type.
-•	Advanced search powered by simple embedding retrieval (if teams choose to extend later).
+•	Advanced search powered by Google API (or other API of choice).
 •	Accessibility improvements and WCAG conformance checks.
+•	Deployment to production Cloud Provide (AWS, Google, or Microsoft (Azure))
 ________________________________________
  
 5. Technology Stack (required baseline)

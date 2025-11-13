@@ -7,8 +7,11 @@ from src.services.booking_service import create_booking, get_booking, update_boo
 from src.services.resource_service import get_resource
 from src.utils.datetime_utils import parse_datetime_aware
 from src.utils.controller_helpers import categorize_bookings
+from src.utils.logging_config import get_logger
 from datetime import datetime
 import urllib.parse
+
+logger = get_logger(__name__)
 
 bookings_bp = Blueprint('bookings', __name__, url_prefix='/bookings')
 
@@ -20,7 +23,7 @@ def index():
     resource_id_filter = request.args.get('resource_id', type=int)
     section_filter = request.args.get('section')  # 'upcoming', 'previous', 'canceled', or None for all
     page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
     offset = (page - 1) * page_size
     
     # Get all bookings to separate into upcoming, previous, and canceled
@@ -262,6 +265,28 @@ def approve(booking_id):
     update_result = update_booking_status(booking_id, 'approved')
     
     if update_result['success']:
+        # Send notification for approval
+        try:
+            from src.services.notification_service import send_booking_approval
+            from src.models.user import User
+            
+            requester = User.get(booking['requester_id'])
+            if requester and requester.email:
+                from dateutil import parser
+                start_dt = parser.parse(booking['start_datetime'])
+                end_dt = parser.parse(booking['end_datetime'])
+                
+                send_booking_approval(
+                    booking_id=booking_id,
+                    requester_email=requester.email,
+                    resource_title=resource['title'],
+                    approver_name=current_user.name,
+                    start_datetime=start_dt,
+                    end_datetime=end_dt
+                )
+        except Exception as e:
+            logger.warning(f"Failed to send booking approval notification: {e}")
+        
         # Send confirmation message to requester
         from src.services.messaging_service import send_message
         from src.models.user import User
@@ -326,10 +351,30 @@ def deny(booking_id):
         flash('Only the resource owner or administrator can deny booking requests.', 'error')
         return redirect(request.referrer or url_for('bookings.index'))
     
+    # Get rejection reason from form
+    rejection_reason = request.form.get('rejection_reason', '').strip() or 'No reason provided'
+    
     # Update booking status to denied
-    update_result = update_booking_status(booking_id, 'denied')
+    update_result = update_booking_status(booking_id, 'denied', rejection_reason=rejection_reason)
     
     if update_result['success']:
+        # Send notification for rejection
+        try:
+            from src.services.notification_service import send_booking_rejection
+            from src.models.user import User
+            
+            requester = User.get(booking['requester_id'])
+            if requester and requester.email:
+                send_booking_rejection(
+                    booking_id=booking_id,
+                    requester_email=requester.email,
+                    resource_title=resource['title'],
+                    rejector_name=current_user.name,
+                    reason=rejection_reason
+                )
+        except Exception as e:
+            logger.warning(f"Failed to send booking rejection notification: {e}")
+        
         # Send notification message to requester
         from src.services.messaging_service import send_message
         from src.models.user import User

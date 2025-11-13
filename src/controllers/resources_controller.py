@@ -13,7 +13,8 @@ from src.utils.controller_helpers import (
     save_uploaded_images,
     delete_image_file,
     parse_existing_images,
-    combine_images
+    combine_images,
+    parse_bool_filter
 )
 from src.utils.config import Config
 from datetime import date
@@ -384,23 +385,86 @@ def uploaded_file(filename):
 @login_required
 def my_resources():
     """List user's own resources."""
-    page = request.args.get('page', 1, type=int)
-    page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
-    offset = (page - 1) * page_size
-    status_filter = request.args.get('status', '').strip() or None
+    from src.data_access.database import get_db_connection
     
-    result = list_resources(owner_id=current_user.user_id, status=status_filter, limit=page_size, offset=offset)
+    page = request.args.get('page', 1, type=int)
+    page_size = min(100, max(1, request.args.get('page_size', 25, type=int)))
+    offset = (page - 1) * page_size
+    
+    # Get filter parameters
+    status_filter = request.args.get('status', '').strip() or None
+    category_filter = request.args.get('category', '').strip() or None
+    featured_filter = request.args.get('featured', '').strip()
+    featured = parse_bool_filter(featured_filter)
+    keyword_filter = request.args.get('keyword', '').strip() or None
+    location_filter = request.args.get('location', '').strip() or None
+    is_24_hours_filter = request.args.get('is_24_hours', '').strip()
+    is_24_hours = parse_bool_filter(is_24_hours_filter)
+    
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', '').strip() or None
+    sort_order = request.args.get('sort_order', 'desc').strip()
+    
+    # Get filter options for dropdowns (from user's resources only)
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Get unique categories from user's resources
+        cursor.execute("SELECT DISTINCT category FROM resources WHERE owner_id = ? ORDER BY category", (current_user.user_id,))
+        categories_list = [row['category'] for row in cursor.fetchall()]
+        
+        # Get unique locations from user's resources (limit to 50 most common)
+        cursor.execute("SELECT DISTINCT location FROM resources WHERE owner_id = ? ORDER BY location LIMIT 50", (current_user.user_id,))
+        locations_list = [row['location'] for row in cursor.fetchall()]
+    
+    # Always filter by current user's resources
+    result = list_resources(
+        owner_id=current_user.user_id,
+        status=status_filter,
+        category=category_filter,
+        featured=featured,
+        keyword=keyword_filter,
+        location=location_filter,
+        is_24_hours=is_24_hours,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        limit=page_size,
+        offset=offset
+    )
     
     if result['success']:
-        resources = result['data']['resources']
+        resources_list = result['data']['resources']
         total = result['data']['total']
         total_pages = (total + page_size - 1) // page_size
+        
         return render_template('resources/my_resources.html',
-                             resources=resources,
+                             resources=resources_list,
                              page=page,
                              total_pages=total_pages,
                              total=total,
-                             status_filter=status_filter)
+                             status_filter=status_filter,
+                             category_filter=category_filter,
+                             featured_filter=featured_filter,
+                             keyword_filter=keyword_filter,
+                             location_filter=location_filter,
+                             is_24_hours_filter=is_24_hours_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             categories_list=categories_list,
+                             locations_list=locations_list)
     else:
-        return render_template('resources/my_resources.html', resources=[], page=1, total_pages=0, total=0, status_filter=status_filter)
+        return render_template('resources/my_resources.html', 
+                             resources=[], 
+                             page=1, 
+                             total_pages=0, 
+                             total=0, 
+                             status_filter=status_filter,
+                             category_filter=None,
+                             featured_filter=None,
+                             keyword_filter=None,
+                             location_filter=None,
+                             is_24_hours_filter=None,
+                             sort_by=None,
+                             sort_order='desc',
+                             categories_list=[],
+                             locations_list=[])
 

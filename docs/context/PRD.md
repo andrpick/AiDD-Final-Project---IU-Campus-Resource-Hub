@@ -69,7 +69,7 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Drag-and-select time slot selection
 - Automatic approval for available slots
 - Conflict detection prevents overlapping bookings
-- Booking status: approved, in_progress (computed), cancelled, completed
+- Booking status: approved, pending, denied, in_progress (computed), cancelled, completed
 - Booking duration: min 29 minutes, max 8 hours
 - Advance booking requirement: minimum 1 hour in future
 - Calendar export (Google Calendar, Outlook, iCal)
@@ -92,7 +92,8 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Natural language resource queries using Google Gemini API
 - Markdown rendering in responses (bold, italic)
 - Persistent chat history across page navigations
-- Context-aware responses based on database content
+- Context-aware responses based on database content and project documentation (`/docs/context/` files)
+- Loads context from PRD.md, ERD_AND_SCHEMA.md, and PRD_COMPLETE.md for improved responses
 
 ### Admin Dashboard
 - Comprehensive statistics and analytics
@@ -139,7 +140,7 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Password hashing using bcrypt (salt rounds: 12)
 - SQL injection prevention (parameterized queries)
 - XSS prevention (input sanitization)
-- CSRF protection (Flask-WTF)
+- CSRF protection (Flask-WTF) - Fully implemented with CSRF tokens on all forms
 - Role-based access control
 - Server-side validation for all inputs
 
@@ -148,6 +149,8 @@ The Indiana University Campus Resource Hub is a full-stack web application that 
 - Soft delete for users (preserves referential integrity)
 - No UNIQUE constraint on reviews (allows multiple reviews per completed booking)
 - Resource-specific operating hours with 24-hour operation flag
+- Restricted resources flag (requires approval for bookings)
+- Booking statuses: approved, pending, denied, cancelled, completed
 
 ### Validation Rules
 - Email must be unique (can be NULL for soft-deleted users)

@@ -9,6 +9,7 @@
             <div class="card-body">
                 <h2 class="card-title mb-4">Create Resource</h2>
                 <form method="POST" action="{{ url_for('resources.create') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
                         <input type="text" class="form-control" id="title" name="title" required>
@@ -118,7 +119,7 @@
                         <small class="form-text text-muted">You can upload multiple images. Accepted formats: PNG, JPG, JPEG, GIF, WebP (Max 16MB per image)</small>
                     </div>
                     <button type="submit" class="btn btn-crimson">Create Resource</button>
-                    <a href="{{ url_for('search.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    <a href="{{ url_for('resources.my_resources') }}" class="btn btn-outline-secondary">Cancel</a>
                 </form>
             </div>
         </div>

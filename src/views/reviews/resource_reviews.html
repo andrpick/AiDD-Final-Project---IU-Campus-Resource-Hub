@@ -30,6 +30,7 @@
             <div class="card-body">
                 <h4>Write a Review</h4>
                 <form method="POST" action="{{ url_for('reviews.create') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="resource_id" value="{{ resource.resource_id if resource else '' }}">
                     <div class="mb-3">
                         <label for="rating" class="form-label">Rating *</label>
@@ -72,6 +73,7 @@
                 {% endif %}
                 {% if current_user.is_authenticated and (review.reviewer_id == current_user.user_id or current_user.is_admin()) %}
                 <form method="POST" action="{{ url_for('reviews.delete', review_id=review.review_id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="resource_id" value="{{ resource.resource_id if resource else '' }}">
                     <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
                 </form>

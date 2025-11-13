@@ -64,6 +64,7 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('messages.send') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="receiver_id" value="{{ receiver.user_id }}">
                         {% if resource_id %}
                             <input type="hidden" name="resource_id" value="{{ resource_id }}">

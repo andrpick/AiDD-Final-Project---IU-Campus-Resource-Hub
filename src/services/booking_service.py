@@ -211,6 +211,28 @@ def create_booking(resource_id, requester_id, start_datetime, end_datetime, stat
         conn.commit()
         logger.info(f"Created booking {booking_id} for resource {resource_id} by user {requester_id} with status {status}")
     
+    # Send notification for booking creation
+    try:
+        from src.services.notification_service import send_booking_confirmation
+        from src.models.user import User
+        from src.services.resource_service import get_resource
+        
+        user = User.get(requester_id)
+        resource_result = get_resource(resource_id)
+        
+        if user and resource_result['success']:
+            resource = resource_result['data']
+            requester_email = user.email if user.email else 'unknown@example.com'
+            send_booking_confirmation(
+                booking_id=booking_id,
+                requester_email=requester_email,
+                resource_title=resource.get('title', 'Unknown Resource'),
+                start_datetime=start_dt,
+                end_datetime=end_dt
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send booking confirmation notification: {e}")
+    
     return {'success': True, 'data': {'booking_id': booking_id}}
 
 def mark_completed_bookings():
@@ -270,20 +292,60 @@ def update_booking_status(booking_id, status, rejection_reason=None):
         logger.warning(f"Invalid booking status attempted: {status}")
         return {'success': False, 'error': 'Invalid status'}
     
+    # Get existing booking to get old status and requester info
+    booking_result = get_booking(booking_id)
+    if not booking_result['success']:
+        return {'success': False, 'error': 'Booking not found'}
+    
+    existing_booking = booking_result['data']
+    old_status = existing_booking.get('status')
+    
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        # Clear rejection_reason for all status updates
-        cursor.execute("""
-            UPDATE bookings
-            SET status = ?, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
-            WHERE booking_id = ?
-        """, (status, booking_id))
+        # Set rejection_reason if provided and status is denied
+        if status == 'denied' and rejection_reason:
+            cursor.execute("""
+                UPDATE bookings
+                SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE booking_id = ?
+            """, (status, rejection_reason, booking_id))
+        else:
+            cursor.execute("""
+                UPDATE bookings
+                SET status = ?, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE booking_id = ?
+            """, (status, booking_id))
         
         if cursor.rowcount == 0:
             logger.warning(f"Booking {booking_id} not found for status update")
             return {'success': False, 'error': 'Booking not found'}
         
-        logger.info(f"Updated booking {booking_id} status to {status}")
+        logger.info(f"Updated booking {booking_id} status from {old_status} to {status}")
+    
+    # Send notification for status change
+    try:
+        from src.services.notification_service import send_booking_status_change
+        from src.models.user import User
+        from src.services.resource_service import get_resource
+        
+        requester_id = existing_booking.get('requester_id')
+        resource_id = existing_booking.get('resource_id')
+        user = User.get(requester_id) if requester_id else None
+        resource_result = get_resource(resource_id) if resource_id else {'success': False}
+        
+        if user and resource_result['success']:
+            resource = resource_result['data']
+            requester_email = user.email if user.email else 'unknown@example.com'
+            send_booking_status_change(
+                booking_id=booking_id,
+                requester_email=requester_email,
+                resource_title=resource.get('title', 'Unknown Resource'),
+                old_status=old_status,
+                new_status=status,
+                reason=rejection_reason
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send booking status change notification: {e}")
     
     return {'success': True, 'data': {'booking_id': booking_id}}
 

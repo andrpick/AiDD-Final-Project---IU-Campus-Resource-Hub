@@ -6,10 +6,36 @@ How did AI tools shape your design or coding decisions?
 - The project description was very detailed and a lot of the required elements dictated the general desgin of the web app. From a design standpoint, we adopted IU colors (Crimson and White) and their logo to brand this web app as Indiana University's Campus Resource Hub.
 
 What did you learn about verifying and improving AI-generated outputs?
+- AI-generated code often requires careful review and testing. While AI tools can generate functional code quickly, it's crucial to:
+  - Verify that the code follows project conventions and architecture patterns
+  - Test AI-generated code thoroughly, especially edge cases
+  - Review AI suggestions for security vulnerabilities (e.g., SQL injection, XSS)
+  - Ensure AI-generated code integrates properly with existing codebase
+  - Refactor AI-generated code when it doesn't follow best practices or project standards
+- AI tools are excellent for scaffolding and initial implementation, but human oversight is essential for:
+  - Understanding business logic and requirements
+  - Ensuring code quality and maintainability
+  - Making architectural decisions
+  - Debugging complex issues that require domain knowledge
+- The iterative process of refining AI outputs through targeted prompts improved the quality significantly. Learning to write effective prompts that provide context and constraints was key to getting better results.
 
 What ethical or managerial considerations emerged from using AI in your project?
+- **Transparency**: We maintained transparency by logging all AI interactions in dev_notes.md, ensuring that AI contributions are clearly documented and attributed. This is important for academic integrity and professional accountability.
+- **Code Quality Responsibility**: While AI accelerates development, the team remains responsible for the final code quality. We cannot blame AI for bugs or security issues - human review and testing are essential.
+- **Bias and Fairness**: AI tools may introduce biases based on their training data. We need to be aware of this and ensure our application doesn't perpetuate biases, especially in features like resource recommendations or user interactions.
+- **Intellectual Property**: Understanding what code is generated vs. original work is important for licensing and attribution. We documented AI contributions to maintain clarity.
+- **Dependency on AI Tools**: Over-reliance on AI tools could reduce fundamental programming skills. We balanced AI assistance with manual coding to maintain core competencies.
+- **Managerial Impact**: AI tools change project timelines and resource allocation. Features that might have taken days can be implemented in hours, but this requires careful planning to ensure quality isn't sacrificed for speed.
 
 How might these tools change the role of a business technologist or product manager in the next five years?
+- **Shift from Coding to Architecture**: Business technologists will spend more time on system design, architecture decisions, and high-level problem-solving rather than writing boilerplate code. AI handles routine implementation tasks.
+- **Enhanced Product Strategy**: Product managers can use AI to rapidly prototype and test ideas, allowing for faster iteration cycles and more data-driven decision making. They can focus more on user research, market analysis, and strategic planning.
+- **Quality Assurance Focus**: With AI generating code, the emphasis shifts to testing, validation, and quality assurance. Business technologists will need stronger testing and validation skills.
+- **Prompt Engineering Skills**: Writing effective prompts becomes a core skill. Business technologists and PMs will need to learn how to communicate requirements effectively to AI tools.
+- **Rapid Prototyping**: The ability to quickly prototype and validate ideas becomes more accessible, allowing PMs to test concepts faster and make more informed decisions about feature prioritization.
+- **Cross-functional Collaboration**: AI tools enable non-technical team members to contribute more directly to technical projects, requiring better collaboration and communication skills.
+- **Ethical Oversight**: As AI becomes more integrated, business technologists and PMs will need to ensure ethical AI usage, data privacy, and responsible AI implementation - becoming "AI ethics officers" in their organizations.
+- **Focus on Business Value**: With routine tasks automated, professionals can focus more on understanding user needs, business value, and strategic initiatives rather than implementation details.
 
 
 ## Interaction Log
@@ -3932,3 +3958,139 @@ There should not be "Approve" or "Deny" buttons when approved by the admin user.
   - Buttons are hidden when booking is already approved, denied, cancelled, or completed
 - No linting errors introduced
 - Approve/Deny buttons now correctly hidden when booking has been approved by admin or resource owner
+
+### Interaction #156
+**User Prompt:**
+```
+We will be changing the "My Resources" page. We are changing it to resemble the resource management page that only the admin user has access to. On the newly updated My resources page, the user should only see the resources they own. If no they own no resources, it should say something like "You have no resources, create one now!" I essentially want to combine these two pages to make a revamped "My Resources" to better align with the rest of the web app UI. It should still say "My Resources", have clickable quick filters for "All", "Drafts" , "Published", and "Archived", followed by the exact resource table from the "Resource Management" page but only showing the resources that the logged in user owns.
+```
+
+**Agent Actions:**
+- Updated web app-wide pagination default from 20 to 25 items per page:
+  - Updated `src/controllers/search_controller.py`: Changed default page_size from 20 to 25
+  - Updated `src/controllers/resources_controller.py`: Changed default page_size from 20 to 25 (in my_resources route)
+  - Updated `src/controllers/bookings_controller.py`: Changed default page_size from 20 to 25
+  - Updated `src/controllers/admin_controller.py`: Changed defaults from 20 to 25 (dashboard, users, resources routes), kept logs at 50
+  - Updated `src/controllers/reviews_controller.py`: Changed default page_size from 20 to 25
+- Updated `my_resources()` controller function in `src/controllers/resources_controller.py`:
+  - Added support for all filter parameters: status, category, featured, keyword, location, is_24_hours, sort_by, sort_order
+  - Always filters resources by `owner_id=current_user.user_id` (user can only see their own resources)
+  - Fetches categories_list and locations_list from user's resources only (not all resources)
+  - Includes pagination support (page, page_size=25)
+  - Passes all template variables matching admin resources page structure
+- Completely replaced `src/views/resources/my_resources.html` template:
+  - **Page Header**: Title "My Resources" (font-size: 2rem), subtitle "Manage your resources", "Create Resource" button, "Filter" button, conditional "Clear All Filters" button
+  - **Quick Filter Buttons**: Styled like My Bookings page with `btn px-4 py-2` classes, active state uses `bg-light border border-2 border-secondary text-dark fw-semibold`, inactive state uses `btn-outline-secondary`, buttons: All, Drafts, Published, Archived
+  - **Active Filters Section**: Displays active filter badges matching admin page style
+  - **Filter Modal**: Includes user-relevant filters (Status, Category, Featured, Search, Location, Operating Hours, Sort By, Order), removed Owner field (not needed - all resources are user's own)
+  - **Resource Table**: Exact table structure from admin page (Title, Category, Location, Status, Featured, Actions columns), same styling and card wrapper
+  - **Actions Dropdown**: Only shows View, Edit, Archive/Unarchive (removed Feature/Unfeature and Reassign Ownership - admin-only actions)
+  - **Pagination**: Includes pagination controls matching admin page (only if total_pages > 1), preserves all filter parameters
+  - **Empty State**: Shows centered card with icon, heading "You have no resources", message "Create one now!" with link to create resource page
+  - **JavaScript**: Copied and adapted filter badge and modal handling JavaScript from admin page, updated all URLs to use `resources.my_resources` route instead of `admin.resources`
+- Added `parse_bool_filter` import to `src/controllers/resources_controller.py` for filter parameter parsing
+- Quick filter buttons preserve all other filter parameters when navigating between status filters
+- Featured column displays read-only (users can see if their resource is featured but cannot change it)
+- No linting errors introduced
+- My Resources page now matches admin Resource Management page design while filtering to only show user's own resources
+
+### Interaction #157
+**User Prompt:**
+```
+When "Drafts", or "Published", or "Archived" are selected, the user should know it is selected like in the "My Bookings" page where when pending is selected, it is sort of highlighted.
+```
+
+**Agent Actions:**
+- Updated quick filter buttons in `src/views/resources/my_resources.html` to use `url_for()` with named parameters instead of manually constructing query strings
+- Changed from manual query string building to Flask's `url_for()` function which properly handles filter parameter preservation
+- Quick filter buttons now use same pattern as My Bookings page:
+  - Selected button: `bg-light border border-2 border-secondary text-dark fw-semibold` classes with `font-weight: 600`
+  - Unselected buttons: `btn-outline-secondary` class with `font-weight: 500`
+- Buttons properly highlight when selected (Drafts, Published, Archived) matching the visual style of My Bookings page
+- All filter parameters (category, featured, keyword, location, is_24_hours, sort_by, sort_order) are preserved when navigating between status filters
+- No linting errors introduced
+- Quick filter buttons now provide clear visual feedback when a status filter is selected
+
+### Interaction #158
+**User Prompt:**
+```
+When drafts or archived are selected, It should say "You have no drafted resources" and "You have no archived resources" and remove the "Create one now!" from them too.
+```
+
+**Agent Actions:**
+- Updated empty state message in `src/views/resources/my_resources.html` to be status-specific:
+  - When "Drafts" filter is selected (`status_filter == 'draft'`): Displays "You have no drafted resources" without "Create one now!" link
+  - When "Archived" filter is selected (`status_filter == 'archived'`): Displays "You have no archived resources" without "Create one now!" link
+  - When "Published" filter is selected or no filter: Displays "You have no resources" with "Create one now!" link (default behavior)
+- Empty state messages now provide context-specific feedback based on the selected status filter
+- "Create one now!" link only appears when it makes sense (not for drafts or archived resources)
+- No linting errors introduced
+- Empty state messages now accurately reflect the filtered view
+
+### Interaction #159
+**User Prompt:**
+```
+When cancel is clicked on create resource form, it should redirect to the my resources page rather than the My Bookings page.
+```
+
+**Agent Actions:**
+- Updated cancel button in `src/views/resources/create.html`:
+  - Changed redirect from `url_for('search.index')` to `url_for('resources.my_resources')`
+  - Cancel button now redirects to My Resources page instead of search page
+- No linting errors introduced
+- Cancel button on create resource form now correctly redirects to My Resources page
+
+### Interaction #160
+**User Prompt:**
+```
+Are there any updates needed for @PRD.md, @PRD_COMPLETE.md, and @ERD_AND_SCHEMA.md to reflect the current state of the web app? Review these documents and ensure they align with current web app features and database.
+```
+
+**Agent Actions:**
+- Reviewed all three documentation files to ensure they reflect current application state:
+  - `docs/context/PRD.md`: Concise PRD overview document
+  - `docs/context/PRD_COMPLETE.md`: Comprehensive technical specifications document
+  - `docs/context/ERD_AND_SCHEMA.md`: Database schema and ERD documentation
+- Updated `docs/context/PRD_COMPLETE.md`:
+  - Fixed reviews UNIQUE constraint documentation: Removed incorrect UNIQUE constraint on `(resource_id, reviewer_id)` - clarified that multiple reviews per user per resource are allowed (one per completed booking)
+  - Updated booking statuses: Added `pending` and `denied` to the schema and status flow documentation
+  - Added `restricted` field: Documented the `restricted` BOOLEAN field in the resources table
+  - Updated CSRF protection: Clarified that CSRF is fully implemented with Flask-WTF across all forms
+  - Updated email notifications: Clarified that notifications are simulated/logged via `notification_service.py`
+  - Updated AI Concierge context loading: Documented the `load_context_files()` function and which files are loaded
+  - Updated messages table: Added `booking_id` field to the messages table schema
+  - Updated relationships: Added `bookings` → `messages` relationship
+- Updated `docs/context/PRD.md`:
+  - Updated booking statuses: Added `pending` and `denied` to the status list
+  - Updated CSRF protection: Noted that CSRF is fully implemented
+  - Updated AI Concierge: Added context loading from `/docs/context/` files
+  - Updated database schema: Added restricted resources flag and booking statuses
+- Updated `docs/context/ERD_AND_SCHEMA.md`:
+  - Added `restricted` field: Added to the resources table ERD and schema documentation
+  - Updated booking statuses: Added `pending` and `denied` to the bookings table CHECK constraint
+  - Added `booking_id` to messages: Added to the messages table ERD and schema
+  - Updated relationships: Added `bookings` → `messages` relationship
+  - Added notes: Documented restricted resources and booking statuses
+- Verified all documentation aligns with current implementation:
+  - Database schema matches `init_db.py`
+  - CSRF protection documented as fully implemented
+  - Email notifications documented as simulated/logged
+  - AI Concierge context loading documented
+  - Booking statuses include `pending` and `denied`
+  - The `restricted` field is documented
+  - The `booking_id` field in messages is documented
+- No linting errors introduced
+- All documentation files now accurately reflect the current state of the web application
+
+### Interaction #161
+**User Prompt:**
+```
+Log interactions that have not been logged yet at the bottom of @dev_notes.md.
+```
+
+**Agent Actions:**
+- Reviewed dev_notes.md to identify unlogged interactions
+- Identified Interaction #160 (documentation review and update) that had not been logged
+- Logged Interaction #160 documenting the review and update of PRD.md, PRD_COMPLETE.md, and ERD_AND_SCHEMA.md to ensure they reflect current application state
+- Logged Interaction #161 (current interaction) documenting the logging of unlogged interactions
+- All interactions now properly logged in dev_notes.md following the established format

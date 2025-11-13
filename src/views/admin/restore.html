@@ -102,6 +102,7 @@
                                     <form method="POST" action="{{ url_for('admin.restore_user_route', user_id=user.user_id) }}" 
                                           class="d-inline"
                                           onsubmit="return confirm('Restore this user? Note: Email, name, and password were anonymized and will need to be manually restored.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-sm btn-success">
                                             <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
                                         </button>
@@ -179,6 +180,7 @@
                                     <form method="POST" action="{{ url_for('admin.restore_thread_admin', thread_id=thread.thread_id) }}" 
                                           class="d-inline"
                                           onsubmit="return confirm('Restore this thread? This will restore {{ thread.deleted_count }} message{{ 's' if thread.deleted_count != 1 else '' }}.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-sm btn-success">
                                             <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
                                         </button>
