@@ -201,12 +201,22 @@
             // Show loading indicator
             const loadingId = addMessage('Thinking...', 'assistant', true);
             
+            // Get CSRF token from meta tag
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
             // Send to API
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            // Add CSRF token to headers if available
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
             fetch('/ai/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({
                     message: message,
                     history: conversationHistory.slice(-10) // Send last 10 messages for context

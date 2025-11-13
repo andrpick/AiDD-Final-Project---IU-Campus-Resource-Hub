@@ -1235,53 +1235,54 @@ Respond naturally to the user's query, but strictly within the bounds of the cam
 
 def query_concierge_fallback(user_query):
     """Fallback search-based response when Gemini API is unavailable."""
-    query_lower = user_query.lower()
-    
-    # Check for general help queries
-    help_keywords = ['help', 'what can you do', 'how can you help', 'what do you do', 'assist', 'support']
-    is_help_query = any(keyword in query_lower for keyword in help_keywords)
-    
-    # Check for statistics questions
-    stats_questions = ['how many', 'total', 'count', 'statistics', 'stats', 'number of']
-    is_stats_query = any(keyword in query_lower for keyword in stats_questions)
-    
-    # Check for largest/biggest resource questions
-    largest_keywords = ['largest', 'biggest', 'maximum capacity', 'max capacity', 'highest capacity', 'most capacity']
-    is_largest_query = any(keyword in query_lower for keyword in largest_keywords)
-    
-    # Check for resource lookup
-    resource_lookup_keywords = ['tell me about', 'about', 'details about', 'information about', 'what is', 'describe']
-    is_resource_lookup = any(keyword in query_lower for keyword in resource_lookup_keywords)
-    
-    # Handle statistics queries directly
-    if is_stats_query:
-        stats = get_database_statistics()
-        if stats:
-            stats_text = f"""There are currently {stats.get('total_resources', 0)} published resources in the system.
+    try:
+        query_lower = user_query.lower()
+        
+        # Check for general help queries
+        help_keywords = ['help', 'what can you do', 'how can you help', 'what do you do', 'assist', 'support']
+        is_help_query = any(keyword in query_lower for keyword in help_keywords)
+        
+        # Check for statistics questions
+        stats_questions = ['how many', 'total', 'count', 'statistics', 'stats', 'number of']
+        is_stats_query = any(keyword in query_lower for keyword in stats_questions)
+        
+        # Check for largest/biggest resource questions
+        largest_keywords = ['largest', 'biggest', 'maximum capacity', 'max capacity', 'highest capacity', 'most capacity']
+        is_largest_query = any(keyword in query_lower for keyword in largest_keywords)
+        
+        # Check for resource lookup
+        resource_lookup_keywords = ['tell me about', 'about', 'details about', 'information about', 'what is', 'describe']
+        is_resource_lookup = any(keyword in query_lower for keyword in resource_lookup_keywords)
+        
+        # Handle statistics queries directly
+        if is_stats_query:
+            stats = get_database_statistics()
+            if stats:
+                stats_text = f"""There are currently {stats.get('total_resources', 0)} published resources in the system.
 Total bookings made: {stats.get('total_bookings', 0)}
 Featured resources: {stats.get('featured_resources', 0)}"""
-            if stats.get('resources_by_category'):
-                stats_text += "\n\nResources by category:"
-                for cat, count in stats['resources_by_category'].items():
-                    stats_text += f"\n- {cat.replace('_', ' ').title()}: {count}"
-            
-            return {
-                'success': True,
-                'data': {
-                    'query': user_query,
-                    'resources': [],
-                    'response': stats_text
+                if stats.get('resources_by_category'):
+                    stats_text += "\n\nResources by category:"
+                    for cat, count in stats['resources_by_category'].items():
+                        stats_text += f"\n- {cat.replace('_', ' ').title()}: {count}"
+                
+                return {
+                    'success': True,
+                    'data': {
+                        'query': user_query,
+                        'resources': [],
+                        'response': stats_text
+                    }
                 }
-            }
-    
-    # Handle largest resource queries directly
-    if is_largest_query:
-        largest_resources = get_largest_resource_by_capacity()
-        if largest_resources:
-            if len(largest_resources) == 1:
-                res = largest_resources[0]
-                capacity_text = f"{res['capacity']} people" if res['capacity'] is not None else "N/A"
-                response = f"""The largest resource by capacity is:
+        
+        # Handle largest resource queries directly
+        if is_largest_query:
+            largest_resources = get_largest_resource_by_capacity()
+            if largest_resources:
+                if len(largest_resources) == 1:
+                    res = largest_resources[0]
+                    capacity_text = f"{res['capacity']} people" if res['capacity'] is not None else "N/A"
+                    response = f"""The largest resource by capacity is:
 
 Title: {res['title']}
 Category: {res['category'].replace('_', ' ').title()}
@@ -1312,24 +1313,24 @@ Capacity: {capacity_text}"""
                     'response': "I couldn't find any resources with capacity information in the database."
                 }
             }
-    
-    # Handle resource lookup queries directly
-    if is_resource_lookup:
-        # Extract resource name
-        resource_name = None
-        for keyword in ['tell me about', 'about', 'details about', 'information about', 'what is', 'describe']:
-            if keyword in query_lower:
-                parts = user_query.split(keyword, 1)
-                if len(parts) > 1:
-                    resource_name = parts[-1].strip().rstrip('?.!').strip()
-                    if resource_name:
-                        break
         
-        if resource_name:
-            found_resources = get_resource_by_name_or_id(resource_name)
-            if found_resources:
-                # Get the main resource
-                main_resource = found_resources[0]
+        # Handle resource lookup queries directly
+        if is_resource_lookup:
+            # Extract resource name
+            resource_name = None
+            for keyword in ['tell me about', 'about', 'details about', 'information about', 'what is', 'describe']:
+                if keyword in query_lower:
+                    parts = user_query.split(keyword, 1)
+                    if len(parts) > 1:
+                        resource_name = parts[-1].strip().rstrip('?.!').strip()
+                        if resource_name:
+                            break
+            
+            if resource_name:
+                found_resources = get_resource_by_name_or_id(resource_name)
+                if found_resources:
+                    # Get the main resource
+                    main_resource = found_resources[0]
                 
                 # Also search for related resources using the resource name as keyword
                 # This finds resources that might be related (e.g., if asking about "Memorial Stadium",
@@ -1380,21 +1381,21 @@ Location: {main_resource['location']}{capacity_text}{rating_text}"""
                         'response': response
                     }
                 }
-    
-    # Handle help queries with context
-    if is_help_query:
-        stats = get_database_statistics()
-        stats_context = ""
-        if stats:
-            stats_text = f"""There are currently {stats.get('total_resources', 0)} published resources in the system.
+        
+        # Handle help queries with context
+        if is_help_query:
+            stats = get_database_statistics()
+            stats_context = ""
+            if stats:
+                stats_text = f"""There are currently {stats.get('total_resources', 0)} published resources in the system.
 Total bookings made: {stats.get('total_bookings', 0)}
 Featured resources: {stats.get('featured_resources', 0)}"""
-            if stats.get('resources_by_category'):
-                stats_text += "\n\nResources by category:"
-                for cat, count in stats['resources_by_category'].items():
-                    stats_text += f"\n- {cat.replace('_', ' ').title()}: {count}"
-            stats_context = stats_text
-        response = f"""Hello! I'm Crimson, your AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
+                if stats.get('resources_by_category'):
+                    stats_text += "\n\nResources by category:"
+                    for cat, count in stats['resources_by_category'].items():
+                        stats_text += f"\n- {cat.replace('_', ' ').title()}: {count}"
+                stats_context = stats_text
+            response = f"""Hello! I'm Crimson, your AI assistant EXCLUSIVELY for the Indiana University Campus Resource Hub. 
 
 IMPORTANT: I can ONLY help with topics related to the campus resource hub. I cannot discuss unrelated topics.
 
@@ -1424,59 +1425,70 @@ How can I help you today?"""
                 'response': response
             }
         }
-    
-    # Parse query for search
-    search_params = parse_query(user_query)
-    
-    # Search resources
-    search_result = search_resources(
-        keyword=search_params.get('keyword'),
-        category=search_params.get('category'),
-        location=search_params.get('location'),
-        capacity_min=search_params.get('capacity_min'),
-        capacity_max=search_params.get('capacity_max'),
-        page=1,
-        page_size=10
-    )
-    
-    if not search_result['success']:
+        
+        # Parse query for search
+        search_params = parse_query(user_query)
+        
+        # Search resources
+        search_result = search_resources(
+            keyword=search_params.get('keyword'),
+            category=search_params.get('category'),
+            location=search_params.get('location'),
+            capacity_min=search_params.get('capacity_min'),
+            capacity_max=search_params.get('capacity_max'),
+            page=1,
+            page_size=10
+        )
+        
+        if not search_result['success']:
+            return {
+                'success': False,
+                'error': 'Error searching resources',
+                'response': 'I encountered an error while searching. Please try again.'
+            }
+        
+        resources = search_result['data']['resources']
+        
+        # Enrich with review information
+        for resource in resources:
+            try:
+                reviews_result = get_resource_reviews(resource['resource_id'], limit=1)
+                if reviews_result['success'] and reviews_result['data']['stats']['avg_rating']:
+                    resource['rating'] = reviews_result['data']['stats']['avg_rating']
+            except Exception as e:
+                logger.warning(f"Error getting reviews for resource {resource['resource_id']}: {e}")
+                # Continue without rating if review fetch fails
+        
+        # Generate natural language response
+        if not resources:
+            response = "I couldn't find any resources matching your query. Try adjusting your search criteria or ask me for help! Remember, I can only help with topics related to the campus resource hub."
+        elif len(resources) == 1:
+            resource = resources[0]
+            rating_text = f" with a {resource.get('rating', 'N/A')} rating" if resource.get('rating') else ""
+            capacity_text = f" with capacity for {resource['capacity']} people" if resource['capacity'] is not None else ""
+            response = f"I found {resource['title']} located at {resource['location']}{capacity_text}{rating_text}. It's a {resource['category'].replace('_', ' ')}."
+        else:
+            response = f"I found {len(resources)} resources matching your query. Here are the results:\n\n"
+            # Show all resources found, not just limited to 5
+            for i, resource in enumerate(resources, 1):
+                rating_text = f" (Rating: {resource.get('rating', 'N/A')})" if resource.get('rating') else ""
+                capacity_text = f" - Capacity: {resource['capacity']}" if resource['capacity'] is not None else ""
+                response += f"{i}. {resource['title']} - {resource['location']}{capacity_text}{rating_text}\n"
+        
+        return {
+            'success': True,
+            'data': {
+                'query': user_query,
+                'resources': resources,
+                'response': response,
+                'search_params': search_params
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in query_concierge_fallback: {e}", exc_info=True)
         return {
             'success': False,
-            'error': 'Error searching resources',
-            'response': 'I encountered an error while searching. Please try again.'
+            'error': 'An error occurred while processing your query',
+            'response': 'I encountered an error. Please try again.'
         }
-    
-    resources = search_result['data']['resources']
-    
-    # Enrich with review information
-    for resource in resources:
-        reviews_result = get_resource_reviews(resource['resource_id'], limit=1)
-        if reviews_result['success'] and reviews_result['data']['stats']['avg_rating']:
-            resource['rating'] = reviews_result['data']['stats']['avg_rating']
-    
-    # Generate natural language response
-    if not resources:
-        response = "I couldn't find any resources matching your query. Try adjusting your search criteria or ask me for help! Remember, I can only help with topics related to the campus resource hub."
-    elif len(resources) == 1:
-        resource = resources[0]
-        rating_text = f" with a {resource.get('rating', 'N/A')} rating" if resource.get('rating') else ""
-        capacity_text = f" with capacity for {resource['capacity']} people" if resource['capacity'] is not None else ""
-        response = f"I found {resource['title']} located at {resource['location']}{capacity_text}{rating_text}. It's a {resource['category'].replace('_', ' ')}."
-    else:
-        response = f"I found {len(resources)} resources matching your query. Here are the results:\n\n"
-        # Show all resources found, not just limited to 5
-        for i, resource in enumerate(resources, 1):
-            rating_text = f" (Rating: {resource.get('rating', 'N/A')})" if resource.get('rating') else ""
-            capacity_text = f" - Capacity: {resource['capacity']}" if resource['capacity'] is not None else ""
-            response += f"{i}. {resource['title']} - {resource['location']}{capacity_text}{rating_text}\n"
-    
-    return {
-        'success': True,
-        'data': {
-            'query': user_query,
-            'resources': resources,
-            'response': response,
-            'search_params': search_params
-        }
-    }
 
