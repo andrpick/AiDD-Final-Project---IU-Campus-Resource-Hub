@@ -48,11 +48,11 @@ The database includes sample/starter data with default accounts:
 - **Password:** AdminUser1!
 
 ### Staff User
-- **Email:** staffuser@iu.edu
+- **Email:** staff@iu.edu
 - **Password:** StaffUser1!
 
 ### Student User
-- **Email:** studentuser@iu.edu
+- **Email:** student@iu.edu
 - **Password:** StudentUser1!
 
 **⚠️ SECURITY WARNING:** These are default test credentials for development and testing purposes only. **You MUST change all default passwords immediately after first login in production environments.** Never use default credentials in production!
