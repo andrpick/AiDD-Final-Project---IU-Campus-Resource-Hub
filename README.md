@@ -2,6 +2,15 @@
 
 A full-stack web application for managing and booking campus resources including study rooms, AV equipment, lab instruments, event spaces, and tutoring services.
 
+## Required Deliverable Location
+- `docs/` - Documentation
+  - `wireframes/` - Wireframe images for key pages
+  - `context/` - Project context files (PRD, ERD, etc.)
+- `.prompt/` - AI development notes and prompts
+- `tests/` - Test suite (139 tests, 100% passing)
+
+GitHub Repository URL: https://github.com/andrpick/AiDD-Final-Project---IU-Campus-Resource-Hub/tree/main
+
 ## Quick Start
 
 1. **Create a virtual environment**
