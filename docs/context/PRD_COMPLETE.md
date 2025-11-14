@@ -3,7 +3,7 @@
 
 **Version:** 2.0 (Complete Technical Specification)  
 **Date:** Fall 2025  
-**Team:** AiDD Capstone Project Team  
+**Team:** MSIS Core Team 16
 **Purpose:** This document contains all product and technical requirements needed to recreate the Indiana University Campus Resource Hub application from scratch.
 
 > **Note:** This is a comprehensive reference document (2,800+ lines). For quick start instructions, see [README.md](../../README.md). For setup instructions, see [SETUP_STEPS.md](../../SETUP_STEPS.md). For database schema reference, see [ERD_AND_SCHEMA.md](ERD_AND_SCHEMA.md).

@@ -1,24 +1,24 @@
 ## Reflection Prompts
 
-How did AI tools shape your design or coding decisions?
+### How did AI tools shape your design or coding decisions?
 
 The project workflow integrated two specialized AI tools: Stitch for the design phase and Cursor for the development phase. The project's functional requirements were highly detailed, which dictated the application's core structure. Stitch was utilized to accelerate the wireframing process, enabling the rapid translation of these textual requirements into visual layouts. While the AI guided the structure, the visual identity was a deliberate strategic choice. To brand the application as Indiana University's Campus Resource Hub, we adopted the university's official logo and crimson and white color palette.
 
 For the implementation phase, Cursor was selected as the primary IDE. Its embedded AI capabilities were instrumental in accelerating the coding and debugging cycles. The integration of these tools was critical to the project's success. They significantly compressed the development timeline and enabled the delivery of a more comprehensive and polished final product than would have been feasible using traditional methods alone.
 
-What did you learn about verifying and improving AI-generated outputs?
+### What did you learn about verifying and improving AI-generated outputs?
 
 Our primary takeaway was that AI-generated outputs, particularly code, function as an initial scaffold, not a final product. While these tools rapidly generate functional code, this output requires rigorous human verification. We learned to systematically review all AI-generated code for several factors beyond simple functionality: adherence to project-specific architectural patterns, integration with the existing codebase, and potential security vulnerabilities like XSS or SQL injection. This review process often necessitated refactoring the code to ensure it met our standards for quality and maintainability, particularly when testing for edge cases that the AI had not anticipated.
 
 This verification process underscored the necessity of human oversight for interpreting complex business logic and making critical architectural decisions. Furthermore, we learned that the quality of the output is highly dependent on the quality of the input. The most significant improvement in our workflow came from adopting an iterative process of refining our prompts. By providing the AI with clear context, constraints, and examples of our desired standards, we were able to improve the quality of its initial suggestions significantly, thereby reducing the subsequent verification and refactoring effort.
 
-What ethical or managerial considerations emerged from using AI in your project?
+### What ethical or managerial considerations emerged from using AI in your project?
 
 Using AI introduced significant ethical and managerial considerations. From an ethical standpoint, we prioritized transparency by meticulously logging all AI interactions in a dev_notes.md file. This documentation ensured all AI contributions were clearly attributed, maintaining academic integrity and professional accountability. This process was directly linked to intellectual property concerns; by documenting generated code, we maintained clarity on original work versus assisted work for licensing. We also discussed the potential for AI tools to introduce biases from their training data. This required us to be vigilant in reviewing outputs to ensure our application's features, such as resource recommendations, did not perpetuate unfairness.
 
 From a managerial perspective, the primary consideration was code quality responsibility. We established that while AI accelerates development, the team remains fully accountable for the final product. We could not attribute bugs or security vulnerabilities to the AI; rigorous human review and testing remained essential. This directly impacted project planning, as AI dramatically altered timelines. Features that might have taken days could be scaffolded in hours, but this required careful management to ensure speed did not compromise quality. Finally, we managed the risk of tool dependency by balancing AI assistance with manual coding, ensuring the team's fundamental programming skills were maintained rather than atrophied.
 
-How might these tools change the role of a business technologist or product manager in the next five years?
+### How might these tools change the role of a business technologist or product manager in the next five years?
 
 Based on our project experience, we anticipate a significant evolution for business technologists and product managers in the next five years. Professionals will shift from low-level implementation to high-level architecture and strategy. Business technologists will likely spend far less time writing boilerplate code and more time defining system design, making critical architectural decisions, and solving complex integration problems. Consequently, their focus will pivot heavily toward quality assurance, as the critical human task becomes validating, testing, and securing the code AI generates.
 

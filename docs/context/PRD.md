@@ -3,7 +3,7 @@
 
 **Version:** 2.0 (Concise)  
 **Date:** Fall 2025  
-**Team:** AiDD Capstone Project Team
+**Team:** MSIS Core Team 16
 
 > **Note:** This is a concise overview. For complete technical specifications, see [PRD_COMPLETE.md](PRD_COMPLETE.md). For quick start, see [README.md](../../README.md).
 
