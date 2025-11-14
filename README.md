@@ -31,6 +31,11 @@ GitHub Repository URL: https://github.com/andrpick/AiDD-Final-Project---IU-Campu
    cp .env.example .env   # use `copy` on Windows
    ```
    Review the new `.env` file end-to-end, update `SECRET_KEY`, and adjust any feature toggles you plan to use.
+
+  **Important**: The chatbot will only work properly after getting inputting the following API key:
+
+  **AIzaSyBHF2baJuu6dT1x3aRQenLb3oXeSbYS_6A** - This is a free API key from Google and must be added to the .env file you create using the .env.example file.
+
 4. **Run the application**
    ```bash
    python app.py

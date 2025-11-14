@@ -45,6 +45,10 @@ The application is fully functional with all core features implemented:
    cp .env.example .env
    ```
    
+  **Important**: The chatbot will only work properly after getting inputting the following API key:
+
+  **AIzaSyBHF2baJuu6dT1x3aRQenLb3oXeSbYS_6A** - This is a free API key from Google and must be added to the .env file you create using the .env.example file.
+
    Then edit `.env` and update at minimum:
    - `SECRET_KEY` - Generate a secure random key: `python -c "import secrets; print(secrets.token_hex(32))"`
    - Other values as needed
